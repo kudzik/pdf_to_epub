@@ -83,3 +83,4 @@ test('pipeline.py & action.ts: verifies target output folder resolution', () => 
     "action.ts must default targetFolder to 'output'"
   );
 });
+
