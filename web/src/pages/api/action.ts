@@ -9,7 +9,7 @@ const execPromise = util.promisify(exec);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { action, file, book, keepEpub = false, targetFolder = 'epub' } = await request.json();
+    const { action, file, book, keepEpub = false, targetFolder = 'app' } = await request.json();
     const rootDir = getProjectRootDir();
     
     // Ustalanie nazwy książki (stem)
@@ -33,6 +33,8 @@ export const POST: APIRoute = async ({ request }) => {
     } else if (action === 'purge') {
       const keepFlag = keepEpub ? '--keep-epub' : '';
       command = `uv run python -m src.pipeline purge --book "${bookStem}" ${keepFlag}`;
+    } else if (action === 'purge-epub') {
+      command = `uv run python -m src.pipeline purge --book "${bookStem}" --only-epub`;
     } else if (action === 'purge-all') {
       const keepFlag = keepEpub ? '--keep-epub' : '';
       command = `uv run python -m src.pipeline purge --all ${keepFlag}`;

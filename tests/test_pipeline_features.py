@@ -65,7 +65,8 @@ def test_purge_command_book_keep_epub(tmp_path: Path):
         ["purge", "--book", "ksiazka1", "--keep-epub", "--output-dir", str(tmp_path)],
     )
     assert result.exit_code == 0
-    assert "Wyczyszczono pliki dla książki: ksiazka1" in result.stdout
+    assert "Wyczyszczono pliki robocze" in result.stdout
+    assert "ksiazka1" in result.stdout
 
     # Pliki robocze usunięte
     assert not md_file.exists()
@@ -73,6 +74,30 @@ def test_purge_command_book_keep_epub(tmp_path: Path):
     assert not report_file.exists()
     # EPUB zachowany
     assert epub_file.exists()
+
+
+def test_purge_only_epub_command(tmp_path: Path):
+    """Weryfikuje usuwanie wyłącznie pliku EPUB z zachowaniem plików roboczych."""
+    md_dir = tmp_path / "markdown"
+    epub_dir = tmp_path / "epub"
+    md_dir.mkdir(parents=True)
+    epub_dir.mkdir(parents=True)
+
+    md_file = md_dir / "ksiazka1.md"
+    epub_file = epub_dir / "ksiazka1.epub"
+    md_file.write_text("markdown content", encoding="utf-8")
+    epub_file.write_text("epub content", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["purge", "--book", "ksiazka1", "--only-epub", "--output-dir", str(tmp_path)],
+    )
+    assert result.exit_code == 0
+    assert "Usunięto plik EPUB dla książki: ksiazka1" in result.stdout
+
+    # Markdown zachowany, EPUB usunięty
+    assert md_file.exists()
+    assert not epub_file.exists()
 
 
 def test_purge_all_command(tmp_path: Path):
@@ -93,7 +118,7 @@ def test_purge_all_command(tmp_path: Path):
         ["purge", "--all", "--output-dir", str(tmp_path)],
     )
     assert result.exit_code == 0
-    assert "Pomyślnie wyczyszczono katalog wyjściowy" in result.stdout
+    assert "Pomyślnie wyczyszczono" in result.stdout
 
     assert not (md_dir / "book1.md").exists()
     assert not (assets_dir / "img1.png").exists()

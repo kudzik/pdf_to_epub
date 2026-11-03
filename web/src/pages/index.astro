@@ -40,7 +40,7 @@ import '../styles/global.css';
           </select>
         </div>
 
-        <div id="ollamaBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all">
+        <div id="ollamaBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer hover:border-zinc-500" title="Kliknij, aby sprawdzić instrukcję połączenia z Ollama na Windows">
           <span class="relative flex h-2 w-2">
             <span id="ollamaPing" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"></span>
             <span id="ollamaDot" class="relative inline-flex rounded-full h-2 w-2"></span>
@@ -161,18 +161,23 @@ import '../styles/global.css';
         </button>
       </div>
 
-      <!-- WSL & Windows Easy Copy Buttons -->
-      <div class="flex items-center gap-2 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
-        <button id="btnCopyToWindows" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-indigo-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy EPUB bezpośrednio do Windows Downloads">
+      <!-- WSL & Windows Easy Copy & Cleanup Buttons -->
+      <div class="flex flex-wrap items-center gap-2 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
+        <button id="btnOpenWindowsExplorer" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Otwórz folder aplikacji/projektu w Eksploratorze Windows (explorer.exe)">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          Folder Aplikacji
+        </button>
+        <button id="btnCopyToWindows" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-indigo-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy EPUB bezpośrednio do folderu Pobrane w Windows">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
-          Kopiuj do Windows Pobrane
+          Pobrane w Windows
         </button>
-        <button id="btnOpenWindowsExplorer" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Otwórz folder w Eksploratorze Windows (explorer.exe)">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-          Otwórz w Windows
+        <button id="btnPurgeEpub" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/40 text-amber-300 hover:text-amber-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Usuń wyłącznie gotowy plik .epub dla tej książki">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          Usuń EPUB
         </button>
-        <button id="btnPurgeWorkfiles" class="px-2.5 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-lg text-xs font-medium transition border border-zinc-700" title="Usuń pliki robocze (.bak, raporty) po skończonej pracy">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        <button id="btnPurgeWorkfiles" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyczyść pliki robocze lub zresetuj wszystko">
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Wyczyść pliki
         </button>
       </div>
     </div>
@@ -322,6 +327,7 @@ import '../styles/global.css';
     const btnDownloadEpub = document.getElementById('btnDownloadEpub');
     const btnCopyToWindows = document.getElementById('btnCopyToWindows');
     const btnOpenWindowsExplorer = document.getElementById('btnOpenWindowsExplorer');
+    const btnPurgeEpub = document.getElementById('btnPurgeEpub');
     const btnPurgeWorkfiles = document.getElementById('btnPurgeWorkfiles');
 
     // Inicjalizacja: pobranie listy książek i statusu
@@ -355,17 +361,18 @@ import '../styles/global.css';
         // 1. Wskaźnik Ollama
         globalOllama = data.ollama || { available: false, models: [] };
         if (globalOllama.available) {
-          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-emerald-500/10 border-emerald-500/30 text-emerald-300 cursor-pointer hover:border-emerald-400';
           ollamaPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
           ollamaDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
           const modelName = globalOllama.models[0] || 'qwen2.5:14b';
           ollamaText.textContent = `Ollama Online (${modelName})`;
           document.getElementById('statModelName').textContent = `Ollama: ${modelName}`;
         } else {
-          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-zinc-800 border-zinc-700 text-zinc-400';
+          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-zinc-800 border-zinc-700 text-zinc-400 cursor-pointer hover:border-zinc-500';
           ollamaPing.className = 'hidden';
           ollamaDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-zinc-500';
-          ollamaText.textContent = 'Ollama Offline (Uruchom w tle)';
+          ollamaText.textContent = 'Ollama Offline (Kliknij po instrukcję Windows)';
+          document.getElementById('statModelName').textContent = 'Autopilot Wbudowany / VS Code';
         }
 
         // 2. Metryki Markdown (auto-tworzenie info)
@@ -580,22 +587,54 @@ import '../styles/global.css';
       }
     };
 
-    // AUTOPILOT AI (Ollama RTX 4080)
-    async function startOllamaAutopilot() {
-      if (!globalOllama.available) {
-        alert(
-          '⚠️ Serwer Ollama nie odpowiada na http://localhost:11434.\n\n' +
-          'Aby korzystać z Autopilota AI na karcie RTX 4080 Super:\n' +
-          '1. Uruchom w terminalu: ollama run qwen2.5:14b\n' +
-          '2. Wskaźnik w prawym górnym rogu zmieni się na zielony [Ollama Online].\n\n' +
-          'Wskazówka: Możesz teraz skorzystać z natychmiastowego przycisku:\n' +
-          '"Szybka Rekonstrukcja (Polskie Znaki & Ułamki)"!'
-        );
-        return;
-      }
+    // Wbudowany algorytmiczny silnik rekonstrukcji tekstu (polskie znaki, ułamki, szumy OCR)
+    function reconstructParagraphHeuristic(text) {
+      if (!text) return '';
+      let t = text;
+      // Scalanie rozbitych słów (de-hyphenation)
+      t = t.replace(/(\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)-\s+([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\b)/g, '$1$2');
+      // Ułamki
+      t = t.replace(/\bVz\b/g, '1/2');
+      t = t.replace(/\b¥2\b/g, '1/2');
+      t = t.replace(/3\/«/g, '3/4');
+      t = t.replace(/½/g, '1/2');
+      t = t.replace(/¼/g, '1/4');
+      t = t.replace(/¾/g, '3/4');
+      t = t.replace(/\b1\s+2\s+(tsp|tbsp|cup|cups|teaspoon|tablespoon|lb|lbs|oz|clove|pinch|stick)\b/gi, '1/2 $1');
+      t = t.replace(/\b1\s+4\s+(tsp|tbsp|cup|cups|teaspoon|tablespoon|lb|lbs|oz|clove|pinch|stick)\b/gi, '1/4 $1');
+      t = t.replace(/\b3\s+4\s+(tsp|tbsp|cup|cups|teaspoon|tablespoon|lb|lbs|oz|clove|pinch|stick)\b/gi, '3/4 $1');
+      // Zbitki OCR (ha^been -> has been itp.)
+      t = t.replace(/\bha\^been\b/g, 'has been');
+      t = t.replace(/\bin\s+die\s+oven\b/gi, 'in the oven');
+      t = t.replace(/\bin\s+die\s+/gi, 'in the ');
+      t = t.replace(/\bdie\s+oven\b/gi, 'the oven');
+      t = t.replace(/\bdie\s+sauce\b/gi, 'the sauce');
+      t = t.replace(/\bdie\s+pan\b/gi, 'the pan');
+      t = t.replace(/\bdie\s+meat\b/gi, 'the meat');
+      // Polskie diakrytyki i usterki OCR
+      t = t.replace(/\bgol\^bki\b/gi, 'gołąbki');
+      t = t.replace(/\bgolgbki\b/gi, 'gołąbki');
+      t = t.replace(/\bkapust\^/gi, 'kapustą');
+      t = t.replace(/\bw\^trob/gi, 'wątrób');
+      t = t.replace(/\bpstr\^g/gi, 'pstrąg');
+      t = t.replace(/\bmies\^/gi, 'mięsa');
+      t = t.replace(/saut£/g, 'sauté');
+      t = t.replace(/pur£e/g, 'purée');
+      t = t.replace(/canap£/g, 'canapé');
+      t = t.replace(/£wiez/gi, 'śwież');
+      t = t.replace(/£mietan/gi, 'śmietan');
+      t = t.replace(/£liw/gi, 'śliw');
+      t = t.replace(/kurcz£/gi, 'kurczę');
+      // Szumy skanera
+      t = t.replace(/■\s*\^p-/g, '');
+      t = t.replace(/FlraS\s*-\*/g, '');
+      return t;
+    }
 
+    // AUTOPILOT AI (Z obsługą lokalnego Ollama lub wbudowanego silnika rekonstrukcji)
+    async function startOllamaAutopilot() {
       if (!globalReport || !globalReport.anomalies || globalReport.anomalies.length === 0) {
-        alert('Brak wykrytych anomalii do naprawy.');
+        showStatus('Brak wykrytych anomalii do naprawy. Plik jest czysty!', 'info');
         return;
       }
 
@@ -609,6 +648,11 @@ import '../styles/global.css';
       autopilotProgressBox.classList.remove('hidden');
       btnStartOllamaAutopilot.classList.add('opacity-50', 'pointer-events-none');
 
+      const isAiOnline = globalOllama && globalOllama.available;
+      const engineName = isAiOnline ? `Ollama AI (${globalOllama.models[0] || 'Qwen 2.5'})` : 'Autopilot Wbudowany (Rekonstrukcja)';
+      
+      showStatus(`Uruchamianie Autopilota: ${engineName}...`, 'info');
+
       let repairedCount = 0;
 
       for (let i = 0; i < total; i++) {
@@ -618,42 +662,77 @@ import '../styles/global.css';
         const pIdx = anomaly.paragraph_index;
         const percent = Math.round(((i + 1) / total) * 100);
 
-        autopilotStepLabel.textContent = `Naprawa AI ${i + 1} z ${total} (Akapit #${pIdx})...`;
+        autopilotStepLabel.textContent = `Autopilot [${engineName}]: Akapit #${pIdx} (${i + 1} z ${total})...`;
         autopilotProgressPercent.textContent = `${percent}%`;
         autopilotProgressBar.style.width = `${percent}%`;
-        autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason || 'Uszkodzenie'}`;
+        autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason || anomaly.categories?.join(', ') || 'OCR'}`;
 
-        try {
-          const res = await fetch('/api/ollama-repair', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              index: pIdx,
-              paragraph: anomaly.raw_paragraph || anomaly.snippet,
-              reason: anomaly.reason || anomaly.categories?.join(', '),
-              file: `${currentBook}.md`,
-              apply: true
-            })
-          });
-          const data = await res.json();
-          if (data.success && data.repaired) {
-            repairedCount++;
+        let repairedText = null;
+
+        if (isAiOnline) {
+          try {
+            const res = await fetch('/api/ollama-repair', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                index: pIdx,
+                paragraph: anomaly.raw_paragraph || anomaly.snippet,
+                reason: anomaly.reason || anomaly.categories?.join(', '),
+                file: `${currentBook}.md`,
+                apply: true
+              })
+            });
+            const data = await res.json();
+            if (data.success && data.repaired) {
+              repairedText = data.repaired;
+            }
+          } catch (e) {
+            console.warn(`Ollama błąd na akapicie #${pIdx}, przełączanie na silnik regułowy...`);
           }
-        } catch (e) {
-          console.error('Błąd Ollama na akapicie ' + pIdx, e);
+        }
+
+        // Fallback do silnika regułowego, jeśli Ollama offline lub zawiodła
+        if (!repairedText) {
+          const raw = anomaly.raw_paragraph || anomaly.snippet;
+          repairedText = reconstructParagraphHeuristic(raw);
+          try {
+            await fetch('/api/patch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                index: pIdx,
+                text: repairedText,
+                file: `${currentBook}.md`
+              })
+            });
+          } catch (err) {
+            console.error('Błąd zapisu patcha:', err);
+          }
+        }
+
+        if (repairedText) {
+          repairedCount++;
+          const card = document.getElementById(`card-${pIdx}`);
+          if (card) {
+            card.style.opacity = '0.4';
+            card.innerHTML = `<div class="p-3 text-xs text-emerald-400 font-mono">✓ Akapit #${pIdx} zrekonstruowany (${engineName}).</div>`;
+          }
         }
       }
 
       autopilotStepLabel.textContent = stopRequested 
-        ? `Autopilot zatrzymany. Naprawiono ${repairedCount} akapitów.` 
-        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów. Kompilacja EPUB...`;
+        ? `Autopilot zatrzymany. Zaktualizowano ${repairedCount} akapitów.` 
+        : `✓ Zakończono! Zaktualizowano ${repairedCount} z ${total} akapitów. Kompilacja EPUB...`;
       
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
 
-      // Automatyczna rekompilacja EPUB i audyt
+      // Automatyczna rekompilacja EPUB i ponowny audyt
+      showStatus('Kompilacja gotowego e-booka EPUB 3 i kopiowanie do Windows Pobrane...', 'info');
       await triggerAction('build');
+      showStatus('Odświeżanie raportu jakościowego po naprawie...', 'info');
       await triggerAction('audit');
+      showStatus(`✓ Gotowe! Autopilot naprawił ${repairedCount} akapitów, a EPUB jest gotowy w Windows Pobrane!`, 'success');
     }
 
     // Szybka Rekonstrukcja (Polskie znaki, ułamki i auto-rekompilacja EPUB)
@@ -692,18 +771,18 @@ import '../styles/global.css';
       }
     }
 
-    // Otwieranie w Eksploratorze Windows
-    async function openWindowsExplorer() {
+    // Otwieranie w Eksploratorze Windows (folder aplikacji)
+    async function openWindowsExplorer(targetFolder = 'app') {
       showStatus('Otwieranie folderu w Eksploratorze Windows...', 'info');
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'open-windows', targetFolder: 'epub' })
+          body: JSON.stringify({ action: 'open-windows', targetFolder })
         });
         const data = await res.json();
         if (data.success) {
-          showStatus('✓ Otwarto Eksplorator Windows w katalogu output/epub', 'success');
+          showStatus('✓ Otwarto Eksplorator Windows w folderze aplikacji/projektu', 'success');
         } else {
           showStatus(`Błąd: ${data.error}`, 'error');
         }
@@ -712,29 +791,84 @@ import '../styles/global.css';
       }
     }
 
-    // Sprzątanie plików roboczych po skończonej pracy
-    async function purgeWorkingFiles() {
+    // Usunięcie wyłącznie pliku EPUB
+    async function purgeEpubOnly() {
       const currentBook = bookSelector.value || 'ksiazka';
-      if (!confirm(`Czy na pewno chcesz usunąć pliki robocze (.bak, raporty audytu) dla książki "${currentBook}"?\nGotowy plik .epub zostanie zachowany.`)) {
+      if (!confirm(`Czy na pewno chcesz usunąć gotowy plik ${currentBook}.epub?\nPliki robocze (.md) pozostaną nienaruszone.`)) {
         return;
       }
-      showStatus('Czyszczenie plików roboczych...', 'info');
+      showStatus(`Usuwanie pliku ${currentBook}.epub...`, 'info');
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'purge', book: currentBook, keepEpub: true })
+          body: JSON.stringify({ action: 'purge-epub', book: currentBook })
         });
         const data = await res.json();
         if (data.success) {
-          showStatus(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
+          showStatus(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
           await fetchStatus();
+          await loadBooks();
+        } else {
+          showStatus(`Błąd: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showStatus(`Błąd: ${err.message}`, 'error');
+      }
+    }
+
+    // Sprzątanie plików roboczych lub pełny reset
+    async function purgeWorkingFiles() {
+      const currentBook = bookSelector.value || 'ksiazka';
+      const keepEpub = confirm(
+        `Wybierz zakres czyszczenia dla "${currentBook}":\n\n` +
+        `[OK] = Zachowaj gotowy plik .epub (usuń tylko pliki robocze .md, .bak i raporty)\n` +
+        `[Anuluj] = Usuń WSZYSTKO (włącznie z plikiem .epub)`
+      );
+
+      const confirmMsg = keepEpub 
+        ? `Usunąć pliki robocze dla "${currentBook}", zachowując .epub?` 
+        : `UWAGA: Czy na pewno usunąć WSZYSTKIE pliki (pliki robocze ORAZ ${currentBook}.epub)?`;
+      
+      if (!confirm(confirmMsg)) return;
+
+      showStatus('Czyszczenie plików...', 'info');
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'purge', book: currentBook, keepEpub })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const msg = keepEpub 
+            ? `Wyczyszczono pliki robocze dla "${currentBook}" (zachowano .epub).` 
+            : `Wyczyszczono WSZYSTKIE pliki dla "${currentBook}" (włącznie z .epub).`;
+          showStatus(`✓ ${msg}`, 'success');
+          await fetchStatus();
+          await loadBooks();
         } else {
           showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
         }
       } catch (err) {
         showStatus(`Błąd: ${err.message}`, 'error');
       }
+    }
+
+    // Pomoc: Jak połączyć Ollama z Windows w WSL
+    function showOllamaHelp() {
+      if (globalOllama && globalOllama.available) {
+        alert(`✓ Silnik Ollama jest połączony i aktywny!\nDostępne modele: ${(globalOllama.models || []).join(', ')}`);
+        return;
+      }
+      alert(
+        'ℹ️ Jak połączyć serwer Ollama uruchomiony na Windows z WSL:\n\n' +
+        '1. W Windows otwórz PowerShell jako Administrator i wykonaj:\n' +
+        '   [Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "User")\n\n' +
+        '2. Zrestartuj aplikację Ollama w Windows (zamknij z zasobnika systemowego i włącz ponownie).\n\n' +
+        '3. Gotowe! Po odświeżeniu strony wskaźnik zmieni się na zielony [Ollama Online].\n\n' +
+        'Wskazówka: Autopilot działa od razu nawet bez Ollama, używając wbudowanego silnika rekonstrukcji!'
+      );
     }
 
     // Wywołanie akcji w CLI (extract, clean, audit, build)
@@ -809,8 +943,10 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
       btnRunBuild.addEventListener('click', () => triggerAction('build'));
 
       btnCopyToWindows.addEventListener('click', copyToWindowsDownloads);
-      btnOpenWindowsExplorer.addEventListener('click', openWindowsExplorer);
+      btnOpenWindowsExplorer.addEventListener('click', () => openWindowsExplorer('app'));
+      btnPurgeEpub.addEventListener('click', purgeEpubOnly);
       btnPurgeWorkfiles.addEventListener('click', purgeWorkingFiles);
+      ollamaBadge.addEventListener('click', showOllamaHelp);
 
       btnStartOllamaAutopilot.addEventListener('click', startOllamaAutopilot);
       btnHeuristicBatch.addEventListener('click', runHeuristicBatch);

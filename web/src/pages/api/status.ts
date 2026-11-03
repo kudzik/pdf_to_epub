@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
+import { probeOllama, getWindowsHostIp } from '../../utils/ollama';
 
 export const GET: APIRoute = async ({ url }) => {
   const rootDir = getProjectRootDir();
@@ -57,20 +58,9 @@ export const GET: APIRoute = async ({ url }) => {
     };
   }
 
-  // Sprawdzenie dostępności lokalnego silnika Ollama na porcie 11434
-  let ollamaAvailable = false;
-  let ollamaModels: string[] = [];
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 600);
-    const res = await fetch('http://localhost:11434/api/tags', { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      const data = await res.json();
-      ollamaAvailable = true;
-      ollamaModels = (data.models || []).map((m: any) => m.name);
-    }
-  } catch (e) {}
+  // Sprawdzenie dostępności lokalnego silnika Ollama (localhost oraz Windows Host IP)
+  const ollama = await probeOllama();
+  const windowsHostIp = getWindowsHostIp();
 
   return new Response(JSON.stringify({
     book: baseName,
@@ -79,8 +69,10 @@ export const GET: APIRoute = async ({ url }) => {
     mdInfo,
     report,
     ollama: {
-      available: ollamaAvailable,
-      models: ollamaModels,
+      available: ollama.available,
+      endpoint: ollama.endpoint,
+      models: ollama.models,
+      windowsHostIp,
     },
   }), {
     headers: { 'Content-Type': 'application/json' },

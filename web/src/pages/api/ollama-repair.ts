@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
+import { probeOllama } from '../../utils/ollama';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -10,6 +11,9 @@ export const POST: APIRoute = async ({ request }) => {
     if (!paragraph) {
       return new Response(JSON.stringify({ error: 'Brak tekstu akapitu do naprawy' }), { status: 400 });
     }
+
+    const probe = await probeOllama();
+    const endpoint = probe.endpoint || 'http://localhost:11434';
 
     const systemPrompt = `You are a professional culinary editor and OCR reconstruction expert.
 You are given a cookbook paragraph with OCR scan corruptions (such as spurious '^' or '°' inserted between letters, merged words like 'ha^been' -> 'has been', broken fractions like '1 2 tsp' -> '1/2 tsp', OCR word confusions like 'die' -> 'the').
@@ -30,7 +34,7 @@ ${paragraph}`;
 
     let ollamaResponse;
     try {
-      ollamaResponse = await fetch('http://localhost:11434/api/chat', {
+      ollamaResponse = await fetch(`${endpoint}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -50,7 +54,7 @@ ${paragraph}`;
       clearTimeout(timeout);
       return new Response(JSON.stringify({
         success: false,
-        error: `Ollama nie odpowiada na localhost:11434. Upewnij się, że silnik jest uruchomiony poleceniem: ollama run ${model}`,
+        error: `Ollama nie odpowiada na ${endpoint}. Jeśli uruchamiasz na Windows, dodaj zmienną OLLAMA_HOST=0.0.0.0.`,
       }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     } finally {
       clearTimeout(timeout);

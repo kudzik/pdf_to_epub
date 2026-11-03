@@ -555,6 +555,16 @@ def all(
     )
 
 
+def to_windows_path(linux_path: Path) -> str:
+    """Konwertuje ścieżkę linuksową WSL na poprawną ścieżkę Windows (UNC lub literę dysku C:)."""
+    abs_path = linux_path.resolve()
+    try:
+        win_path = subprocess.check_output(["wslpath", "-w", str(abs_path)], text=True).strip()
+        return win_path
+    except Exception:
+        return str(abs_path)
+
+
 @app.command(name="purge")
 def purge_cmd(
     book: Annotated[
@@ -569,20 +579,34 @@ def purge_cmd(
         bool,
         typer.Option("--keep-epub", help="Zachowaj gotowy plik .epub, usuwając tylko pliki robocze (.md, .bak, assets)."),
     ] = False,
+    only_epub: Annotated[
+        bool,
+        typer.Option("--only-epub", help="Usuń wyłącznie gotowy plik .epub, zachowując pliki robocze."),
+    ] = False,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
-    """Usuwa wygenerowane pliki robocze po skończonej pracy (czyszczenie dysku)."""
+    """Usuwa wygenerowane pliki robocze lub plik EPUB po skończonej pracy (czyszczenie dysku)."""
     deleted_files = 0
 
     if book:
         stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
+        epub_file = output_dir / "epub" / f"{stem}.epub"
+
+        if only_epub:
+            if epub_file.exists():
+                epub_file.unlink()
+                console.print(f"[yellow]Usunięto plik EPUB:[/yellow] {epub_file}")
+                deleted_files += 1
+            console.print(f"[bold green]✓ Usunięto plik EPUB dla książki: {stem}[/bold green]")
+            return
+
         files_to_remove = [
             output_dir / "markdown" / f"{stem}.md",
             output_dir / "markdown" / f"{stem}.md.bak",
             output_dir / f"audit_{stem}.json",
         ]
         if not keep_epub:
-            files_to_remove.append(output_dir / "epub" / f"{stem}.epub")
+            files_to_remove.append(epub_file)
 
         for f in files_to_remove:
             if f.exists():
@@ -590,10 +614,20 @@ def purge_cmd(
                 console.print(f"[yellow]Usunięto:[/yellow] {f}")
                 deleted_files += 1
 
-        console.print(f"[bold green]✓ Wyczyszczono pliki dla książki: {stem} (usunięto {deleted_files} plików)[/bold green]")
+        scope = "pliki robocze (z zachowaniem EPUB)" if keep_epub else "wszystkie pliki robocze oraz EPUB"
+        console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} plików)[/bold green]")
         return
 
     if all:
+        if only_epub:
+            epub_folder = output_dir / "epub"
+            if epub_folder.exists():
+                for item in epub_folder.glob("*.epub"):
+                    item.unlink()
+                    deleted_files += 1
+            console.print(f"[bold green]✓ Usunięto wszystkie pliki EPUB (usunięto {deleted_files} plików)[/bold green]")
+            return
+
         # Usuń wszystko z output/ zachowując strukturę i .gitkeep
         for folder in [output_dir / "markdown" / "assets", output_dir / "markdown", output_dir / "epub"]:
             if folder.exists():
@@ -614,7 +648,12 @@ def purge_cmd(
             report.unlink()
             deleted_files += 1
 
-        console.print(f"[bold green]✓ Pomyślnie wyczyszczono katalog wyjściowy (usunięto {deleted_files} plików)[/bold green]")
+        for rep in output_dir.glob("audit_*.json"):
+            rep.unlink()
+            deleted_files += 1
+
+        scope = "pliki robocze (z zachowaniem EPUB)" if keep_epub else "wszystkie pliki wyjściowe łącznie z EPUB"
+        console.print(f"[bold green]✓ Pomyślnie wyczyszczono {scope} (usunięto {deleted_files} plików)[/bold green]")
         return
 
     console.print("[yellow]Podaj --book <nazwa> lub --all, aby określić co usunąć.[/yellow]")
@@ -624,26 +663,29 @@ def purge_cmd(
 def open_windows_cmd(
     folder: Annotated[
         str,
-        typer.Option("--folder", "-f", help="Folder do otwarcia w Windows (epub, markdown, input lub downloads)."),
-    ] = "epub",
+        typer.Option("--folder", "-f", help="Folder do otwarcia w Windows (app, epub, markdown, input lub downloads)."),
+    ] = "app",
 ):
     """Otwiera wskazany folder w Eksploratorze Windows (WSL -> Windows)."""
-    if folder == "downloads":
+    if folder in ["app", "project", "root"]:
+        target = Path(".").resolve()
+    elif folder == "downloads":
         target = get_windows_downloads_dir()
         if not target or not target.exists():
             console.print("[bold red]Błąd:[/bold red] Nie znaleziono folderu Pobrane w Windows.")
             raise typer.Exit(code=1)
     elif folder == "input":
-        target = Path("input")
+        target = Path("input").resolve()
     elif folder in ["markdown", "assets"]:
-        target = Path("output") / folder
+        target = (Path("output") / folder).resolve()
     else:
-        target = Path("output/epub")
+        target = Path("output/epub").resolve()
 
     target.mkdir(parents=True, exist_ok=True)
+    win_path = to_windows_path(target)
     try:
-        subprocess.run(["explorer.exe", str(target)], check=True)
-        console.print(f"[bold green]✓ Otwarto Eksplorator Windows w:[/bold green] {target}")
+        subprocess.run(["explorer.exe", win_path], check=True)
+        console.print(f"[bold green]✓ Otwarto Eksplorator Windows w folderze:[/bold green] {win_path}")
     except Exception as e:
         console.print(f"[bold red]Błąd otwierania Eksploratora Windows:[/bold red] {e}")
 
