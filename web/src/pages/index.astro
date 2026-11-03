@@ -1,0 +1,749 @@
+---
+// PDF to EPUB Studio - Astro SSR Page
+import '../styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="pl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF to EPUB Studio - Panel Inspekcji i Naprawy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>" />
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
+            PDF to EPUB Studio
+            <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">v2.0</span>
+          </h1>
+          <p class="text-xs text-zinc-400">Książki kucharskie &middot; OCR &middot; Markdown &middot; EPUB 3</p>
+        </div>
+      </div>
+
+      <!-- File Selector & AI Engine Pill -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-sm">
+          <span class="text-xs text-zinc-400 font-medium">Plik:</span>
+          <select id="fileSelector" class="bg-transparent text-emerald-400 font-mono font-medium focus:outline-none cursor-pointer">
+            <option value="ksiazka.md" class="bg-zinc-900 text-zinc-100">ksiazka.md</option>
+          </select>
+        </div>
+
+        <div id="ollamaBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all">
+          <span class="relative flex h-2 w-2">
+            <span id="ollamaPing" class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+            <span id="ollamaDot" class="relative inline-flex rounded-full h-2 w-2"></span>
+          </span>
+          <span id="ollamaText">Sprawdzanie Ollama...</span>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-1.5 text-xs text-zinc-500 font-mono bg-zinc-900/40 px-2.5 py-1.5 rounded border border-zinc-800">
+          <span>PORT:</span>
+          <span class="text-zinc-300 font-semibold">4343</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+    
+    <!-- Top Action Banner & Quick Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Metric 1: Plik Markdown -->
+      <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
+          <span>Źródło Markdown</span>
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="statMdLines" class="text-2xl font-bold font-mono text-zinc-100">---</span>
+          <span class="text-xs text-zinc-400">linii tekstu</span>
+        </div>
+        <div class="mt-2 text-xs text-zinc-400 flex items-center justify-between">
+          <span id="statMdSize">Rozmiar: -- MB</span>
+          <span id="statMdStatus" class="text-emerald-400 font-medium">Dostępny</span>
+        </div>
+      </div>
+
+      <!-- Metric 2: Anomalie OCR -->
+      <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
+          <span>Wykryte Anomalie</span>
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="statAnomalyTotal" class="text-2xl font-bold font-mono text-rose-400">---</span>
+          <span class="text-xs text-zinc-400">do poprawy</span>
+        </div>
+        <div class="mt-2 text-xs flex items-center gap-2 font-mono">
+          <span class="text-rose-400 font-medium" id="statHighBadge">High: --</span>
+          <span class="text-zinc-600">&middot;</span>
+          <span class="text-amber-400 font-medium" id="statMedBadge">Med: --</span>
+          <span class="text-zinc-600">&middot;</span>
+          <span class="text-zinc-400" id="statLowBadge">Low: --</span>
+        </div>
+      </div>
+
+      <!-- Metric 3: Kompilacja EPUB -->
+      <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
+          <span>Kompilacja EPUB 3</span>
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="statEpubSize" class="text-2xl font-bold font-mono text-zinc-100">---</span>
+          <span id="statEpubLabel" class="text-xs text-zinc-400">gotowy</span>
+        </div>
+        <div class="mt-2 text-xs flex items-center justify-between">
+          <span id="statEpubTime" class="text-zinc-400">Zaktualizowano: --</span>
+          <a id="btnDownloadEpub" href="/api/download" class="text-indigo-400 hover:text-indigo-300 font-medium hover:underline flex items-center gap-1">
+            Pobierz &darr;
+          </a>
+        </div>
+      </div>
+
+      <!-- Metric 4: AI & Sprzęt (RTX 4080 Super) -->
+      <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
+          <span>Akceleracja AI</span>
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="statGpuLabel" class="text-lg font-bold font-mono text-emerald-400">RTX 4080 S</span>
+          <span class="text-xs text-zinc-400 font-mono">16GB VRAM</span>
+        </div>
+        <div class="mt-2 text-xs text-zinc-400 flex items-center justify-between">
+          <span id="statModelName">Model: Qwen 2.5 / VS Code</span>
+          <span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]">0 PLN API</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIPELINE ACTION BAR -->
+    <div class="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Akcje Pipeline:</span>
+        <button id="btnRunAudit" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700">
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          Uruchom Audyt
+        </button>
+        <button id="btnRunClean" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          Wyczyść Tekst (Cleaner)
+        </button>
+        <button id="btnRunBuild" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+          Kompiluj EPUB (Pandoc)
+        </button>
+      </div>
+
+      <!-- Action status spinner / message -->
+      <div id="pipelineStatus" class="text-xs font-mono text-zinc-400 flex items-center gap-2">
+        <span>Gotowy do pracy</span>
+      </div>
+    </div>
+
+    <!-- AUTOPILOT CONTROL CARD (Sequential batch fixing) -->
+    <div class="relative overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20 border border-emerald-500/30 rounded-2xl p-5 shadow-xl">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <h2 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
+              Autopilot Naprawczy AI
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-normal">Koniec z klikaniem 113 razy</span>
+            </h2>
+          </div>
+          <p class="text-xs text-zinc-400 max-w-2xl leading-relaxed">
+            Autopilot przechodzi kolejno przez wszystkie wykryte uszkodzenia OCR i nanosi poprawki bezpośrednio do pliku Markdown z zachowaniem pełnego kontekstu kulinarno-językowego.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Ollama Autopilot Button -->
+          <button id="btnStartOllamaAutopilot" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+            <span>Uruchom Autopilot (RTX 4080)</span>
+          </button>
+
+          <!-- Heuristic Batch Button -->
+          <button id="btnHeuristicBatch" class="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700" title="Automatyczna naprawa typowych ułamków i znaków ^/° regexem">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Szybka Rekonstrukcja (Regex)
+          </button>
+
+          <!-- Copy Prompt for VS Code Agent -->
+          <button id="btnCopyAgentPrompt" class="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy prompt dla agenta w VS Code">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            Prompt dla Agenta VS Code
+          </button>
+        </div>
+      </div>
+
+      <!-- Autopilot Live Progress Container (Ukryty domyślnie, widoczny w trakcie pracy) -->
+      <div id="autopilotProgressBox" class="mt-4 pt-4 border-t border-zinc-800/80 hidden space-y-2">
+        <div class="flex items-center justify-between text-xs font-mono">
+          <span id="autopilotStepLabel" class="text-emerald-400 font-semibold">Trwa naprawa akapitu...</span>
+          <span id="autopilotProgressPercent" class="text-zinc-400">0%</span>
+        </div>
+        <div class="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+          <div id="autopilotProgressBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300 w-0"></div>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+          <span id="autopilotCurrentDetails">Akapit: #0</span>
+          <button id="btnStopAutopilot" class="text-rose-400 hover:text-rose-300 hover:underline">Zatrzymaj Autopilot</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANOMALY EXPLORER & DIFF SECTION -->
+    <div class="space-y-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <h3 class="text-base font-bold text-white tracking-tight">Katalog Wykrytych Wad OCR</h3>
+          <span id="anomalyCounterBadge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">Ładowanie...</span>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-64">
+            <input type="text" id="anomalySearch" placeholder="Szukaj tekstu lub #indeksu..." class="w-full bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500" />
+          </div>
+          <select id="severityFilter" class="bg-zinc-900 border border-zinc-700/80 text-zinc-300 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 cursor-pointer">
+            <option value="ALL">Wszystkie wagi</option>
+            <option value="HIGH">Tylko High (Krytyczne)</option>
+            <option value="MEDIUM">Średnie (Medium)</option>
+            <option value="LOW">Niskie (Low)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Anomaly Cards Container -->
+      <div id="anomaliesList" class="space-y-3">
+        <div class="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-8 text-center text-zinc-500 text-sm">
+          Wczytywanie raportu z audytu jakościowego...
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Console Log / Output Drawer -->
+  <footer class="border-t border-zinc-800/80 bg-zinc-900/60 backdrop-blur py-3 text-xs text-zinc-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-zinc-400">pdf-to-epub</span>
+        <span>&middot;</span>
+        <span>Architektura Document AI + Pandoc 3.13</span>
+        <span>&middot;</span>
+        <span class="text-emerald-400 font-mono">http://localhost:4343</span>
+      </div>
+      <div class="text-[11px] text-zinc-400">
+        Niezmiennik: edycja wyłącznie w <code class="text-emerald-400">output/markdown/*.md</code>
+      </div>
+    </div>
+  </footer>
+
+  <!-- CLIENT-SIDE SCRIPT LOGIC -->
+  <script is:inline>
+    let globalReport = null;
+    let globalOllama = { available: false, models: [] };
+    let activeFilter = 'ALL';
+    let searchQuery = '';
+    let isAutopilotRunning = false;
+    let stopRequested = false;
+
+    const fileSelector = document.getElementById('fileSelector');
+    const ollamaBadge = document.getElementById('ollamaBadge');
+    const ollamaPing = document.getElementById('ollamaPing');
+    const ollamaDot = document.getElementById('ollamaDot');
+    const ollamaText = document.getElementById('ollamaText');
+    const anomaliesList = document.getElementById('anomaliesList');
+    const anomalyCounterBadge = document.getElementById('anomalyCounterBadge');
+    const severityFilter = document.getElementById('severityFilter');
+    const anomalySearch = document.getElementById('anomalySearch');
+    const pipelineStatus = document.getElementById('pipelineStatus');
+
+    // Autopilot DOM elements
+    const btnStartOllamaAutopilot = document.getElementById('btnStartOllamaAutopilot');
+    const btnHeuristicBatch = document.getElementById('btnHeuristicBatch');
+    const btnCopyAgentPrompt = document.getElementById('btnCopyAgentPrompt');
+    const autopilotProgressBox = document.getElementById('autopilotProgressBox');
+    const autopilotProgressBar = document.getElementById('autopilotProgressBar');
+    const autopilotStepLabel = document.getElementById('autopilotStepLabel');
+    const autopilotProgressPercent = document.getElementById('autopilotProgressPercent');
+    const autopilotCurrentDetails = document.getElementById('autopilotCurrentDetails');
+    const btnStopAutopilot = document.getElementById('btnStopAutopilot');
+
+    // Pipeline action buttons
+    const btnRunAudit = document.getElementById('btnRunAudit');
+    const btnRunClean = document.getElementById('btnRunClean');
+    const btnRunBuild = document.getElementById('btnRunBuild');
+    const btnDownloadEpub = document.getElementById('btnDownloadEpub');
+
+    // Inicjalizacja: pobranie listy plików i statusu
+    async function init() {
+      await loadFiles();
+      await fetchStatus();
+      setupEventListeners();
+    }
+
+    async function loadFiles() {
+      try {
+        const res = await fetch('/api/files');
+        const data = await res.json();
+        if (data.mdFiles && data.mdFiles.length > 0) {
+          fileSelector.innerHTML = data.mdFiles.map(f => `<option value="${f}">${f}</option>`).join('');
+        }
+      } catch (e) {
+        console.error('Błąd pobierania listy plików:', e);
+      }
+    }
+
+    async function fetchStatus() {
+      const currentFile = fileSelector.value || 'ksiazka.md';
+      try {
+        const res = await fetch(`/api/status?file=${encodeURIComponent(currentFile)}`);
+        const data = await res.json();
+
+        // 1. Zaktualizuj wskaźnik Ollama
+        globalOllama = data.ollama || { available: false, models: [] };
+        if (globalOllama.available) {
+          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+          ollamaPing.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+          ollamaDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
+          const modelName = globalOllama.models[0] || 'qwen2.5:14b';
+          ollamaText.textContent = `Ollama Online (${modelName})`;
+          document.getElementById('statModelName').textContent = `Ollama: ${modelName}`;
+        } else {
+          ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-zinc-800 border-zinc-700 text-zinc-400';
+          ollamaPing.className = 'hidden';
+          ollamaDot.className = 'relative inline-flex rounded-full h-2 w-2 bg-zinc-500';
+          ollamaText.textContent = 'Ollama Offline (Uruchom w tle)';
+        }
+
+        // 2. Metryki Markdown
+        if (data.mdInfo && data.mdInfo.exists) {
+          document.getElementById('statMdLines').textContent = data.mdInfo.lines.toLocaleString();
+          document.getElementById('statMdSize').textContent = `Rozmiar: ${data.mdInfo.size}`;
+          document.getElementById('statMdStatus').textContent = 'Zsynchronizowany';
+        }
+
+        // 3. Metryki EPUB
+        if (data.epubInfo && data.epubInfo.exists) {
+          document.getElementById('statEpubSize').textContent = data.epubInfo.size;
+          document.getElementById('statEpubTime').textContent = `Kompilacja: ${data.epubInfo.mtime}`;
+          document.getElementById('statEpubLabel').textContent = 'gotowy EPUB 3';
+          btnDownloadEpub.href = `/api/download?file=${encodeURIComponent(data.epubInfo.filename)}`;
+          btnDownloadEpub.classList.remove('pointer-events-none', 'opacity-50');
+        } else {
+          document.getElementById('statEpubSize').textContent = 'Brak';
+          document.getElementById('statEpubTime').textContent = 'Wymaga kompilacji';
+          btnDownloadEpub.classList.add('pointer-events-none', 'opacity-50');
+        }
+
+        // 4. Anomalie i raport
+        globalReport = data.report;
+        if (globalReport && globalReport.anomalies) {
+          const total = globalReport.total_anomalies || globalReport.anomalies.length;
+          const high = globalReport.by_severity?.HIGH || 0;
+          const med = globalReport.by_severity?.MEDIUM || 0;
+          const low = globalReport.by_severity?.LOW || 0;
+
+          document.getElementById('statAnomalyTotal').textContent = total;
+          document.getElementById('statHighBadge').textContent = `High: ${high}`;
+          document.getElementById('statMedBadge').textContent = `Med: ${med}`;
+          document.getElementById('statLowBadge').textContent = `Low: ${low}`;
+          anomalyCounterBadge.textContent = `${total} usterek`;
+
+          renderAnomalies();
+        } else {
+          anomaliesList.innerHTML = `
+            <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-8 text-center text-zinc-400">
+              <p class="font-medium">Brak wygenerowanego raportu audytu.</p>
+              <p class="text-xs text-zinc-500 mt-1">Kliknij "Uruchom Audyt", aby przeskanować plik Markdown pod kątem uszkodzeń OCR.</p>
+            </div>
+          `;
+        }
+      } catch (e) {
+        console.error('Błąd odświeżania statusu:', e);
+      }
+    }
+
+    function renderAnomalies() {
+      if (!globalReport || !globalReport.anomalies) return;
+
+      let list = globalReport.anomalies;
+
+      if (activeFilter !== 'ALL') {
+        list = list.filter(a => a.severity === activeFilter);
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(a => 
+          (a.paragraph_index !== undefined && a.paragraph_index.toString().includes(q)) ||
+          (a.raw_paragraph && a.raw_paragraph.toLowerCase().includes(q)) ||
+          (a.reason && a.reason.toLowerCase().includes(q))
+        );
+      }
+
+      if (list.length === 0) {
+        anomaliesList.innerHTML = `
+          <div class="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-8 text-center text-zinc-400">
+            <svg class="w-8 h-8 mx-auto text-emerald-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <p class="font-semibold text-white">Brak anomalii spełniających kryteria filtrów!</p>
+            <p class="text-xs text-zinc-500 mt-1">Wszystkie akapity w tej kategorii są czyste lub zostały naprawione.</p>
+          </div>
+        `;
+        return;
+      }
+
+      anomaliesList.innerHTML = list.map(item => {
+        const pIdx = item.paragraph_index;
+        const severityClass = item.severity === 'HIGH' 
+          ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
+          : item.severity === 'MEDIUM' 
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+            : 'bg-zinc-800 border-zinc-700 text-zinc-300';
+
+        const suggestedFix = heuristicFixSingle(item.raw_paragraph);
+
+        return `
+          <div class="bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 transition space-y-3" id="card-${pIdx}">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 border border-zinc-700">#${pIdx}</span>
+                <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded border ${severityClass}">${item.severity}</span>
+                <span class="text-xs font-medium text-zinc-300">${escapeHtml(item.reason)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="requestOllamaRepair(${pIdx})" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-emerald-400 rounded text-xs font-medium border border-zinc-700 transition flex items-center gap-1">
+                  <span>⚡ AI Fix</span>
+                </button>
+                <button onclick="toggleEdit(${pIdx})" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs font-medium border border-zinc-700 transition">
+                  Edytuj
+                </button>
+              </div>
+            </div>
+
+            <div class="text-xs font-mono bg-zinc-950 p-3 rounded-lg border border-zinc-800/80 text-zinc-300 whitespace-pre-wrap leading-relaxed">
+              ${highlightIssues(item.raw_paragraph)}
+            </div>
+
+            <!-- Edit / Patch Panel -->
+            <div id="edit-box-${pIdx}" class="space-y-2 pt-2 border-t border-zinc-800/60 hidden">
+              <label class="text-[11px] font-semibold text-zinc-400">Tekst po rekonstrukcji:</label>
+              <textarea id="input-${pIdx}" class="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs font-mono text-zinc-100 focus:outline-none focus:border-emerald-500">${escapeHtml(suggestedFix)}</textarea>
+              <div class="flex justify-end gap-2">
+                <button onclick="toggleEdit(${pIdx})" class="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200">Anuluj</button>
+                <button onclick="applyPatch(${pIdx})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold shadow transition">
+                  Zapisz do Markdown
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Heurystyczny fixer dla podglądu
+    function heuristicFixSingle(text) {
+      if (!text) return '';
+      let fixed = text;
+      // Naprawa ułamków
+      fixed = fixed.replace(/(\d+)\s+([1-9])\s*\/\s*([1-9])/g, '$1 $2/$3');
+      fixed = fixed.replace(/\b(\d+)\s+([2348])\s*(tsp|tbsp|cup|szklank|łyżk)/gi, '$1/$2 $3');
+      // Usuwanie wklejonych znaków ^ i ° wewnątrz słów
+      fixed = fixed.replace(/([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])\^([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])/g, '$1 $2');
+      fixed = fixed.replace(/([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])°([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])/g, '$1 $2');
+      // Typowe substytucje OCR
+      fixed = fixed.replace(/\bin die oven\b/gi, 'in the oven');
+      fixed = fixed.replace(/\bin die pan\b/gi, 'in the pan');
+      fixed = fixed.replace(/\bha\^been\b/gi, 'has been');
+      return fixed;
+    }
+
+    function highlightIssues(text) {
+      if (!text) return '';
+      let safe = escapeHtml(text);
+      // Podświetl znaki ^ i °
+      safe = safe.replace(/(\^|°)/g, '<mark class="bg-rose-500/30 text-rose-300 px-0.5 rounded font-bold">$1</mark>');
+      return safe;
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    window.toggleEdit = function(pIdx) {
+      const box = document.getElementById(`edit-box-${pIdx}`);
+      if (box) box.classList.toggle('hidden');
+    };
+
+    // Zastosowanie pojedynczej poprawki
+    window.applyPatch = async function(pIdx) {
+      const textarea = document.getElementById(`input-${pIdx}`);
+      if (!textarea) return;
+      const text = textarea.value;
+      const file = fileSelector.value || 'ksiazka.md';
+
+      try {
+        const res = await fetch('/api/patch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index: pIdx, text, file })
+        });
+        const result = await res.json();
+        if (result.success) {
+          const card = document.getElementById(`card-${pIdx}`);
+          if (card) {
+            card.style.opacity = '0.4';
+            card.innerHTML = `<div class="p-3 text-xs text-emerald-400 font-mono">✓ Akapit #${pIdx} zaktualizowany pomyślnie.</div>`;
+          }
+        } else {
+          alert('Błąd zapisu poprawki: ' + result.error);
+        }
+      } catch (err) {
+        alert('Błąd sieciowy: ' + err.message);
+      }
+    };
+
+    // Pojedyncza naprawa przez Ollamę
+    window.requestOllamaRepair = async function(pIdx) {
+      const card = document.getElementById(`card-${pIdx}`);
+      const file = fileSelector.value || 'ksiazka.md';
+      const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
+      if (!anomaly) return;
+
+      const editBox = document.getElementById(`edit-box-${pIdx}`);
+      const textarea = document.getElementById(`input-${pIdx}`);
+      if (editBox) editBox.classList.remove('hidden');
+
+      textarea.value = 'Trwa zapytanie do lokalnego silnika Ollama (RTX 4080)...';
+
+      try {
+        const res = await fetch('/api/ollama-repair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            index: pIdx,
+            paragraph: anomaly.raw_paragraph,
+            reason: anomaly.reason,
+            file: file,
+            apply: false
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.repaired) {
+          textarea.value = data.repaired;
+        } else {
+          textarea.value = anomaly.raw_paragraph;
+          alert('Ollama błąd: ' + (data.error || 'Nieznany błąd'));
+        }
+      } catch (err) {
+        alert('Błąd komunikacji: ' + err.message);
+      }
+    };
+
+    // AUTOPILOT AI: Automatyczna sekwencyjna pętla naprawy (bez 113 kliknięć!)
+    async function startOllamaAutopilot() {
+      if (!globalReport || !globalReport.anomalies || globalReport.anomalies.length === 0) {
+        alert('Brak wykrytych anomalii do naprawy.');
+        return;
+      }
+
+      const file = fileSelector.value || 'ksiazka.md';
+      const anomalies = globalReport.anomalies;
+      const total = anomalies.length;
+
+      isAutopilotRunning = true;
+      stopRequested = false;
+
+      autopilotProgressBox.classList.remove('hidden');
+      btnStartOllamaAutopilot.classList.add('opacity-50', 'pointer-events-none');
+
+      let repairedCount = 0;
+
+      for (let i = 0; i < total; i++) {
+        if (stopRequested) {
+          break;
+        }
+
+        const anomaly = anomalies[i];
+        const pIdx = anomaly.paragraph_index;
+        const percent = Math.round(((i + 1) / total) * 100);
+
+        autopilotStepLabel.textContent = `Naprawa ${i + 1} z ${total} (Akapit #${pIdx})...`;
+        autopilotProgressPercent.textContent = `${percent}%`;
+        autopilotProgressBar.style.width = `${percent}%`;
+        autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason}`;
+
+        // Wywołaj naprawę przez Ollama z natychmiastowym zapisem (apply: true)
+        // Jeśli Ollama jest niedostępna, użyj bezpiecznej rekonstrukcji heurystycznej
+        let repairedText = '';
+        if (globalOllama.available) {
+          try {
+            const res = await fetch('/api/ollama-repair', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                index: pIdx,
+                paragraph: anomaly.raw_paragraph,
+                reason: anomaly.reason,
+                file: file,
+                apply: true
+              })
+            });
+            const data = await res.json();
+            if (data.success && data.repaired) {
+              repairedCount++;
+            }
+          } catch (e) {
+            console.error('Błąd Ollama na akapicie ' + pIdx, e);
+          }
+        } else {
+          // Fallback heurystyczny z automatycznym zapisem
+          repairedText = heuristicFixSingle(anomaly.raw_paragraph);
+          try {
+            await fetch('/api/patch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ index: pIdx, text: repairedText, file })
+            });
+            repairedCount++;
+          } catch (e) {}
+        }
+      }
+
+      autopilotStepLabel.textContent = stopRequested 
+        ? `Autopilot zatrzymany. Naprawiono ${repairedCount} akapitów.` 
+        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów.`;
+      
+      btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
+      isAutopilotRunning = false;
+
+      // Automatyczny ponowny audyt po zakończeniu
+      setTimeout(() => {
+        triggerAction('audit');
+      }, 1000);
+    }
+
+    // Heurystyczna rekonstrukcja batch (natychmiastowa)
+    async function runHeuristicBatch() {
+      if (!globalReport || !globalReport.anomalies) return;
+      const file = fileSelector.value || 'ksiazka.md';
+      const patches = globalReport.anomalies.map(a => ({
+        index: a.paragraph_index,
+        text: heuristicFixSingle(a.raw_paragraph)
+      }));
+
+      pipelineStatus.textContent = 'Trwa wsadowa aplikacja poprawek...';
+      try {
+        const res = await fetch('/api/patch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patches, file })
+        });
+        const data = await res.json();
+        if (data.success) {
+          pipelineStatus.textContent = `✓ Zastosowano ${data.count} poprawek. Uruchamianie audytu...`;
+          await triggerAction('audit');
+        } else {
+          alert('Błąd wsadowej aplikacji: ' + data.error);
+        }
+      } catch (err) {
+        alert('Błąd sieciowy: ' + err.message);
+      }
+    }
+
+    // Kopiowanie promptu dla Agenta w VS Code
+    function copyAgentPrompt() {
+      const file = fileSelector.value || 'ksiazka.md';
+      const promptText = `Jesteś Agentem AI w projekcie pdf-to-epub pracującym w VS Code.
+W pliku output/markdown/${file} wykryto listę uszkodzeń OCR.
+Przeprowadź naprawę akapit po akapicie zgodnie z instrukcją w AGENTS.md:
+1. Zbadaj anomalie poleceniem: uv run python -m src.pipeline inspect-anomaly <INDEX>
+2. Zastosuj zrekonstruowany tekst poleceniem: uv run python -m src.pipeline patch <INDEX> --text "..."
+3. Uruchom ponowny audyt: uv run python -m src.pipeline audit
+4. Po weryfikacji skompiluj EPUB: uv run python -m src.pipeline build`;
+
+      navigator.clipboard.writeText(promptText).then(() => {
+        alert('✓ Skopiowano prompt dla Agenta VS Code do schowka!');
+      });
+    }
+
+    // Wywołanie akcji w CLI (audit, clean, build)
+    async function triggerAction(actionName) {
+      const file = fileSelector.value || 'ksiazka.md';
+      pipelineStatus.innerHTML = `<span class="inline-block animate-spin">⟳</span> Wykonywanie akcji: ${actionName}...`;
+
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: actionName, file })
+        });
+        const data = await res.json();
+        if (data.success) {
+          pipelineStatus.textContent = `✓ Akcja ${actionName} ukończona pomyślnie.`;
+          await fetchStatus();
+        } else {
+          pipelineStatus.textContent = `Błąd ${actionName}: ${data.error}`;
+        }
+      } catch (err) {
+        pipelineStatus.textContent = `Błąd: ${err.message}`;
+      }
+    }
+
+    function setupEventListeners() {
+      fileSelector.addEventListener('change', () => fetchStatus());
+
+      severityFilter.addEventListener('change', (e) => {
+        activeFilter = e.target.value;
+        renderAnomalies();
+      });
+
+      anomalySearch.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderAnomalies();
+      });
+
+      btnRunAudit.addEventListener('click', () => triggerAction('audit'));
+      btnRunClean.addEventListener('click', () => triggerAction('clean'));
+      btnRunBuild.addEventListener('click', () => triggerAction('build'));
+
+      btnStartOllamaAutopilot.addEventListener('click', startOllamaAutopilot);
+      btnHeuristicBatch.addEventListener('click', runHeuristicBatch);
+      btnCopyAgentPrompt.addEventListener('click', copyAgentPrompt);
+
+      btnStopAutopilot.addEventListener('click', () => {
+        stopRequested = true;
+        autopilotStepLabel.textContent = 'Zatrzymywanie autopilota...';
+      });
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
+

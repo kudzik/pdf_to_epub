@@ -8,7 +8,8 @@ Nowoczesny, powtarzalny pipeline do ekstrakcji treści ze skanów PDF (książek
 * **Sanitizer & Normalizer:** Dedykowany moduł `src/cleaner.py` (de-hyphenation, normalizacja ułamków kulinarnych i miar, filtr szumu skanera, deduplikacja nagłówków).
 * **Kompilator EPUB:** [`pandoc`](https://pandoc.org/) 3.13+.
 * **CLI & Terminal:** [`typer`](https://typer.tiangolo.com/) oraz [`rich`](https://github.com/Textualize/rich).
-* **Testy:** [`pytest`](https://docs.pytest.org/).
+* **Testy:** [`pytest`](https://docs.pytest.org/) (33 testy jednostkowe i integracyjne).
+* **Interfejs Wizualny & Studio:** [Astro 5](https://astro.build/) (SSR Node) + [Tailwind CSS v4](https://tailwindcss.com/) na porcie `4343` z integracją lokalnego LLM (Ollama / RTX 4080 Super) oraz Autopilotem naprawczym.
 
 ---
 
@@ -121,7 +122,41 @@ uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   uv run python -m src.pipeline build --cover sciezka/do/okladki.jpg
   ```
 
-### 3. Uruchamianie testów
+### 3. Nowoczesny Interfejs Wizualny (Web Studio UI)
+
+Projekt posiada dedykowany interfejs webowy zbudowany w **Astro 5 + Tailwind CSS v4**, działający na porcie **`4343`** (wygodnym i wolnym od konfliktów z innymi narzędziami dev):
+
+```bash
+cd web
+npm install
+npm run dev   # Serwer deweloperski na http://localhost:4343
+# lub
+npm run start # Serwer produkcyjny SSR
+```
+
+#### Funkcje Web Studio:
+* **Wybór pliku:** Przełączanie między różnymi książkami w `output/markdown/` i `input/`.
+* **Katalog Wad OCR:** Wyszukiwanie, filtrowanie po wadze (High, Medium, Low), podgląd diff uszkodzonych słów (np. `ha^been`, `1 2 tsp`, `in die oven`) oraz edytor bezpośredni.
+* **Autopilot Naprawczy:** Rozwiązuje problem ręcznego klikania 113 razy — automatycznie iteruje przez uszkodzone akapity i nanosi poprawki.
+* **Integracja z lokalnym Ollama (RTX 4080 Super):** Jeśli Ollama działa w tle, web UI łączy się z modelem (np. `qwen2.5:14b`), rekonstruując usterki bez płatnych tokenów API.
+* **Bezpośrednie pobieranie EPUB:** Jedno kliknięcie, aby pobrać gotowy `.epub`.
+
+---
+
+### 4. Wykorzystanie lokalnego GPU (NVIDIA RTX 4080 SUPER 16GB + Ollama)
+
+Posiadając kartę **NVIDIA GeForce RTX 4080 SUPER (16 GB VRAM)**, masz do dyspozycji potężną platformę do lokalnego wnioskowania AI:
+* **Zero opłat:** Brak konieczności płacenia za API (OpenAI/Anthropic).
+* **Rekomendowany model:** `qwen2.5:14b-instruct` (lub `llama3.1:8b`). Model 14B w kwantyzacji Q4 mieści się w ~9 GB VRAM, osiągając **60–100 tokenów na sekundę** w 100% na GPU. Doskonale radzi sobie z terminologią kulinarną i językiem polskim/angielskim.
+* **Uruchomienie:**
+  ```bash
+  ollama run qwen2.5:14b
+  ```
+  Gdy Ollama działa w tle, Studio na `http://localhost:4343` automatycznie wykryje model i aktywuje zieloną kontrolkę AI Online.
+
+---
+
+### 5. Uruchamianie testów
 ```bash
 uv run pytest
 ```
