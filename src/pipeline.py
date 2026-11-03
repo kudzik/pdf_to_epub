@@ -145,7 +145,7 @@ def extract_pdf(
     doc.save_as_markdown(
         md_file,
         image_mode=ImageRefMode.REFERENCED,
-        artifacts_dir=assets_dir,
+        artifacts_dir=Path("assets"),
     )
 
     console.print(f"[bold green]✓ Zapisano Markdown:[/bold green] {md_file}")
@@ -573,19 +573,26 @@ def purge_cmd(
     ] = None,
     all: Annotated[
         bool,
-        typer.Option("--all", "-a", help="Czy usunąć wszystkie wygenerowane pliki ze wszystkich książek."),
-    ] = False,
-    keep_epub: Annotated[
-        bool,
-        typer.Option("--keep-epub", help="Zachowaj gotowy plik .epub, usuwając tylko pliki robocze (.md, .bak, assets)."),
+        typer.Option("--all", "-a", help="Czy usunąć wszystkie wygenerowane pliki robocze ze wszystkich książek."),
     ] = False,
     only_epub: Annotated[
         bool,
-        typer.Option("--only-epub", help="Usuń wyłącznie gotowy plik .epub, zachowując pliki robocze."),
+        typer.Option("--only-epub", help="Usuń wyłącznie gotowy plik .epub dla danej książki."),
     ] = False,
+    with_epub: Annotated[
+        bool,
+        typer.Option("--with-epub", help="Usuń również gotowy plik .epub (domyślnie czyszczenie zachowuje .epub)."),
+    ] = False,
+    keep_epub: Annotated[
+        bool,
+        typer.Option("--keep-epub", help="Zachowaj gotowy plik .epub (domyślne zachowanie)."),
+    ] = True,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
-    """Usuwa wygenerowane pliki robocze lub plik EPUB po skończonej pracy (czyszczenie dysku)."""
+    """
+    Usuwa wygenerowane pliki robocze (.md, .bak, assets, raporty) po skończonej pracy.
+    Domyślnie zachowuje gotowy plik .epub (do usuwania EPUB służy flaga --only-epub lub dedykowany przycisk).
+    """
     deleted_files = 0
 
     if book:
@@ -604,8 +611,10 @@ def purge_cmd(
             output_dir / "markdown" / f"{stem}.md",
             output_dir / "markdown" / f"{stem}.md.bak",
             output_dir / f"audit_{stem}.json",
+            output_dir / "audit_report.json",
         ]
-        if not keep_epub:
+
+        if with_epub:
             files_to_remove.append(epub_file)
 
         for f in files_to_remove:
@@ -614,7 +623,21 @@ def purge_cmd(
                 console.print(f"[yellow]Usunięto:[/yellow] {f}")
                 deleted_files += 1
 
-        scope = "pliki robocze (z zachowaniem EPUB)" if keep_epub else "wszystkie pliki robocze oraz EPUB"
+        # Usunięcie wyekstrahowanych grafik w assets
+        assets_dir = output_dir / "markdown" / "assets"
+        if assets_dir.exists():
+            for img in assets_dir.iterdir():
+                if img.name != ".gitkeep" and img.is_file():
+                    img.unlink()
+                    deleted_files += 1
+
+        # Usunięcie ewentualnego zagnieżdżonego legacy katalogu output/markdown/output
+        nested_output = output_dir / "markdown" / "output"
+        if nested_output.exists():
+            shutil.rmtree(nested_output)
+            deleted_files += 1
+
+        scope = "wszystkie pliki robocze oraz EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
         console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} plików)[/bold green]")
         return
 
@@ -628,31 +651,36 @@ def purge_cmd(
             console.print(f"[bold green]✓ Usunięto wszystkie pliki EPUB (usunięto {deleted_files} plików)[/bold green]")
             return
 
-        # Usuń wszystko z output/ zachowując strukturę i .gitkeep
-        for folder in [output_dir / "markdown" / "assets", output_dir / "markdown", output_dir / "epub"]:
+        # Usuń pliki robocze z output/ zachowując strukturę i .gitkeep
+        for folder in [output_dir / "markdown" / "assets", output_dir / "markdown"]:
             if folder.exists():
                 for item in folder.iterdir():
                     if item.name == ".gitkeep":
                         continue
                     if item.is_file():
-                        if keep_epub and folder.name == "epub" and item.suffix == ".epub":
-                            continue
                         item.unlink()
                         deleted_files += 1
                     elif item.is_dir() and item.name != "assets":
                         shutil.rmtree(item)
                         deleted_files += 1
 
-        report = output_dir / "audit_report.json"
-        if report.exists():
-            report.unlink()
+        nested_output = output_dir / "markdown" / "output"
+        if nested_output.exists():
+            shutil.rmtree(nested_output)
             deleted_files += 1
 
-        for rep in output_dir.glob("audit_*.json"):
+        if with_epub:
+            epub_folder = output_dir / "epub"
+            if epub_folder.exists():
+                for item in epub_folder.glob("*.epub"):
+                    item.unlink()
+                    deleted_files += 1
+
+        for rep in output_dir.glob("audit*.json"):
             rep.unlink()
             deleted_files += 1
 
-        scope = "pliki robocze (z zachowaniem EPUB)" if keep_epub else "wszystkie pliki wyjściowe łącznie z EPUB"
+        scope = "wszystkie pliki wyjściowe łącznie z EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
         console.print(f"[bold green]✓ Pomyślnie wyczyszczono {scope} (usunięto {deleted_files} plików)[/bold green]")
         return
 

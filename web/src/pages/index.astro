@@ -817,34 +817,23 @@ import '../styles/global.css';
       }
     }
 
-    // Sprzątanie plików roboczych lub pełny reset
+    // Sprzątanie plików roboczych (czyści pliki robocze, zachowując gotowy plik .epub)
     async function purgeWorkingFiles() {
       const currentBook = bookSelector.value || 'ksiazka';
-      const keepEpub = confirm(
-        `Wybierz zakres czyszczenia dla "${currentBook}":\n\n` +
-        `[OK] = Zachowaj gotowy plik .epub (usuń tylko pliki robocze .md, .bak i raporty)\n` +
-        `[Anuluj] = Usuń WSZYSTKO (włącznie z plikiem .epub)`
-      );
+      if (!confirm(`Czy na pewno chcesz wyczyścić pliki robocze (.md, .bak, wyekstrahowane grafiki, raporty audytu) dla książki "${currentBook}"?\n\nGotowy plik .epub pozostanie nienaruszony (od usuwania EPUB służy osobny przycisk).`)) {
+        return;
+      }
 
-      const confirmMsg = keepEpub 
-        ? `Usunąć pliki robocze dla "${currentBook}", zachowując .epub?` 
-        : `UWAGA: Czy na pewno usunąć WSZYSTKIE pliki (pliki robocze ORAZ ${currentBook}.epub)?`;
-      
-      if (!confirm(confirmMsg)) return;
-
-      showStatus('Czyszczenie plików...', 'info');
+      showStatus('Czyszczenie plików roboczych...', 'info');
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'purge', book: currentBook, keepEpub })
+          body: JSON.stringify({ action: 'purge', book: currentBook })
         });
         const data = await res.json();
         if (data.success) {
-          const msg = keepEpub 
-            ? `Wyczyszczono pliki robocze dla "${currentBook}" (zachowano .epub).` 
-            : `Wyczyszczono WSZYSTKIE pliki dla "${currentBook}" (włącznie z .epub).`;
-          showStatus(`✓ ${msg}`, 'success');
+          showStatus(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
           await fetchStatus();
           await loadBooks();
         } else {

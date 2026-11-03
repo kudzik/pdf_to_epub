@@ -31,13 +31,11 @@ export const POST: APIRoute = async ({ request }) => {
     } else if (action === 'build') {
       command = `uv run python -m src.pipeline build --book "${bookStem}"`;
     } else if (action === 'purge') {
-      const keepFlag = keepEpub ? '--keep-epub' : '';
-      command = `uv run python -m src.pipeline purge --book "${bookStem}" ${keepFlag}`;
+      command = `uv run python -m src.pipeline purge --book "${bookStem}"`;
     } else if (action === 'purge-epub') {
       command = `uv run python -m src.pipeline purge --book "${bookStem}" --only-epub`;
     } else if (action === 'purge-all') {
-      const keepFlag = keepEpub ? '--keep-epub' : '';
-      command = `uv run python -m src.pipeline purge --all ${keepFlag}`;
+      command = `uv run python -m src.pipeline purge --all`;
     } else if (action === 'copy-windows') {
       // Skopiuj EPUB bezpośrednio do Windows Downloads
       if (!fs.existsSync(epubPath)) {

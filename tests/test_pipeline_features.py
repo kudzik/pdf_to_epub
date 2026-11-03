@@ -44,33 +44,38 @@ def test_ensure_markdown_auto_extract_mock(monkeypatch, tmp_path: Path):
 
 
 def test_purge_command_book_keep_epub(tmp_path: Path):
-    """Weryfikuje usuwanie plików roboczych książki z zachowaniem EPUB."""
+    """Weryfikuje usuwanie plików roboczych książki (w tym grafik i raportu) z zachowaniem EPUB."""
     md_dir = tmp_path / "markdown"
+    assets_dir = md_dir / "assets"
     epub_dir = tmp_path / "epub"
     md_dir.mkdir(parents=True)
+    assets_dir.mkdir(parents=True)
     epub_dir.mkdir(parents=True)
 
     md_file = md_dir / "ksiazka1.md"
     bak_file = md_dir / "ksiazka1.md.bak"
+    img_file = assets_dir / "img1.png"
     epub_file = epub_dir / "ksiazka1.epub"
-    report_file = tmp_path / "audit_ksiazka1.json"
+    report_file = tmp_path / "audit_report.json"
 
     md_file.write_text("md", encoding="utf-8")
     bak_file.write_text("bak", encoding="utf-8")
+    img_file.write_text("fake png", encoding="utf-8")
     epub_file.write_text("epub", encoding="utf-8")
     report_file.write_text("{}", encoding="utf-8")
 
     result = runner.invoke(
         app,
-        ["purge", "--book", "ksiazka1", "--keep-epub", "--output-dir", str(tmp_path)],
+        ["purge", "--book", "ksiazka1", "--output-dir", str(tmp_path)],
     )
     assert result.exit_code == 0
     assert "Wyczyszczono pliki robocze" in result.stdout
     assert "ksiazka1" in result.stdout
 
-    # Pliki robocze usunięte
+    # Pliki robocze, grafiki i raport usunięte
     assert not md_file.exists()
     assert not bak_file.exists()
+    assert not img_file.exists()
     assert not report_file.exists()
     # EPUB zachowany
     assert epub_file.exists()
@@ -115,7 +120,7 @@ def test_purge_all_command(tmp_path: Path):
 
     result = runner.invoke(
         app,
-        ["purge", "--all", "--output-dir", str(tmp_path)],
+        ["purge", "--all", "--with-epub", "--output-dir", str(tmp_path)],
     )
     assert result.exit_code == 0
     assert "Pomyślnie wyczyszczono" in result.stdout
