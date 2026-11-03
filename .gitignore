@@ -1,29 +1,75 @@
+# Python: środowisko, cache, testy i pakiety wynikowe
 .venv/
+venv/
 __pycache__/
 *.py[cod]
 *$py.class
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+/build/
+/dist/
 
-# Output files (zachowujemy strukturę katalogów przez .gitkeep)
-output/markdown/*
-!output/markdown/.gitkeep
-!output/markdown/assets/
-output/markdown/assets/*
-!output/markdown/assets/.gitkeep
-output/epub/*
-!output/epub/.gitkeep
-output/audit_report.json
+# Node / Astro: zależności, kompilacja i dane serwera
+node_modules/
+/web/dist/
+/web/.astro/
+/web/coverage/
+/web/tests/artifacts/
+*.tsbuildinfo
 
-# Pliki wejściowe PDF
-input/*
-!input/.gitkeep
+# Książki wejściowe pozostają lokalnie
+/input/*
+!/input/.gitkeep
 
-# Lokalne pliki konfiguracyjne IDE
+# Wszystkie wyniki, raporty, snapshoty, benchmarki i cache OCR
+# Zachowujemy wyłącznie puste katalogi wymagane przez projekt
+/output/*
+!/output/markdown/
+/output/markdown/*
+!/output/markdown/.gitkeep
+!/output/markdown/assets/
+/output/markdown/assets/*
+!/output/markdown/assets/.gitkeep
+!/output/epub/
+/output/epub/*
+!/output/epub/.gitkeep
+
+# Lokalne zmienne środowiskowe; szablony można wersjonować
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Lokalne ustawienia, dane agentów i kont
+/.aws/
+/.codex/
+/.agents/
 .vscode/
 .idea/
+
+# Kopie robocze, pliki tymczasowe i logi
+*.bak
+*.bak.*
+*.tmp
+*.tmp.*
+*.log
 *.swp
+*.swo
+*~
 
+# Pliki systemowe
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# Targeted OCR cache and local verification artifacts
-output/source_cache/
-web/tests/artifacts/
-.uv-cache/
+# uv.lock i web/package-lock.json celowo pozostają w repozytorium
