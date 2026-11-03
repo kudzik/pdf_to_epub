@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev --port 4343 --host",
     "build": "astro build",
-    "start": "astro preview --port 4343 --host"
+    "start": "astro preview --port 4343 --host",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.9",

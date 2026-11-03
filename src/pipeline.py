@@ -691,12 +691,12 @@ def purge_cmd(
 def open_windows_cmd(
     folder: Annotated[
         str,
-        typer.Option("--folder", "-f", help="Folder do otwarcia w Windows (app, epub, markdown, input lub downloads)."),
-    ] = "app",
+        typer.Option("--folder", "-f", help="Folder do otwarcia w Windows (output, epub, markdown, input lub downloads)."),
+    ] = "output",
 ):
     """Otwiera wskazany folder w Eksploratorze Windows (WSL -> Windows)."""
-    if folder in ["app", "project", "root"]:
-        target = Path(".").resolve()
+    if folder in ["output", "out", "app", "project", "root"]:
+        target = Path("output").resolve()
     elif folder == "downloads":
         target = get_windows_downloads_dir()
         if not target or not target.exists():
@@ -706,8 +706,10 @@ def open_windows_cmd(
         target = Path("input").resolve()
     elif folder in ["markdown", "assets"]:
         target = (Path("output") / folder).resolve()
-    else:
+    elif folder == "epub":
         target = Path("output/epub").resolve()
+    else:
+        target = Path("output").resolve()
 
     target.mkdir(parents=True, exist_ok=True)
     win_path = to_windows_path(target)

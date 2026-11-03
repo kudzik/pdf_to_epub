@@ -9,7 +9,7 @@ const execPromise = util.promisify(exec);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { action, file, book, keepEpub = false, targetFolder = 'app' } = await request.json();
+    const { action, file, book, keepEpub = false, targetFolder = 'output' } = await request.json();
     const rootDir = getProjectRootDir();
     
     // Ustalanie nazwy książki (stem)

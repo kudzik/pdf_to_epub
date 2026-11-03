@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
 import { probeOllama } from '../../utils/ollama';
+import { evaluateRepairQuality } from '../../utils/metrics';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -98,12 +99,15 @@ ${paragraph}`;
       }
     }
 
+    const metrics = evaluateRepairQuality(paragraph, repairedText);
+
     return new Response(JSON.stringify({
       success: true,
       index,
       original: paragraph,
       repaired: repairedText,
       applied: apply,
+      metrics,
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
