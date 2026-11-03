@@ -1,5 +1,7 @@
 # PDF to EPUB Converter (Modern Document AI + Pandoc)
 
+Plan naprawy ekstrakcji i checklista realizacji: [PLAN_REKONSTRUKCJI.md](docs/PLAN_REKONSTRUKCJI.md).
+
 Nowoczesny, powtarzalny pipeline do ekstrakcji treści ze skanów PDF (książek, artykułów, publikacji kulinarnych z wielokolumnowym tekstem, tabelami i grafikami) do edytowalnego formatu **Markdown** (jako Source of Truth / RAG) oraz kompilacji do standardu **EPUB 3** gotowego do odczytu na czytnikach e-booków (Kindle, Kobo, PocketBook, Apple Books).
 
 ## 🚀 Stos technologiczny
