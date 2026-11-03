@@ -7,6 +7,7 @@ from rich.console import Console
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.progress import PageCompletedProgress
 from docling_core.types.doc.base import ImageRefMode
 
 app = typer.Typer(
@@ -86,8 +87,18 @@ def extract(
             console.print(f"[bold red]Błąd:[/bold red] Niepoprawny format stron: '{pages}'. Użyj formatu np. '1-10' lub '5'.")
             raise typer.Exit(code=1)
 
+    convert_kwargs = {}
+    if page_range is not None:
+        convert_kwargs["page_range"] = page_range
+
+    def on_progress(event):
+        if isinstance(event, PageCompletedProgress) and event.total_pages:
+            console.print(f"[cyan]Postęp OCR:[/cyan] strona {event.page_no} (ukończono {event.completed_pages}/{event.total_pages})")
+
+    convert_kwargs["progress_callback"] = on_progress
+
     console.print(f"[cyan]Przetwarzanie dokumentu {input_pdf.name}... To może chwilę potrwać.[/cyan]")
-    result = converter.convert(input_pdf, page_range=page_range)
+    result = converter.convert(input_pdf, **convert_kwargs)
     doc = result.document
 
     md_file = md_dir / f"{input_pdf.stem}.md"

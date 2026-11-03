@@ -83,3 +83,11 @@ uv run python -m src.pipeline build
 uv run python -m src.pipeline build --cover sciezka/do/okladki.jpg
 ```
 
+### 4. Uruchamianie testów jednostkowych
+Projekt zawiera pełny zestaw testów weryfikujących integrację Pandoc, strukturę generowanego EPUB, opcje OCR oraz CLI:
+```bash
+uv run pytest
+```
+
+
+
