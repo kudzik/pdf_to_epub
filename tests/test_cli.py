@@ -214,3 +214,21 @@ def test_inspect_and_patch_cli(tmp_path: Path):
 
 
 
+
+
+def test_windows_copy_failure_preserves_successful_build(monkeypatch, tmp_path):
+    """A missing Windows write permission must not invalidate an existing EPUB."""
+    from src import pipeline
+
+    epub = tmp_path / "book.epub"
+    epub.write_bytes(b"epub")
+    downloads = tmp_path / "Downloads"
+    downloads.mkdir()
+    monkeypatch.setattr(pipeline, "get_windows_downloads_dir", lambda: downloads)
+
+    def deny_copy(*args, **kwargs):
+        raise PermissionError("Windows Downloads is read-only")
+
+    monkeypatch.setattr(pipeline.shutil, "copy2", deny_copy)
+    assert pipeline.copy_to_windows_downloads(epub) is None
+    assert epub.read_bytes() == b"epub"

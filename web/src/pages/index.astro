@@ -428,7 +428,7 @@ import '../styles/global.css';
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white tracking-tight">Metodologia Pomiaru Jakości i Braku Halucynacji</h3>
+            <h3 class="text-base font-bold text-white tracking-tight">Kontrola rekonstrukcji i jej ograniczenia</h3>
             <p class="text-xs text-zinc-400">Jak weryfikujemy poprawność rekonstrukcji modeli LLM</p>
           </div>
         </div>
@@ -449,28 +449,28 @@ import '../styles/global.css';
 
         <div class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-1">
           <div class="flex items-center gap-2 font-bold text-cyan-400">
-            <span>2. Współczynnik Podobieństwa Levenshteina / Bigramów (&gt;85%)</span>
+            <span>2. Podobieństwo tekstu (heurystyka)</span>
           </div>
           <p class="text-zinc-400">
-            Rekonstrukcja OCR to nie pisanie nowej książki — autentyczna poprawka zachowuje 90-99% struktury zdania. Wszelkie drastyczne zmiany długości czy dopisywanie komentarzy przez model (np. "Oto poprawiony tekst:") są automatycznie odrzucane.
+            Podobieństwo bigramów pomaga wykrywać duże zmiany, ale nie dowodzi poprawności znaczenia. Niepewna rekonstrukcja wymaga niezależnego odczytu właściwych stron PDF. Model może nadal popełnić błąd.
           </p>
         </div>
 
         <div class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-1">
           <div class="flex items-center gap-2 font-bold text-amber-400">
-            <span>3. Delta Anomalii OCR (Redukcja Szumu do Zera)</span>
+            <span>3. Kontrola źródła i grafik</span>
           </div>
           <p class="text-zinc-400">
-            Zrekonstruowany akapit jest natychmiast sprawdzany przez reguły audytora: artefakty skanera (^, °, |, £, «) muszą zostać wyzerowane, a ułamki ujednolicone (np. 1 2 tsp ➔ 1/2 tsp).
+            Gdy korekta tekstowa nie przechodzi kontroli, aplikacja odczytuje ponownie dopasowaną stronę skanu przez EasyOCR. Wynik musi zgadzać się z tym odczytem. Niepewne fragmenty pozostają do kontroli, a odnośniki do grafik są zachowywane przez kod.
           </p>
         </div>
 
         <div class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-1">
           <div class="flex items-center gap-2 font-bold text-indigo-400">
-            <span>4. Gwarancja Bezpieczeństwa (.bak) i Transparentność 2 Kolumn</span>
+            <span>4. Kopia zapasowa i widoczne wyniki</span>
           </div>
           <p class="text-zinc-400">
-            Przed jakąkolwiek zmianą plik otrzymuje kopię zapasową <code>&lt;książka&gt;.md.bak</code>. W interfejsie zawsze widzisz zestawienie dwóch kolumn: PRZED (czerwony) i PO (zielony) z dokładnym wskaźnikiem jakości.
+            Przed jakąkolwiek zmianą plik otrzymuje kopię zapasową <code>&lt;książka&gt;.md.bak</code>. W interfejsie zawsze widzisz zestawienie dwóch kolumn: PRZED (czerwony) i PO (zielony) z informacją o zapisie, źródle lub przyczynie odrzucenia.
           </p>
         </div>
       </div>
@@ -513,6 +513,8 @@ import '../styles/global.css';
     let activeFilter = 'ALL';
     let searchQuery = '';
     let isAutopilotRunning = false;
+    let activeRepairController = null;
+    const repairStates = new Map();
     let stopRequested = false;
 
     const bookSelector = document.getElementById('bookSelector');
@@ -708,8 +710,8 @@ import '../styles/global.css';
 
             modelSelector.innerHTML = allOptions.map(m => {
               const isEmbed = m.includes('embed');
-              const suffix = isEmbed ? ' (Embedding)' : m.includes('14b') ? ' (RTX 4080 Zalecany)' : '';
-              return `<option value="${m}">${m}${suffix}</option>`;
+              const suffix = isEmbed ? ' (Embedding — nie służy do napraw)' : '';
+              return `<option value="${escapeHtml(m)}" ${isEmbed ? 'disabled' : ''}>${escapeHtml(m)}${suffix}</option>`;
             }).join('') + '<option value="heuristic">Silnik Regułowy (Wbudowany)</option>';
 
             const saved = localStorage.getItem('selectedOllamaModel');
@@ -803,6 +805,9 @@ import '../styles/global.css';
         );
       }
 
+      for (const item of globalReport.anomalies) {
+        if (repairStates.get(`${bookSelector.value}:${item.paragraph_index}`)?.working && !list.includes(item)) list = [...list, item];
+      }
       if (list.length === 0) {
         anomaliesList.innerHTML = `
           <div class="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-8 text-center text-zinc-400">
@@ -899,6 +904,41 @@ import '../styles/global.css';
           </div>
         `;
       }).join('');
+      for (const [key, state] of repairStates) {
+        if (key.startsWith(`${bookSelector.value}:`)) displayRepairState(Number(key.split(':').pop()), state);
+      }
+    }
+
+    function displayRepairState(pIdx, state) {
+      const card = document.getElementById(`card-${pIdx}`);
+      card?.setAttribute('aria-busy', state.working ? 'true' : 'false');
+      if (state.working) card?.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
+      else card?.classList.remove('ring-2', 'ring-cyan-400', 'animate-pulse');
+      const badge = document.getElementById(`quality-badge-${pIdx}`);
+      const preview = document.getElementById(`repaired-preview-${pIdx}`);
+      const footer = document.getElementById(`metrics-footer-${pIdx}`);
+      const input = document.getElementById(`input-${pIdx}`);
+      if (badge) {
+        badge.classList.remove('animate-pulse');
+        badge.textContent = state.label;
+      }
+      if (preview) preview.textContent = state.text;
+      if (footer) footer.textContent = state.details;
+      if (input && state.text && !state.working) input.value = state.text;
+    }
+
+    function rememberRepair(pIdx, data) {
+      const sourcePages = [...new Set((data.sources || []).flatMap(s => s.pages))];
+      const state = {
+        label: data.success && data.applied ? (data.method === 'source-ocr' ? 'Zapisano — ponowny OCR źródła' : data.method === 'heuristic' ? 'Zapisano reguły — sprawdź audyt' : 'Zapisano — korekta tekstowa') : 'Do kontroli — nie zapisano',
+        text: data.repaired || 'Brak wyniku rekonstrukcji.',
+        details: data.success && data.applied
+          ? `Zapisano do Markdown. ${sourcePages.length ? `Źródło: strony PDF ${sourcePages.join(', ')}. ` : ''}Podobieństwo do starego OCR: ${data.metrics?.similarity ?? '—'}% (ocena heurystyczna).`
+          : `${data.error || 'Nie zapisano zmian.'} ${sourcePages.length ? `Sprawdzono strony PDF: ${sourcePages.join(', ')}.` : ''} Propozycja wymaga kontroli.`,
+      };
+      repairStates.set(`${bookSelector.value}:${pIdx}`, state);
+      displayRepairState(pIdx, state);
+      return state;
     }
 
     function highlightIssues(text) {
@@ -920,14 +960,16 @@ import '../styles/global.css';
     window.applyPatch = async function(pIdx) {
       const textarea = document.getElementById(`input-${pIdx}`);
       if (!textarea) return;
+      if (isAutopilotRunning || activeRepairController) return;
       const text = textarea.value;
+      const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       const currentBook = bookSelector.value || 'ksiazka';
 
       try {
         const res = await fetch('/api/patch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: pIdx, text, file: `${currentBook}.md` })
+          body: JSON.stringify({ index: pIdx, text, original: anomaly?.raw_paragraph, file: `${currentBook}.md` })
         });
         const result = await res.json();
         if (result.success) {
@@ -939,7 +981,7 @@ import '../styles/global.css';
           if (previewEl) previewEl.textContent = text;
           if (qualityBadge) {
             qualityBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300';
-            qualityBadge.textContent = 'Jakość: 100% (Ręczna)';
+            qualityBadge.textContent = 'Zapisano ręczną korektę';
           }
           if (metricsFooter) {
             metricsFooter.innerHTML = `
@@ -947,6 +989,8 @@ import '../styles/global.css';
               <span class="text-emerald-400 font-bold">✓ Zapisano do MD (.bak)</span>
             `;
           }
+          if (anomaly) anomaly.raw_paragraph = text;
+          repairStates.set(`${currentBook}:${pIdx}`, { text, label: 'Zapisano ręczną korektę', details: 'Ręczna korekta zapisana do Markdown.' });
           if (editBox) editBox.classList.add('hidden');
           showToast(`✓ Zapisano poprawkę dla akapitu #${pIdx}`, 'success');
         } else {
@@ -958,6 +1002,7 @@ import '../styles/global.css';
     };
 
     window.applyHeuristicToCard = async function(pIdx) {
+      if (isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       if (!anomaly) return;
@@ -969,7 +1014,7 @@ import '../styles/global.css';
         const res = await fetch('/api/patch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: pIdx, text: repaired, file: `${currentBook}.md` })
+          body: JSON.stringify({ index: pIdx, text: repaired, original: raw, file: `${currentBook}.md` })
         });
         const result = await res.json();
         if (result.success) {
@@ -982,7 +1027,7 @@ import '../styles/global.css';
           if (previewEl) previewEl.textContent = repaired;
           if (qualityBadge) {
             qualityBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300';
-            qualityBadge.textContent = 'Jakość: 98% (Regułowy)';
+            qualityBadge.textContent = 'Zapisano reguły — sprawdź audyt';
           }
           if (metricsFooter) {
             metricsFooter.innerHTML = `
@@ -990,7 +1035,12 @@ import '../styles/global.css';
               <span class="text-emerald-400 font-bold">✓ Zapisano do MD (.bak)</span>
             `;
           }
-          showToast(`✓ Zastosowano rekonstrukcję dla #${pIdx}`, 'success');
+          anomaly.raw_paragraph = repaired;
+          repairStates.set(`${currentBook}:${pIdx}`, { text: repaired, label: result.changed ? 'Zapisano reguły — sprawdź audyt' : 'Bez zmian', details: 'Reguły nie gwarantują pełnej rekonstrukcji.' });
+          displayRepairState(pIdx, repairStates.get(`${currentBook}:${pIdx}`));
+          showToast(result.changed ? `Zapisano reguły dla #${pIdx}` : 'Brak zmian', result.changed ? 'success' : 'info');
+        } else {
+          showToast(result.error || 'Nie zapisano poprawki', 'error');
         }
       } catch (e) {
         showToast('Błąd zapisu: ' + e.message, 'error');
@@ -998,9 +1048,26 @@ import '../styles/global.css';
     };
 
     window.requestOllamaRepair = async function(pIdx) {
+      if (isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       if (!anomaly) return;
+      const card = document.getElementById(`card-${pIdx}`);
+      if (card?.getAttribute('aria-busy') === 'true') return;
+      card?.setAttribute('aria-busy', 'true');
+      card?.classList.add('ring-2', 'ring-cyan-400');
+      activeRepairController = new AbortController();
+      bookSelector.disabled = true;
+      repairStates.set(`${currentBook}:${pIdx}`, { working: true, label: 'Trwa naprawa', text: 'Naprawa tekstu i w razie potrzeby odczyt PDF…', details: 'Oczekiwanie na wynik; plik nie został jeszcze zmieniony.' });
+      let elapsed = 0;
+      const timer = setInterval(() => {
+        const badge = document.getElementById(`quality-badge-${pIdx}`);
+        const pending = repairStates.get(`${currentBook}:${pIdx}`);
+        if (pending?.working) {
+          pending.label = `Naprawa / odczyt PDF: ${++elapsed} s`;
+          displayRepairState(pIdx, pending);
+        }
+      }, 1000);
 
       const modelSelect = document.getElementById('modelSelector');
       const selectedModel = modelSelect ? modelSelect.value : 'qwen2.5:14b';
@@ -1015,11 +1082,12 @@ import '../styles/global.css';
         qualityBadge.textContent = `Generowanie (${selectedModel})...`;
       }
       if (previewEl) {
-        previewEl.innerHTML = `<span class="text-zinc-400 italic">Trwa zapytanie do modelu ${escapeHtml(selectedModel)} na RTX 4080 Super...</span>`;
+        previewEl.innerHTML = `<span class="text-zinc-400 italic">Trwa zapytanie do modelu ${escapeHtml(selectedModel)}...</span>`;
       }
 
       try {
         const res = await fetch('/api/ollama-repair', {
+          signal: activeRepairController.signal,
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1032,28 +1100,30 @@ import '../styles/global.css';
           })
         });
         const data = await res.json();
-        if (data.success && data.repaired) {
+        if (data.success && data.applied && data.repaired) {
           if (textarea) textarea.value = data.repaired;
           if (previewEl) previewEl.textContent = data.repaired;
-          const m = data.metrics || { qualityScore: 98, similarity: 96, noiseRemoved: 1, invariantsPreserved: true };
-          if (qualityBadge) {
-            qualityBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300';
-            qualityBadge.textContent = `Jakość: ${m.qualityScore}%`;
-          }
-          if (metricsFooter) {
-            metricsFooter.innerHTML = `
-              <span>Podobieństwo: ${m.similarity}% &middot; Szum usunięty: ${m.noiseRemoved} &middot; Liczby: ${m.invariantsPreserved ? '✓ Zachowane' : '⚠ Zmienione'}</span>
-              <span class="text-emerald-400 font-bold">✓ Zapisano do MD (.bak)</span>
-            `;
-          }
+          anomaly.raw_paragraph = data.repaired;
+          rememberRepair(pIdx, data);
           showToast(`✓ Akapit #${pIdx} zrekonstruowany i zapisany (${selectedModel})!`, 'success');
         } else {
           showToast('Ollama: ' + (data.error || 'Błąd odpowiedzi'), 'warning');
-          if (qualityBadge) qualityBadge.textContent = 'Błąd Ollama';
-          if (previewEl) previewEl.textContent = reconstructParagraphHeuristic(anomaly.raw_paragraph || anomaly.snippet);
+          rememberRepair(pIdx, data);
+
         }
       } catch (err) {
+        rememberRepair(pIdx, { error: err.message });
         showToast('Błąd komunikacji z modelem: ' + err.message, 'error');
+        if (qualityBadge) qualityBadge.textContent = 'Błąd połączenia — nie zapisano';
+        if (previewEl) previewEl.textContent = 'Brak wyniku rekonstrukcji.';
+        if (metricsFooter) metricsFooter.textContent = err.message;
+      } finally {
+        clearInterval(timer);
+        activeRepairController = null;
+        bookSelector.disabled = false;
+        card?.classList.remove('ring-2', 'ring-cyan-400');
+        qualityBadge?.classList.remove('animate-pulse');
+        card?.setAttribute('aria-busy', 'false');
       }
     };
 
@@ -1108,14 +1178,19 @@ import '../styles/global.css';
         return;
       }
 
+      if (isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
-      const anomalies = globalReport.anomalies;
+      const anomalies = [...globalReport.anomalies];
       const total = anomalies.length;
 
       const modelSelect = document.getElementById('modelSelector');
       const selectedModel = modelSelect ? modelSelect.value : 'qwen2.5:14b';
       const isHeuristicOnly = selectedModel === 'heuristic';
       const isAiOnline = !isHeuristicOnly && globalOllama && globalOllama.available;
+      if (!isHeuristicOnly && !isAiOnline) {
+        showStatus('Ollama jest niedostępna. Uruchom model lub wybierz jawnie silnik regułowy.', 'error');
+        return;
+      }
       const engineName = isAiOnline ? `Ollama (${selectedModel})` : 'Silnik Regułowy';
 
       isAutopilotRunning = true;
@@ -1127,13 +1202,15 @@ import '../styles/global.css';
       showStatus(`Uruchamianie Autopilota: ${engineName}...`, 'info');
 
       let repairedCount = 0;
+      let failedCount = 0;
+      bookSelector.disabled = true;
 
       for (let i = 0; i < total; i++) {
         if (stopRequested) break;
 
         const anomaly = anomalies[i];
         const pIdx = anomaly.paragraph_index;
-        const percent = Math.round(((i + 1) / total) * 100);
+        const percent = Math.round((i / total) * 100);
         const rawSnippet = anomaly.raw_paragraph || anomaly.snippet || '';
 
         autopilotStepLabel.textContent = `Autopilot [${engineName}]: Akapit #${pIdx} (${i + 1} z ${total})...`;
@@ -1152,12 +1229,33 @@ import '../styles/global.css';
         if (liveDiffAfter) liveDiffAfter.innerHTML = `<span class="italic text-zinc-400">Rekonstrukcja w toku (${engineName})...</span>`;
         if (liveDiffQuality) liveDiffQuality.textContent = 'Analiza...';
 
+        repairStates.set(`${currentBook}:${pIdx}`, { working: true, label: '● Teraz naprawiany', text: 'Naprawa tekstu i w razie potrzeby odczyt PDF…', details: 'Oczekiwanie na wynik.' });
         let repairedText = null;
-        let metricData = { qualityScore: 98, similarity: 96, noiseRemoved: 1, invariantsPreserved: true };
+        let metricData = null;
+        const card = document.getElementById(`card-${pIdx}`);
+        card?.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
+        card?.setAttribute('aria-busy', 'true');
+        card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const pendingBadge = document.getElementById(`quality-badge-${pIdx}`);
+        if (pendingBadge) pendingBadge.textContent = '● Teraz naprawiany';
+        let elapsed = 0;
+        const ticker = setInterval(() => {
+          elapsed++;
+          if (liveDiffQuality) liveDiffQuality.textContent = `Praca: ${elapsed} s`;
+          const pending = repairStates.get(`${currentBook}:${pIdx}`);
+          if (pending?.working) {
+            pending.label = `● Teraz naprawiany (${elapsed} s)`;
+            displayRepairState(pIdx, pending);
+          }
+        }, 1000);
+        let repairError = '';
+
 
         if (isAiOnline) {
           try {
+            activeRepairController = new AbortController();
             const res = await fetch('/api/ollama-repair', {
+              signal: activeRepairController.signal,
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1170,41 +1268,71 @@ import '../styles/global.css';
               })
             });
             const data = await res.json();
-            if (data.success && data.repaired) {
+            rememberRepair(pIdx, data);
+            if (liveDiffAfter) liveDiffAfter.textContent = data.repaired || data.error;
+            if (data.success && data.applied && data.repaired) {
               repairedText = data.repaired;
+              anomaly.raw_paragraph = data.repaired;
               if (data.metrics) metricData = data.metrics;
+            } else {
+              repairError = data.error || 'Nie zapisano poprawki';
             }
           } catch (e) {
-            console.warn(`Ollama błąd na akapicie #${pIdx}, przełączanie na silnik regułowy...`);
+            repairError = e.message;
+            rememberRepair(pIdx, { error: e.message });
+          } finally {
+            activeRepairController = null;
           }
         }
 
         // Fallback do silnika regułowego, jeśli Ollama offline lub zawiodła
-        if (!repairedText) {
+        if (!isAiOnline) {
           repairedText = reconstructParagraphHeuristic(rawSnippet);
           try {
-            await fetch('/api/patch', {
+            const patchResponse = await fetch('/api/patch', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 index: pIdx,
                 text: repairedText,
+                original: rawSnippet,
                 file: `${currentBook}.md`
               })
             });
+            const patchResult = await patchResponse.json();
+            if (!patchResponse.ok || !patchResult.success) throw new Error(patchResult.error || 'Błąd zapisu');
+            rememberRepair(pIdx, { success: true, applied: patchResult.changed, repaired: repairedText, method: 'heuristic' });
           } catch (err) {
-            console.error('Błąd zapisu patcha:', err);
+            repairedText = null;
+            repairError = err.message;
+            rememberRepair(pIdx, { error: err.message });
           }
         }
 
+        clearInterval(ticker);
+        const completedPercent = Math.round(((i + 1) / total) * 100);
+        autopilotProgressPercent.textContent = `${completedPercent}%`;
+        autopilotProgressBar.style.width = `${completedPercent}%`;
+        card?.classList.remove('ring-2', 'ring-cyan-400', 'animate-pulse');
+        card?.setAttribute('aria-busy', 'false');
+        if (!repairedText) {
+          failedCount++;
+          if (liveDiffAfter && !repairStates.has(`${currentBook}:${pIdx}`)) liveDiffAfter.textContent = repairError || 'Brak wyniku naprawy';
+          if (liveDiffQuality) liveDiffQuality.textContent = 'Nie zapisano';
+          if (pendingBadge) pendingBadge.textContent = 'Do kontroli — nie zapisano';
+          continue;
+        }
         if (repairedText) {
-          repairedCount++;
+          const changed = repairedText.trim() !== rawSnippet.trim();
+          if (changed) repairedCount++;
+          const resultLabel = !changed ? 'Bez zmian — wymaga kontroli' : metricData ? `Jakość: ${metricData.qualityScore}%` : 'Zapisano reguły — sprawdź audyt';
+
 
           // 1. Aktualizacja Live Diff Panel
           if (liveDiffAfter) liveDiffAfter.textContent = repairedText;
           if (liveDiffQuality) {
             liveDiffQuality.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300';
-            liveDiffQuality.textContent = `Jakość: ${metricData.qualityScore}%`;
+            liveDiffQuality.textContent = resultLabel;
           }
 
           // 2. Aktualizacja karty w katalogu z zachowaniem obu kolumn PRZED i PO
@@ -1217,13 +1345,18 @@ import '../styles/global.css';
           if (previewEl) previewEl.textContent = repairedText;
           if (qualityBadge) {
             qualityBadge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-500/20 text-emerald-300';
-            qualityBadge.textContent = `Jakość: ${metricData.qualityScore}%`;
+            qualityBadge.textContent = resultLabel;
           }
           if (metricsFooter) {
             metricsFooter.innerHTML = `
-              <span>Podobieństwo: ${metricData.similarity}% &middot; Szum: ${metricData.noiseRemoved} &middot; Liczby: ${metricData.invariantsPreserved ? '✓ Zachowane' : '⚠ Zmienione'}</span>
+              <span>Podobieństwo: ${metricData?.similarity ?? '—'}% &middot; Szum: ${metricData?.noiseRemoved ?? '—'} &middot; Liczby: ${metricData ? (metricData.invariantsPreserved ? '✓ Zachowane' : '⚠ Zmienione') : 'Nie oceniono'}</span>
               <span class="text-emerald-400 font-bold">✓ Zapisano do MD (.bak)</span>
             `;
+          }
+          const savedState = repairStates.get(`${currentBook}:${pIdx}`);
+          if (savedState) {
+            displayRepairState(pIdx, savedState);
+            if (liveDiffQuality) liveDiffQuality.textContent = savedState.label;
           }
         }
       }
@@ -1234,25 +1367,32 @@ import '../styles/global.css';
       
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
+      bookSelector.disabled = false;
+      if (stopRequested) return;
 
+      // Do not build a new EPUB when the run changed no paragraphs.
+      if (!repairedCount) {
+        showStatus(`Nie zmieniono akapitów. Do kontroli: ${failedCount} z ${total}.`, 'info');
+        return;
+      }
       // Automatyczna rekompilacja EPUB i ponowny audyt
-      showStatus('Kompilacja gotowego e-booka EPUB 3 i kopiowanie do Windows Pobrane...', 'info');
-      await triggerAction('build');
+      showStatus('Kompilacja EPUB z zapisanych poprawek...', 'info');
+      if (!await triggerAction('build')) return;
       showStatus('Odświeżanie raportu jakościowego po naprawie...', 'info');
-      await triggerAction('audit');
-      showStatus(`✓ Gotowe! Autopilot naprawił ${repairedCount} akapitów, a EPUB jest gotowy w Windows Pobrane!`, 'success');
+      if (!await triggerAction('audit')) return;
+      showStatus(`Zmieniono ${repairedCount} z ${total} akapitów. Błędy: ${failedCount}. Pozostało anomalii: ${globalReport?.anomalies?.length ?? 'brak raportu'}. EPUB przebudowany.`, failedCount ? 'warning' : 'info');
     }
 
     // Szybka Rekonstrukcja (Polskie znaki, ułamki i auto-rekompilacja EPUB)
     async function runHeuristicBatch() {
       showStatus('Trwa rekonstrukcja polskich znaków, ułamków i normalizacja tekstu...', 'info');
       try {
-        await triggerAction('clean');
+        if (!await triggerAction('clean')) return;
         showStatus('Trwa kompilacja czystego EPUB 3 przez Pandoc...', 'info');
-        await triggerAction('build');
+        if (!await triggerAction('build')) return;
         showStatus('Odświeżanie audytu jakościowego...', 'info');
-        await triggerAction('audit');
-        showStatus('✓ Sukces: Polskie znaki i ułamki zrekonstruowane, EPUB zaktualizowany!', 'success');
+        if (!await triggerAction('audit')) return;
+        showStatus(`Czyszczenie i budowa EPUB zakończone. Pozostało anomalii: ${globalReport?.anomalies?.length ?? 'brak raportu'}.`, 'info');
       } catch (err) {
         showStatus('Błąd: ' + err.message, 'error');
       }
@@ -1377,6 +1517,10 @@ import '../styles/global.css';
 
     // Wywołanie akcji w CLI (extract, clean, audit, build)
     async function triggerAction(actionName) {
+      if (activeRepairController) {
+        showStatus('Trwa naprawa akapitu. Zaczekaj lub zatrzymaj Autopilota.', 'info');
+        return false;
+      }
       const currentBook = bookSelector.value || 'ksiazka';
       showStatus(`Wykonywanie akcji: ${actionName} dla książki "${currentBook}"...`, 'info');
 
@@ -1391,11 +1535,14 @@ import '../styles/global.css';
           showStatus(`✓ Akcja "${actionName}" ukończona pomyślnie.`, 'success');
           await fetchStatus();
           await loadBooks();
+          return true;
         } else {
           showStatus(`Błąd akcji "${actionName}": ${data.error}`, 'error');
+          return false;
         }
       } catch (err) {
         showStatus(`Błąd komunikacji: ${err.message}`, 'error');
+        return false;
       }
     }
 
@@ -1457,6 +1604,7 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
 
       btnStopAutopilot.addEventListener('click', () => {
         stopRequested = true;
+        activeRepairController?.abort();
         autopilotStepLabel.textContent = 'Zatrzymywanie autopilota...';
       });
 

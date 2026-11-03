@@ -8,7 +8,9 @@ export interface RepairEvaluation {
   qualityScore: number;       // 0 - 100%
   similarity: number;         // 0 - 100%
   noiseRemoved: number;       // Liczba usuniętych artefaktów OCR
+  unitsPreserved: boolean;
   invariantsPreserved: boolean; // Czy liczby i proporcje nie zostały sfałszowane
+  addedNumbers: string[];
   missingNumbers: string[];   // Liczby obecne przed, a brakujące po
   verdict: 'EXCELLENT' | 'GOOD' | 'SUSPICIOUS' | 'UNSAFE';
   verdictLabel: string;
@@ -54,16 +56,22 @@ export function calculateSimilarity(s1: string, s2: string): number {
  * Wykrywa liczby całkowite, dziesiętne i ułamki w tekście.
  */
 function extractNumbers(text: string): string[] {
-  // Dopasowuje liczby, w tym ułamki (np. 1/2, 1/4) oraz temperatury
-  const matches = text.match(/\b\d+(?:[.,/]\d+)?\b/g);
-  return matches || [];
+  const fractions: Record<string, string> = { '½': '1/2', '¼': '1/4', '¾': '3/4', '⅓': '1/3', '⅔': '2/3' };
+  text = text.replace(/[½¼¾⅓⅔]/g, ch => ` ${fractions[ch]} `);
+  text = text.replace(/\b([13])\s+([24])(?=\s*(?:tsp|tbsp|cups?|teaspoons?|tablespoons?|lbs?|oz|g|kg|ml|l)\b)/gi, '$1/$2');
+  return (text.match(/(?<![\p{L}\d])\d+(?:[.,/]\d+)?/gu) || []).map(n => n.replace(',', '.'));
+}
+
+function extractUnits(text: string): string[] {
+  const aliases: Record<string, string> = { teaspoon: 'tsp', teaspoons: 'tsp', tablespoon: 'tbsp', tablespoons: 'tbsp', cups: 'cup', lbs: 'lb', ounces: 'oz', ounce: 'oz' };
+  return (text.toLowerCase().match(/(?<![\p{L}])(?:tsp|tbsp|teaspoons?|tablespoons?|cups?|lbs?|ounces?|oz|kg|mg|ml|g|l)(?![\p{L}])/gu) || []).map(unit => aliases[unit] || unit).sort();
 }
 
 /**
  * Liczy znaki typowego szumu OCR.
  */
 function countNoiseChars(text: string): number {
-  const noisePattern = /[\^°■|£«»¥~¬]/g;
+  const noisePattern = /[\^■£¥¬�]|(?<=[\p{L}])°(?=[\p{L}])/gu;
   const matches = text.match(noisePattern);
   return matches ? matches.length : 0;
 }
@@ -83,26 +91,16 @@ export function evaluateRepairQuality(original: string, repaired: string): Repai
   const origNums = extractNumbers(original);
   const repNums = extractNumbers(repaired);
 
-  // Sprawdzamy czy liczby z oryginału znajdują się w poprawionym tekście
-  // (z uwzględnieniem, że ułamek '1 2' mógł zostać scalony w '1/2')
+  const remaining = [...repNums];
   const missingNumbers: string[] = [];
   for (const num of origNums) {
-    if (!repNums.includes(num)) {
-      // Wyjątek: jeśli w oryginale było osobno '1' i '2', a w poprawionym jest '1/2'
-      if ((num === '1' || num === '2') && repNums.includes('1/2')) {
-        continue;
-      }
-      if ((num === '1' || num === '4') && repNums.includes('1/4')) {
-        continue;
-      }
-      if ((num === '3' || num === '4') && repNums.includes('3/4')) {
-        continue;
-      }
-      missingNumbers.push(num);
-    }
+    const index = remaining.indexOf(num);
+    if (index < 0) missingNumbers.push(num);
+    else remaining.splice(index, 1);
   }
-
-  const invariantsPreserved = missingNumbers.length === 0;
+  const addedNumbers = remaining;
+  const unitsPreserved = JSON.stringify(extractUnits(original)) === JSON.stringify(extractUnits(repaired));
+  const invariantsPreserved = missingNumbers.length === 0 && addedNumbers.length === 0 && unitsPreserved;
 
   // Obliczenie wskaźnika Quality Score (0-100)
   let qualityScore = similarity;
@@ -114,7 +112,7 @@ export function evaluateRepairQuality(original: string, repaired: string): Repai
 
   // Kara za naruszenie liczb (potencjalna halucynacja)
   if (!invariantsPreserved) {
-    qualityScore = Math.max(20, qualityScore - (missingNumbers.length * 20));
+    qualityScore = Math.max(20, qualityScore - ((missingNumbers.length + addedNumbers.length) * 20));
   }
 
   // Kara za zbyt dużą odchyłkę długości
@@ -130,7 +128,7 @@ export function evaluateRepairQuality(original: string, repaired: string): Repai
 
   if (qualityScore >= 95 && invariantsPreserved) {
     verdict = 'EXCELLENT';
-    verdictLabel = 'Wzorowa jakość (brak halucynacji, liczby zachowane)';
+    verdictLabel = 'Wysokie podobieństwo; liczby zachowane (ocena heurystyczna)';
   } else if (qualityScore >= 80 && invariantsPreserved) {
     verdict = 'GOOD';
     verdictLabel = 'Dobra rekonstrukcja (niezmienniki zachowane)';
@@ -147,7 +145,9 @@ export function evaluateRepairQuality(original: string, repaired: string): Repai
     similarity,
     noiseRemoved,
     invariantsPreserved,
+    unitsPreserved,
     missingNumbers,
+    addedNumbers,
     verdict,
     verdictLabel,
   };

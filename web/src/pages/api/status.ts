@@ -10,7 +10,7 @@ export const GET: APIRoute = async ({ url }) => {
   const baseName = fileParam.replace(/\.(md|pdf|epub)$/, '');
 
   let reportPath = path.join(rootDir, 'output', `audit_${baseName}.json`);
-  if (!fs.existsSync(reportPath)) {
+  if (!fs.existsSync(reportPath) && baseName === 'ksiazka') {
     reportPath = path.join(rootDir, 'output', 'audit_report.json');
   }
 
@@ -50,6 +50,10 @@ export const GET: APIRoute = async ({ url }) => {
   if (fs.existsSync(mdPath)) {
     const stat = fs.statSync(mdPath);
     const content = fs.readFileSync(mdPath, 'utf-8');
+    if (report?.anomalies) {
+      const paragraphs = content.split('\n\n');
+      report.anomalies = report.anomalies.filter((a: any) => Number.isInteger(a.paragraph_index) && a.paragraph_index >= 0 && a.paragraph_index < paragraphs.length).map((a: any) => ({ ...a, raw_paragraph: paragraphs[a.paragraph_index].trim() }));
+    }
     mdInfo = {
       exists: true,
       size: (stat.size / (1024 * 1024)).toFixed(1) + ' MB',
@@ -63,6 +67,7 @@ export const GET: APIRoute = async ({ url }) => {
   const windowsHostIp = getWindowsHostIp();
 
   return new Response(JSON.stringify({
+    repairVersion: 'source-ocr-v1',
     book: baseName,
     pdfInfo,
     epubInfo,

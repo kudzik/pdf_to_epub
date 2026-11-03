@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request }) => {
     } else if (action === 'clean') {
       command = `uv run python -m src.pipeline clean --book "${bookStem}"`;
     } else if (action === 'audit') {
-      command = `uv run python -m src.pipeline audit --book "${bookStem}"`;
+      command = `uv run python -m src.pipeline audit --book "${bookStem}" --report "output/audit_${bookStem}.json"`;
     } else if (action === 'build') {
       command = `uv run python -m src.pipeline build --book "${bookStem}"`;
     } else if (action === 'purge') {
@@ -82,7 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: `Nieobsługiwana akcja: ${action}` }), { status: 400 });
     }
 
-    const { stdout, stderr } = await execPromise(command, { cwd: rootDir });
+    const { stdout, stderr } = await execPromise(command, { cwd: rootDir, env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") } });
     return new Response(JSON.stringify({ success: true, stdout, stderr }), {
       headers: { 'Content-Type': 'application/json' },
     });

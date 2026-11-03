@@ -84,3 +84,63 @@ test('pipeline.py & action.ts: verifies target output folder resolution', () => 
   );
 });
 
+
+// Exercise the actual inline handler with a minimal DOM, including its finally path.
+import vm from 'node:vm';
+for (const scenario of ['rejected', 'network']) {
+  test(`AI repair ${scenario}: stops animation and never displays heuristic as an AI result`, async () => {
+    const source = fs.readFileSync(path.join(rootDir, 'web/src/pages/index.astro'), 'utf8');
+    const handler = source.slice(source.indexOf('window.requestOllamaRepair ='), source.indexOf('// Wbudowany algorytmiczny'));
+    const elements = new Map();
+    const element = id => {
+      if (!elements.has(id)) elements.set(id, {
+        textContent: '', innerHTML: '', value: 'test-model',
+        classList: { removed: [], add() {}, remove(name) { this.removed.push(name); } },
+        attrs: {}, getAttribute(name) { return this.attrs[name]; }, setAttribute(name, value) { this.attrs[name] = value; },
+      });
+      return elements.get(id);
+    };
+    const context = {
+      window: {}, document: { getElementById: element }, bookSelector: { value: 'sample' },
+      globalReport: { anomalies: [{ paragraph_index: 1, raw_paragraph: 'OCR text' }] },
+      isAutopilotRunning: false, activeRepairController: null, repairStates: new Map(),
+      AbortController, setInterval: () => 1, clearInterval() {},
+      escapeHtml: s => s, showToast() {},
+      fetch: async () => {
+        if (scenario === 'network') throw new Error('connection lost');
+        return { status: 422, json: async () => ({ success: false, repaired: 'Proposed repair', error: 'Changed numbers' }) };
+      },
+    };
+    const helpers = source.slice(source.indexOf('function displayRepairState'), source.indexOf('function highlightIssues'));
+    vm.runInNewContext(helpers + handler, context);
+    await context.window.requestOllamaRepair(1);
+    assert.ok(element('quality-badge-1').classList.removed.includes('animate-pulse'));
+    assert.equal(element('card-1').attrs['aria-busy'], 'false');
+    assert.match(element('quality-badge-1').textContent, /nie zapisano/);
+    assert.equal(element('repaired-preview-1').textContent, scenario === 'rejected' ? 'Proposed repair' : 'Brak wyniku rekonstrukcji.');
+    assert.match(element('metrics-footer-1').textContent, scenario === 'rejected' ? /Changed numbers/ : /connection lost/);
+  });
+}
+
+import { repairPreservingAssets, assetsPreserved } from '../src/utils/repair-assets.ts';
+
+test('AI repairs prose on both sides of images without sending assets to model', async () => {
+  const image = '![Image](assets/image_000008_84b3.png)';
+  const input = `Bad text.${image}More bad text.\n\n${image}`;
+  const prompts = [];
+  const output = await repairPreservingAssets(input, async text => {
+    prompts.push(text);
+    return text.replace(/bad/gi, 'Clean');
+  });
+  assert.deepEqual(prompts, ['Bad text.', 'More bad text.']);
+  assert.equal(output, `Clean text.${image}More Clean text.\n\n${image}`);
+  assert.equal(assetsPreserved(input, output), true);
+  assert.equal(assetsPreserved(input, output.replace(image, '')), false);
+});
+
+test('AI cannot introduce or alter images, and empty fragments fail closed', async () => {
+  const image = '![alt](assets/figure(1).png)';
+  assert.equal(await repairPreservingAssets(image, async () => { throw Error('must not call'); }), image);
+  await assert.rejects(repairPreservingAssets(`Text${image}`, async () => ''), /pustą odpowiedź/);
+  await assert.rejects(repairPreservingAssets(`Text${image}`, async () => '![new](assets/other.png)'), /odnośniki/);
+});

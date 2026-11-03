@@ -22,3 +22,8 @@ input/*
 .idea/
 *.swp
 
+
+# Targeted OCR cache and local verification artifacts
+output/source_cache/
+web/tests/artifacts/
+.uv-cache/

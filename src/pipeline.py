@@ -42,7 +42,11 @@ def copy_to_windows_downloads(epub_path: Path) -> Optional[Path]:
     win_downloads = get_windows_downloads_dir()
     if win_downloads and win_downloads.exists() and epub_path.exists():
         dest = win_downloads / epub_path.name
-        shutil.copy2(epub_path, dest)
+        try:
+            shutil.copy2(epub_path, dest)
+        except OSError as exc:
+            console.print(f"[yellow]EPUB utworzony, ale kopiowanie do Windows nie powiodło się: {exc}[/yellow]")
+            return None
         return dest
     return None
 
