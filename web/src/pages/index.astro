@@ -287,6 +287,121 @@ import '../styles/global.css';
     </div>
   </footer>
 
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- OLLAMA SETUP & DIAGNOSTICS MODAL -->
+  <div id="ollamaModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700/80 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 text-zinc-200">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white tracking-tight">Konfiguracja Ollama (Windows + WSL)</h3>
+            <p class="text-xs text-zinc-400">Połączenie z lokalną kartą NVIDIA GeForce RTX 4080 Super</p>
+          </div>
+        </div>
+        <button id="btnCloseOllamaModal" class="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Info status box -->
+      <div id="modalOllamaStatusBox" class="p-3.5 rounded-xl text-xs font-mono border bg-amber-500/10 border-amber-500/30 text-amber-300 flex items-start gap-2.5">
+        <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div>
+          <span class="font-bold">Ollama działa w systemie Windows, a pipeline w WSL.</span>
+          <p class="mt-1 text-zinc-300 font-sans leading-relaxed">
+            Domyślnie Windows blokuje dostęp do portu 11434 spoza localhost. Aby Ollama przyjmowała połączenia z WSL, wystarczy jednorazowo wykonać poniższe polecenie:
+          </p>
+        </div>
+      </div>
+
+      <!-- Steps with 1-click copy -->
+      <div class="space-y-4 text-xs">
+        <!-- Step 1 -->
+        <div class="space-y-1.5">
+          <label class="font-semibold text-zinc-200 flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-zinc-800 text-emerald-400 border border-zinc-700 flex items-center justify-center text-[10px] font-bold">1</span>
+            Udostępnij Ollama dla WSL (otwórz PowerShell w Windows i wklej):
+          </label>
+          <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl p-2 font-mono text-emerald-300 text-[11px] select-all">
+            <span class="flex-1 overflow-x-auto whitespace-nowrap px-1">[Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "User")</span>
+            <button onclick="copyToClipboard('[Environment]::SetEnvironmentVariable(\'OLLAMA_HOST\', \'0.0.0.0\', \'User\')', 'Skopiowano polecenie PowerShell!')" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-sans transition shrink-0 flex items-center gap-1 border border-zinc-700">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Kopiuj</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="space-y-1.5">
+          <label class="font-semibold text-zinc-200 flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-zinc-800 text-emerald-400 border border-zinc-700 flex items-center justify-center text-[10px] font-bold">2</span>
+            Zrestartuj aplikację Ollama w Windows:
+          </label>
+          <p class="text-zinc-400 pl-5">
+            Kliknij prawym przyciskiem ikonę Ollama obok zegara systemowego Windows ➔ <strong>Quit Ollama</strong>, a następnie uruchom ją ponownie.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="space-y-1.5">
+          <label class="font-semibold text-zinc-200 flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-zinc-800 text-emerald-400 border border-zinc-700 flex items-center justify-center text-[10px] font-bold">3</span>
+            Uruchom rekomendowany model (PowerShell / Terminal):
+          </label>
+          <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl p-2 font-mono text-emerald-300 text-[11px] select-all">
+            <span class="flex-1 overflow-x-auto whitespace-nowrap px-1">ollama run qwen2.5:14b</span>
+            <button onclick="copyToClipboard('ollama run qwen2.5:14b', 'Skopiowano polecenie uruchomienia!')" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-sans transition shrink-0 flex items-center gap-1 border border-zinc-700">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Kopiuj</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-zinc-800">
+        <span class="text-[11px] text-zinc-500">Wskazówka: Autopilot działa od razu nawet bez Ollama!</span>
+        <div class="flex items-center gap-2">
+          <button id="btnCheckOllamaAgain" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Sprawdź połączenie
+          </button>
+          <button id="btnCloseOllamaModalBottom" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-medium border border-zinc-700 transition">
+            Zamknij
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-700/80 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-zinc-200">
+      <div class="flex items-start gap-3">
+        <div id="confirmModalIcon" class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </div>
+        <div class="space-y-1">
+          <h3 id="confirmModalTitle" class="text-base font-bold text-white tracking-tight">Potwierdź akcję</h3>
+          <p id="confirmModalMessage" class="text-xs text-zinc-400 leading-relaxed whitespace-pre-wrap"></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-800">
+        <button id="btnCancelConfirm" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-medium border border-zinc-700 transition">
+          Anuluj
+        </button>
+        <button id="btnAcceptConfirm" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow transition">
+          Potwierdź
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- CLIENT-SIDE SCRIPT LOGIC -->
   <script is:inline>
     let globalReport = null;
@@ -329,6 +444,107 @@ import '../styles/global.css';
     const btnOpenWindowsExplorer = document.getElementById('btnOpenWindowsExplorer');
     const btnPurgeEpub = document.getElementById('btnPurgeEpub');
     const btnPurgeWorkfiles = document.getElementById('btnPurgeWorkfiles');
+
+    // System powiadomień Toast (Zastępuje natywne browser alert)
+    function showToast(message, type = 'info', duration = 3500) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      let colorClasses = 'bg-zinc-900/95 border-zinc-700 text-zinc-200';
+      if (type === 'success') colorClasses = 'bg-emerald-950/95 border-emerald-500/40 text-emerald-200';
+      else if (type === 'error') colorClasses = 'bg-rose-950/95 border-rose-500/40 text-rose-200';
+      else if (type === 'warning') colorClasses = 'bg-amber-950/95 border-amber-500/40 text-amber-200';
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 backdrop-blur-md ${colorClasses}`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // Bezpieczne kopiowanie do schowka z powiadomieniem
+    window.copyToClipboard = function(text, successMsg = 'Skopiowano do schowka!') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg, 'success');
+      }).catch(err => {
+        showToast('Błąd kopiowania: ' + err.message, 'error');
+      });
+    };
+
+    // Nowoczesny modal potwierdzenia (Zastępuje natywne browser confirm)
+    let pendingConfirmAction = null;
+    function showConfirmModal({ title, message, confirmText = 'Potwierdź', danger = false, onConfirm }) {
+      const modal = document.getElementById('confirmModal');
+      const titleEl = document.getElementById('confirmModalTitle');
+      const msgEl = document.getElementById('confirmModalMessage');
+      const btnAccept = document.getElementById('btnAcceptConfirm');
+
+      if (!modal || !titleEl || !msgEl || !btnAccept) return;
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      btnAccept.textContent = confirmText;
+      btnAccept.className = danger
+        ? 'px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow transition'
+        : 'px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow transition';
+
+      pendingConfirmAction = onConfirm;
+      modal.classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirmModal');
+      if (modal) modal.classList.add('hidden');
+      pendingConfirmAction = null;
+    }
+
+    // Modal konfiguracji Ollama Windows + WSL
+    function openOllamaModal() {
+      const modal = document.getElementById('ollamaModal');
+      const statusBox = document.getElementById('modalOllamaStatusBox');
+      if (!modal) return;
+
+      if (globalOllama && globalOllama.available) {
+        statusBox.className = 'p-3.5 rounded-xl text-xs font-mono border bg-emerald-500/10 border-emerald-500/30 text-emerald-300 flex items-start gap-2.5';
+        statusBox.innerHTML = `
+          <svg class="w-4 h-4 mt-0.5 shrink-0 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <div>
+            <span class="font-bold">Ollama jest połączona i gotowa do pracy!</span>
+            <p class="mt-1 text-zinc-300 font-sans leading-relaxed">
+              Wykryte modele: <strong>${(globalOllama.models || []).join(', ') || 'qwen2.5:14b'}</strong>. Autopilot AI korzysta z karty RTX 4080 Super.
+            </p>
+          </div>
+        `;
+      } else {
+        statusBox.className = 'p-3.5 rounded-xl text-xs font-mono border bg-amber-500/10 border-amber-500/30 text-amber-300 flex items-start gap-2.5';
+        statusBox.innerHTML = `
+          <svg class="w-4 h-4 mt-0.5 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div>
+            <span class="font-bold">Ollama działa w systemie Windows, a pipeline w WSL.</span>
+            <p class="mt-1 text-zinc-300 font-sans leading-relaxed">
+              Domyślnie Windows izoluje port 11434. Aby udostępnić połączenie dla WSL, wykonaj poniższe proste polecenie w PowerShell.
+            </p>
+          </div>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeOllamaModal() {
+      const modal = document.getElementById('ollamaModal');
+      if (modal) modal.classList.add('hidden');
+    }
 
     // Inicjalizacja: pobranie listy książek i statusu
     async function init() {
@@ -544,11 +760,12 @@ import '../styles/global.css';
             card.style.opacity = '0.4';
             card.innerHTML = `<div class="p-3 text-xs text-emerald-400 font-mono">✓ Akapit #${pIdx} zaktualizowany pomyślnie.</div>`;
           }
+          showToast(`✓ Zapisano poprawkę dla akapitu #${pIdx}`, 'success');
         } else {
-          alert('Błąd zapisu poprawki: ' + result.error);
+          showToast('Błąd zapisu poprawki: ' + result.error, 'error');
         }
       } catch (err) {
-        alert('Błąd sieciowy: ' + err.message);
+        showToast('Błąd sieciowy: ' + err.message, 'error');
       }
     };
 
@@ -578,12 +795,13 @@ import '../styles/global.css';
         const data = await res.json();
         if (data.success && data.repaired) {
           textarea.value = data.repaired;
+          showToast(`✓ Otrzymano rekonstrukcję AI dla #${pIdx}`, 'success');
         } else {
           textarea.value = anomaly.raw_paragraph || anomaly.snippet;
-          alert('Ollama info: ' + (data.error || 'Błąd odpowiedzi'));
+          showToast('Ollama: ' + (data.error || 'Brak odpowiedzi'), 'warning');
         }
       } catch (err) {
-        alert('Błąd komunikacji: ' + err.message);
+        showToast('Błąd komunikacji z modelem: ' + err.message, 'error');
       }
     };
 
@@ -791,73 +1009,77 @@ import '../styles/global.css';
       }
     }
 
-    // Usunięcie wyłącznie pliku EPUB
+    // Usunięcie wyłącznie pliku EPUB (z nowoczesnym modalem potwierdzenia)
     async function purgeEpubOnly() {
       const currentBook = bookSelector.value || 'ksiazka';
-      if (!confirm(`Czy na pewno chcesz usunąć gotowy plik ${currentBook}.epub?\nPliki robocze (.md) pozostaną nienaruszone.`)) {
-        return;
-      }
-      showStatus(`Usuwanie pliku ${currentBook}.epub...`, 'info');
-      try {
-        const res = await fetch('/api/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'purge-epub', book: currentBook })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showStatus(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
-          await fetchStatus();
-          await loadBooks();
-        } else {
-          showStatus(`Błąd: ${data.error}`, 'error');
+      showConfirmModal({
+        title: 'Usuń plik EPUB',
+        message: `Czy na pewno chcesz usunąć gotowy plik ${currentBook}.epub?\nPliki robocze (.md) pozostaną nienaruszone.`,
+        confirmText: 'Usuń plik EPUB',
+        danger: true,
+        onConfirm: async () => {
+          showStatus(`Usuwanie pliku ${currentBook}.epub...`, 'info');
+          try {
+            const res = await fetch('/api/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'purge-epub', book: currentBook })
+            });
+            const data = await res.json();
+            if (data.success) {
+              showToast(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
+              showStatus(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
+              await fetchStatus();
+              await loadBooks();
+            } else {
+              showToast(`Błąd: ${data.error}`, 'error');
+              showStatus(`Błąd: ${data.error}`, 'error');
+            }
+          } catch (err) {
+            showToast(`Błąd: ${err.message}`, 'error');
+            showStatus(`Błąd: ${err.message}`, 'error');
+          }
         }
-      } catch (err) {
-        showStatus(`Błąd: ${err.message}`, 'error');
-      }
+      });
     }
 
-    // Sprzątanie plików roboczych (czyści pliki robocze, zachowując gotowy plik .epub)
+    // Sprzątanie plików roboczych (z nowoczesnym modalem potwierdzenia)
     async function purgeWorkingFiles() {
       const currentBook = bookSelector.value || 'ksiazka';
-      if (!confirm(`Czy na pewno chcesz wyczyścić pliki robocze (.md, .bak, wyekstrahowane grafiki, raporty audytu) dla książki "${currentBook}"?\n\nGotowy plik .epub pozostanie nienaruszony (od usuwania EPUB służy osobny przycisk).`)) {
-        return;
-      }
-
-      showStatus('Czyszczenie plików roboczych...', 'info');
-      try {
-        const res = await fetch('/api/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'purge', book: currentBook })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showStatus(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
-          await fetchStatus();
-          await loadBooks();
-        } else {
-          showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
+      showConfirmModal({
+        title: 'Wyczyść pliki robocze',
+        message: `Czy na pewno chcesz wyczyścić pliki robocze (.md, .bak, wyekstrahowane grafiki, raporty audytu) dla książki "${currentBook}"?\n\nGotowy plik .epub pozostanie nienaruszony (od usuwania EPUB służy osobny przycisk "Usuń EPUB").`,
+        confirmText: 'Wyczyść pliki robocze',
+        danger: true,
+        onConfirm: async () => {
+          showStatus('Czyszczenie plików roboczych...', 'info');
+          try {
+            const res = await fetch('/api/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'purge', book: currentBook })
+            });
+            const data = await res.json();
+            if (data.success) {
+              showToast(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
+              showStatus(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
+              await fetchStatus();
+              await loadBooks();
+            } else {
+              showToast(`Błąd: ${data.error}`, 'error');
+              showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
+            }
+          } catch (err) {
+            showToast(`Błąd: ${err.message}`, 'error');
+            showStatus(`Błąd: ${err.message}`, 'error');
+          }
         }
-      } catch (err) {
-        showStatus(`Błąd: ${err.message}`, 'error');
-      }
+      });
     }
 
-    // Pomoc: Jak połączyć Ollama z Windows w WSL
+    // Pomoc: Jak połączyć Ollama z Windows w WSL (otwiera nowoczesny modal)
     function showOllamaHelp() {
-      if (globalOllama && globalOllama.available) {
-        alert(`✓ Silnik Ollama jest połączony i aktywny!\nDostępne modele: ${(globalOllama.models || []).join(', ')}`);
-        return;
-      }
-      alert(
-        'ℹ️ Jak połączyć serwer Ollama uruchomiony na Windows z WSL:\n\n' +
-        '1. W Windows otwórz PowerShell jako Administrator i wykonaj:\n' +
-        '   [Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "User")\n\n' +
-        '2. Zrestartuj aplikację Ollama w Windows (zamknij z zasobnika systemowego i włącz ponownie).\n\n' +
-        '3. Gotowe! Po odświeżeniu strony wskaźnik zmieni się na zielony [Ollama Online].\n\n' +
-        'Wskazówka: Autopilot działa od razu nawet bez Ollama, używając wbudowanego silnika rekonstrukcji!'
-      );
+      openOllamaModal();
     }
 
     // Wywołanie akcji w CLI (extract, clean, audit, build)
@@ -908,9 +1130,7 @@ Instrukcja postępowania (zgodnie z AGENTS.md):
 4. Po weryfikacji skompiluj EPUB: uv run python -m src.pipeline build --book ${currentBook}
 Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane w Windows.`;
 
-      navigator.clipboard.writeText(promptText).then(() => {
-        alert('✓ Skopiowano prompt dla Agenta VS Code do schowka!');
-      });
+      copyToClipboard(promptText, '✓ Skopiowano prompt dla Agenta VS Code do schowka!');
     }
 
     function setupEventListeners() {
@@ -944,6 +1164,29 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
       btnStopAutopilot.addEventListener('click', () => {
         stopRequested = true;
         autopilotStepLabel.textContent = 'Zatrzymywanie autopilota...';
+      });
+
+      // Modale
+      document.getElementById('btnCloseOllamaModal').addEventListener('click', closeOllamaModal);
+      document.getElementById('btnCloseOllamaModalBottom').addEventListener('click', closeOllamaModal);
+      document.getElementById('btnCheckOllamaAgain').addEventListener('click', async () => {
+        showToast('Sprawdzanie połączenia z Ollama...', 'info');
+        await fetchStatus();
+        if (globalOllama && globalOllama.available) {
+          showToast('✓ Połączono z Ollama na RTX 4080 Super!', 'success');
+          openOllamaModal();
+        } else {
+          showToast('Ollama nadal offline. Upewnij się, że zrestartowano Ollama w Windows.', 'warning');
+        }
+      });
+
+      document.getElementById('btnCancelConfirm').addEventListener('click', closeConfirmModal);
+      document.getElementById('btnAcceptConfirm').addEventListener('click', async () => {
+        if (pendingConfirmAction) {
+          const action = pendingConfirmAction;
+          closeConfirmModal();
+          await action();
+        }
       });
     }
 

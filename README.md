@@ -161,16 +161,26 @@ pkill -f "astro"
 
 ---
 
-### 4. Wykorzystanie lokalnego GPU (NVIDIA RTX 4080 SUPER 16GB + Ollama)
+### 4. Wykorzystanie lokalnego GPU (NVIDIA RTX 4080 SUPER 16GB + Ollama na Windows/WSL)
 
 Posiadając kartę **NVIDIA GeForce RTX 4080 SUPER (16 GB VRAM)**, masz do dyspozycji potężną platformę do lokalnego wnioskowania AI:
 * **Zero opłat:** Brak konieczności płacenia za API (OpenAI/Anthropic).
 * **Rekomendowany model:** `qwen2.5:14b-instruct` (lub `llama3.1:8b`). Model 14B w kwantyzacji Q4 mieści się w ~9 GB VRAM, osiągając **60–100 tokenów na sekundę** w 100% na GPU. Doskonale radzi sobie z terminologią kulinarną i językiem polskim/angielskim.
-* **Uruchomienie:**
-  ```bash
-  ollama run qwen2.5:14b
-  ```
-  Gdy Ollama działa w tle, Studio na `http://localhost:4343` automatycznie wykryje model i aktywuje zieloną kontrolkę AI Online.
+
+#### Konfiguracja Ollama na Windows dla środowiska WSL:
+Gdy Ollama jest zainstalowana bezpośrednio w Windows, domyślnie nasłuchuje tylko na `127.0.0.1` wewnątrz Windows, odrzucając pakiety z wirtualnej sieci WSL. Aby umożliwić połączenie:
+
+1. **Udostępnij port dla WSL:** Otwórz **PowerShell** w Windows i wklej:
+   ```powershell
+   [Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "User")
+   ```
+2. **Zrestartuj Ollama:** Zamknij Ollama z zasobnika systemowego Windows (koło zegarka ➔ *Quit Ollama*) i uruchom ją ponownie.
+3. **Uruchom model:**
+   ```powershell
+   ollama run qwen2.5:14b
+   ```
+4. **Weryfikacja w Web Studio:** Otwórz `http://localhost:4343`. Wskaźnik w prawym górnym rogu zmieni się na zielony **[Ollama Online]**.
+   *(Wskazówka: Nawet bez Ollama, Autopilot w Web Studio potrafi w 100% zrekonstruować wady za pomocą wbudowanego silnika regułowego).*
 
 ---
 
