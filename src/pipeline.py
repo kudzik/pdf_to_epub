@@ -12,6 +12,7 @@ from docling.datamodel.progress import PageCompletedProgress
 from docling_core.types.doc.base import ImageRefMode
 
 from src.cleaner import clean_markdown_file
+from src.auditor import audit_markdown_file
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3.",
@@ -244,6 +245,51 @@ def clean(
     console.print(f"[cyan]Czyszczenie i normalizacja: {input_md.name}...[/cyan]")
     out = clean_markdown_file(input_md, output_md)
     console.print(f"[bold green]✓ Pomyślnie oczyszczono plik Markdown:[/bold green] {out}")
+
+
+@app.command()
+def audit(
+    input_md: Annotated[
+        Optional[Path],
+        typer.Option("--input-md", "-m", help="Ścieżka do pliku Markdown do audytu."),
+    ] = None,
+    report_file: Annotated[
+        Path,
+        typer.Option("--report", "-r", help="Ścieżka wyjściowa dla raportu audytu JSON."),
+    ] = Path("output/audit_report.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Główny katalog wyjściowy."),
+    ] = Path("output"),
+):
+    """Krok audytu: Analiza jakościowa pliku Markdown, wykrywanie anomalii i braków."""
+    if input_md is None:
+        md_dir = output_dir / "markdown"
+        md_files = sorted(list(md_dir.glob("*.md")))
+        if not md_files:
+            console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono żadnego pliku .md w {md_dir}")
+            raise typer.Exit(code=1)
+        input_md = md_files[0]
+
+    console.print(f"[cyan]Uruchamianie audytu jakościowego dla: {input_md.name}...[/cyan]")
+    report = audit_markdown_file(input_md, report_file)
+
+    console.print(f"\n[bold green]✓ Audyt zakończony sukcesem![/bold green]")
+    console.print(f"  • Przeskanowano akapitów: [bold]{report.total_paragraphs}[/bold]")
+    pct = (report.total_anomalies / max(1, report.total_paragraphs)) * 100
+    console.print(f"  • Wykryto anomalii ogółem: [bold yellow]{report.total_anomalies}[/bold yellow] ({pct:.1f}% treści)")
+    console.print(f"    - Wysoki priorytet (High): [bold red]{report.high_severity_count}[/bold red]")
+    console.print(f"    - Średni priorytet (Medium): [yellow]{report.medium_severity_count}[/yellow]")
+    console.print(f"    - Niski priorytet (Low): [blue]{report.low_severity_count}[/blue]")
+    console.print(f"  • Przerośnięte nagłówki (całe akapity jako H2): [bold]{report.overlong_headings_count}[/bold]")
+    if report.missing_chapters:
+        console.print(f"  • Brakujące rozdziały ze spisu treści: [bold red]{len(report.missing_chapters)}[/bold red]")
+        for ch in report.missing_chapters:
+            console.print(f"    - [red]{ch}[/red]")
+    else:
+        console.print("  • Wszystkie rozdziały ze spisu treści obecne w dokumencie: [bold green]TAK[/bold green]")
+
+    console.print(f"\n[cyan]Pełny szczegółowy raport zapisano do:[/cyan] [bold]{report_file}[/bold]")
 
 
 @app.command()

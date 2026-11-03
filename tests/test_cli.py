@@ -168,4 +168,19 @@ def test_clean_command(tmp_path: Path):
     assert "ingredients" in cleaned_content
 
 
+def test_audit_command(tmp_path: Path):
+    """Weryfikuje wykonanie podkomendy 'audit' przez CLI."""
+    md_dir = tmp_path / "markdown"
+    md_dir.mkdir(parents=True)
+    sample_md = md_dir / "sample.md"
+    sample_md.write_text("Normal text.\n\nCorrupted text with ha^been in die oven.\n", encoding="utf-8")
+    report_file = tmp_path / "report.json"
+
+    result = runner.invoke(app, ["audit", "--input-md", str(sample_md), "--report", str(report_file)])
+    assert result.exit_code == 0
+    assert "Audyt zakończony sukcesem" in result.stdout
+    assert report_file.exists()
+
+
+
 

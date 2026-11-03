@@ -98,7 +98,12 @@ uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   uv run python -m src.pipeline clean
   ```
 
-* **Krok 3: Kompilacja do EPUB:**
+* **Krok 3: Audyt jakościowy (wykrywanie anomalii OCR i braków):**
+  ```bash
+  uv run python -m src.pipeline audit
+  ```
+
+* **Krok 4: Kompilacja do EPUB:**
   ```bash
   uv run python -m src.pipeline build
 

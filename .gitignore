@@ -11,6 +11,7 @@ output/markdown/assets/*
 !output/markdown/assets/.gitkeep
 output/epub/*
 !output/epub/.gitkeep
+output/audit_report.json
 
 # Pliki wejściowe PDF
 input/*

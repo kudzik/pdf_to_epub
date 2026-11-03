@@ -34,6 +34,10 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   ```bash
   uv run python -m src.pipeline clean
   ```
+- **Audyt jakościowy Markdowna (wykrywanie uszkodzeń OCR i braków):**
+  ```bash
+  uv run python -m src.pipeline audit
+  ```
 - **Kompilacja EPUB po korekcie Markdowna:**
   ```bash
   uv run python -m src.pipeline build
