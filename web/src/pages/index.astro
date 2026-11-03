@@ -186,9 +186,9 @@ import '../styles/global.css';
           </button>
 
           <!-- Heuristic Batch Button -->
-          <button id="btnHeuristicBatch" class="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700" title="Automatyczna naprawa typowych ułamków i znaków ^/° regexem">
+          <button id="btnHeuristicBatch" class="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700" title="Automatyczna rekonstrukcja polskich znaków, ułamków i szumów OCR">
             <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Szybka Rekonstrukcja (Regex)
+            Szybka Rekonstrukcja (Polskie Znaki & Ułamki)
           </button>
 
           <!-- Copy Prompt for VS Code Agent -->
@@ -566,6 +566,18 @@ import '../styles/global.css';
 
     // AUTOPILOT AI: Automatyczna sekwencyjna pętla naprawy (bez 113 kliknięć!)
     async function startOllamaAutopilot() {
+      if (!globalOllama.available) {
+        alert(
+          '⚠️ Serwer Ollama nie odpowiada na http://localhost:11434.\n\n' +
+          'Aby korzystać z Autopilota AI na karcie RTX 4080 Super:\n' +
+          '1. Uruchom w terminalu: ollama run qwen2.5:14b\n' +
+          '2. Wskaźnik w prawym górnym rogu zmieni się na zielony [Ollama Online].\n\n' +
+          'Wskazówka: Możesz teraz skorzystać z natychmiastowego przycisku:\n' +
+          '"Szybka Rekonstrukcja (Polskie Znaki & Ułamki)"!'
+        );
+        return;
+      }
+
       if (!globalReport || !globalReport.anomalies || globalReport.anomalies.length === 0) {
         alert('Brak wykrytych anomalii do naprawy.');
         return;
@@ -592,86 +604,64 @@ import '../styles/global.css';
         const pIdx = anomaly.paragraph_index;
         const percent = Math.round(((i + 1) / total) * 100);
 
-        autopilotStepLabel.textContent = `Naprawa ${i + 1} z ${total} (Akapit #${pIdx})...`;
+        autopilotStepLabel.textContent = `Naprawa AI ${i + 1} z ${total} (Akapit #${pIdx})...`;
         autopilotProgressPercent.textContent = `${percent}%`;
         autopilotProgressBar.style.width = `${percent}%`;
         autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason}`;
 
-        // Wywołaj naprawę przez Ollama z natychmiastowym zapisem (apply: true)
-        // Jeśli Ollama jest niedostępna, użyj bezpiecznej rekonstrukcji heurystycznej
-        let repairedText = '';
-        if (globalOllama.available) {
-          try {
-            const res = await fetch('/api/ollama-repair', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                index: pIdx,
-                paragraph: anomaly.raw_paragraph,
-                reason: anomaly.reason,
-                file: file,
-                apply: true
-              })
-            });
-            const data = await res.json();
-            if (data.success && data.repaired) {
-              repairedCount++;
-            }
-          } catch (e) {
-            console.error('Błąd Ollama na akapicie ' + pIdx, e);
-          }
-        } else {
-          // Fallback heurystyczny z automatycznym zapisem
-          repairedText = heuristicFixSingle(anomaly.raw_paragraph);
-          try {
-            await fetch('/api/patch', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ index: pIdx, text: repairedText, file })
-            });
+        try {
+          const res = await fetch('/api/ollama-repair', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              index: pIdx,
+              paragraph: anomaly.raw_paragraph,
+              reason: anomaly.reason,
+              file: file,
+              apply: true
+            })
+          });
+          const data = await res.json();
+          if (data.success && data.repaired) {
             repairedCount++;
-          } catch (e) {}
+          }
+        } catch (e) {
+          console.error('Błąd Ollama na akapicie ' + pIdx, e);
         }
       }
 
       autopilotStepLabel.textContent = stopRequested 
         ? `Autopilot zatrzymany. Naprawiono ${repairedCount} akapitów.` 
-        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów.`;
+        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów. Automatyczna kompilacja EPUB...`;
       
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
 
-      // Automatyczny ponowny audyt po zakończeniu
-      setTimeout(() => {
-        triggerAction('audit');
-      }, 1000);
+      // Automatyczna rekompilacja EPUB i ponowny audyt po zakończeniu
+      await triggerAction('build');
+      await triggerAction('audit');
     }
 
-    // Heurystyczna rekonstrukcja batch (natychmiastowa)
+    // Rekonstrukcja wsadowa (Polskie Znaki, Ułamki, Akcenty i EPUB)
     async function runHeuristicBatch() {
-      if (!globalReport || !globalReport.anomalies) return;
       const file = fileSelector.value || 'ksiazka.md';
-      const patches = globalReport.anomalies.map(a => ({
-        index: a.paragraph_index,
-        text: heuristicFixSingle(a.raw_paragraph)
-      }));
+      pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Trwa rekonstrukcja polskich znaków i normalizacja tekstu...';
 
-      pipelineStatus.textContent = 'Trwa wsadowa aplikacja poprawek...';
       try {
-        const res = await fetch('/api/patch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patches, file })
-        });
-        const data = await res.json();
-        if (data.success) {
-          pipelineStatus.textContent = `✓ Zastosowano ${data.count} poprawek. Uruchamianie audytu...`;
-          await triggerAction('audit');
-        } else {
-          alert('Błąd wsadowej aplikacji: ' + data.error);
-        }
+        // 1. Wywołanie silnika czyszczącego z pełną tabelą znaków diakrytycznych
+        await triggerAction('clean');
+
+        pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Kompilacja czystego EPUB 3 przez Pandoc...';
+        // 2. Automatyczna kompilacja EPUB
+        await triggerAction('build');
+
+        pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Weryfikacja jakościowa w toku...';
+        // 3. Odświeżenie audytu
+        await triggerAction('audit');
+
+        pipelineStatus.textContent = '✓ Sukces: Polskie znaki i ułamki zrekonstruowane, EPUB zaktualizowany!';
       } catch (err) {
-        alert('Błąd sieciowy: ' + err.message);
+        pipelineStatus.textContent = 'Błąd rekonstrukcji: ' + err.message;
       }
     }
 
