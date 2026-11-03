@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
+import { getProjectRootDir } from '../../utils/paths';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -73,8 +74,9 @@ ${paragraph}`;
 
     // Jeśli poproszono o natychmiastowe zaaplikowanie do pliku markdown
     if (apply && index !== undefined) {
-      const rootDir = path.resolve(process.cwd(), '..');
-      const mdPath = path.join(rootDir, 'output', 'markdown', file);
+      const rootDir = getProjectRootDir();
+      const cleanFileName = path.basename(file);
+      const mdPath = path.join(rootDir, 'output', 'markdown', cleanFileName);
 
       if (fs.existsSync(mdPath)) {
         const bakPath = mdPath + '.bak';

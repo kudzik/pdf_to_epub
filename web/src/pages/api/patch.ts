@@ -1,16 +1,18 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
+import { getProjectRootDir } from '../../utils/paths';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
     const { index, text, patches, file = 'ksiazka.md' } = body;
-    const rootDir = path.resolve(process.cwd(), '..');
-    const mdPath = path.join(rootDir, 'output', 'markdown', file);
+    const rootDir = getProjectRootDir();
+    const cleanFileName = path.basename(file);
+    const mdPath = path.join(rootDir, 'output', 'markdown', cleanFileName);
 
     if (!fs.existsSync(mdPath)) {
-      return new Response(JSON.stringify({ error: `Plik ${file} nie istnieje` }), { status: 404 });
+      return new Response(JSON.stringify({ error: `Plik ${cleanFileName} nie istnieje` }), { status: 404 });
     }
 
     // Tworzenie kopii zapasowej .bak przed modyfikacją

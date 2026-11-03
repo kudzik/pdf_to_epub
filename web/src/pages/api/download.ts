@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
+import { getProjectRootDir } from '../../utils/paths';
 
 export const GET: APIRoute = async ({ url }) => {
   const file = url.searchParams.get('file') || 'ksiazka.epub';
-  const rootDir = path.resolve(process.cwd(), '..');
+  const rootDir = getProjectRootDir();
   const epubPath = path.join(rootDir, 'output', 'epub', path.basename(file));
 
   if (!fs.existsSync(epubPath)) {
@@ -19,4 +20,3 @@ export const GET: APIRoute = async ({ url }) => {
     },
   });
 };
-

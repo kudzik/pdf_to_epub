@@ -1,30 +1,85 @@
 import type { APIRoute } from 'astro';
 import { exec } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import util from 'util';
+import { getProjectRootDir } from '../../utils/paths';
 
 const execPromise = util.promisify(exec);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { action, file } = await request.json();
-    const rootDir = path.resolve(process.cwd(), '..');
+    const { action, file, book, keepEpub = false, targetFolder = 'epub' } = await request.json();
+    const rootDir = getProjectRootDir();
+    
+    // Ustalanie nazwy książki (stem)
+    const rawName = book || file || 'ksiazka';
+    const bookStem = path.basename(rawName).replace(/\.(pdf|md|epub)$/, '');
+
+    const mdPath = path.join(rootDir, 'output', 'markdown', `${bookStem}.md`);
+    const epubPath = path.join(rootDir, 'output', 'epub', `${bookStem}.epub`);
+    const pdfPath = path.join(rootDir, 'input', `${bookStem}.pdf`);
 
     let command = '';
-    if (action === 'clean') {
-      command = file
-        ? `uv run python -m src.pipeline clean --input-md output/markdown/${file}`
-        : 'uv run python -m src.pipeline clean';
+
+    if (action === 'extract') {
+      command = `uv run python -m src.pipeline extract --book "${bookStem}"`;
+    } else if (action === 'clean') {
+      command = `uv run python -m src.pipeline clean --book "${bookStem}"`;
     } else if (action === 'audit') {
-      command = file
-        ? `uv run python -m src.pipeline audit --input-md output/markdown/${file}`
-        : 'uv run python -m src.pipeline audit';
+      command = `uv run python -m src.pipeline audit --book "${bookStem}"`;
     } else if (action === 'build') {
-      command = file
-        ? `uv run python -m src.pipeline build --input-md output/markdown/${file}`
-        : 'uv run python -m src.pipeline build';
+      command = `uv run python -m src.pipeline build --book "${bookStem}"`;
+    } else if (action === 'purge') {
+      const keepFlag = keepEpub ? '--keep-epub' : '';
+      command = `uv run python -m src.pipeline purge --book "${bookStem}" ${keepFlag}`;
+    } else if (action === 'purge-all') {
+      const keepFlag = keepEpub ? '--keep-epub' : '';
+      command = `uv run python -m src.pipeline purge --all ${keepFlag}`;
+    } else if (action === 'copy-windows') {
+      // Skopiuj EPUB bezpośrednio do Windows Downloads
+      if (!fs.existsSync(epubPath)) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Plik EPUB dla ${bookStem} nie został jeszcze wygenerowany.`
+        }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Wyszukaj folder Downloads użytkownika Windows
+      let winDownloads: string | null = null;
+      const wslUsers = '/mnt/c/Users';
+      if (fs.existsSync(wslUsers)) {
+        for (const u of fs.readdirSync(wslUsers)) {
+          if (!['Public', 'Default', 'Default User', 'All Users'].includes(u)) {
+            const dl = path.join(wslUsers, u, 'Downloads');
+            if (fs.existsSync(dl)) {
+              winDownloads = dl;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!winDownloads) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Nie znaleziono folderu Pobrane w Windows (/mnt/c/Users/*/Downloads).'
+        }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      const destPath = path.join(winDownloads, `${bookStem}.epub`);
+      fs.copyFileSync(epubPath, destPath);
+
+      return new Response(JSON.stringify({
+        success: true,
+        destPath,
+        message: `Pomyślnie skopiowano do Windows Downloads: ${destPath}`
+      }), { headers: { 'Content-Type': 'application/json' } });
+
+    } else if (action === 'open-windows') {
+      command = `uv run python -m src.pipeline open-windows --folder "${targetFolder}"`;
     } else {
-      return new Response(JSON.stringify({ error: 'Nieobsługiwana akcja' }), { status: 400 });
+      return new Response(JSON.stringify({ error: `Nieobsługiwana akcja: ${action}` }), { status: 400 });
     }
 
     const { stdout, stderr } = await execPromise(command, { cwd: rootDir });
@@ -38,4 +93,3 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 };
-

@@ -18,13 +18,15 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
 4. **Integralność grafik:** Wszystkie wyekstrahowane obrazy znajdują się w `output/markdown/assets/` i są linkowane w Markdownie relatywnie jako `assets/<nazwa>.png`.
 
 ## Komendy operacyjne dla Agenta AI
-- **Pełny automatyczny przebieg (Ekstrakcja + Czyszczenie + EPUB):**
+- **Wybór książki:** Wszelkie polecenia (`extract`, `clean`, `audit`, `build`, `purge`) wspierają opcję `--book` / `-b <nazwa>` (np. `-b ksiazka`).
+- **Auto-tworzenie pliku Markdown:** Jeśli wywołasz `clean`, `audit` lub `build` z opcją `--book <nazwa>`, a plik `output/markdown/<nazwa>.md` nie istnieje, pipeline automatycznie przeprowadzi bezstratną ekstrakcję z `input/<nazwa>.pdf`.
+- **Pełny automatyczny przebieg (Ekstrakcja + Czyszczenie + EPUB + Kopiowanie do Windows):**
   ```bash
   uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   ```
 - **Tylko ekstrakcja (PDF -> surowy Markdown):**
   ```bash
-  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf
+  uv run python -m src.pipeline extract --book ksiazka
   ```
 - **Szybki test ekstrakcji na wybranych stronach:**
   ```bash
@@ -32,11 +34,11 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   ```
 - **Czyszczenie i normalizacja pliku Markdown:**
   ```bash
-  uv run python -m src.pipeline clean
+  uv run python -m src.pipeline clean --book ksiazka
   ```
 - **Audyt jakościowy Markdowna (wykrywanie uszkodzeń OCR i braków):**
   ```bash
-  uv run python -m src.pipeline audit
+  uv run python -m src.pipeline audit --book ksiazka
   ```
 - **Inspekcja konkretnej anomalii z kontekstem przed i po:**
   ```bash
@@ -52,11 +54,18 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   ```
 - **Kompilacja EPUB po korekcie Markdowna:**
   ```bash
-  uv run python -m src.pipeline build
+  uv run python -m src.pipeline build --book ksiazka
   ```
-- **Kompilacja z własną okładką:**
+- **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
-  uv run python -m src.pipeline build --cover assets/cover.jpg
+  uv run python -m src.pipeline open-windows --folder epub
+  ```
+- **Czyszczenie plików roboczych po skończonej pracy (oszczędność dysku):**
+  ```bash
+  # Usuwa pliki robocze (.md, .bak, raport), zachowując gotowy .epub:
+  uv run python -m src.pipeline purge --book ksiazka --keep-epub
+  # Usuwa wszystkie pliki robocze:
+  uv run python -m src.pipeline purge --all
   ```
 - **Uruchomienie testów jednostkowych:**
   ```bash

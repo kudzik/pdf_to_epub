@@ -1,21 +1,37 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
 import path from 'path';
+import { getProjectRootDir } from '../../utils/paths';
 
 export const GET: APIRoute = async ({ url }) => {
-  const rootDir = path.resolve(process.cwd(), '..');
-  const fileParam = url.searchParams.get('file') || 'ksiazka.md';
-  const baseName = fileParam.replace(/\.(md|pdf)$/, '');
+  const rootDir = getProjectRootDir();
+  const fileParam = path.basename(url.searchParams.get('file') || url.searchParams.get('book') || 'ksiazka');
+  const baseName = fileParam.replace(/\.(md|pdf|epub)$/, '');
 
-  const reportPath = path.join(rootDir, 'output', 'audit_report.json');
+  let reportPath = path.join(rootDir, 'output', `audit_${baseName}.json`);
+  if (!fs.existsSync(reportPath)) {
+    reportPath = path.join(rootDir, 'output', 'audit_report.json');
+  }
+
   const epubPath = path.join(rootDir, 'output', 'epub', `${baseName}.epub`);
-  const mdPath = path.join(rootDir, 'output', 'markdown', fileParam.endsWith('.md') ? fileParam : `${baseName}.md`);
+  const mdPath = path.join(rootDir, 'output', 'markdown', `${baseName}.md`);
+  const pdfPath = path.join(rootDir, 'input', `${baseName}.pdf`);
 
   let report = null;
   if (fs.existsSync(reportPath)) {
     try {
       report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
     } catch (e) {}
+  }
+
+  let pdfInfo = { exists: false, filename: `${baseName}.pdf`, size: '0 MB' };
+  if (fs.existsSync(pdfPath)) {
+    const stat = fs.statSync(pdfPath);
+    pdfInfo = {
+      exists: true,
+      filename: `${baseName}.pdf`,
+      size: (stat.size / (1024 * 1024)).toFixed(1) + ' MB',
+    };
   }
 
   let epubInfo = { exists: false, size: '0 MB', mtime: '', filename: `${baseName}.epub` };
@@ -29,7 +45,7 @@ export const GET: APIRoute = async ({ url }) => {
     };
   }
 
-  let mdInfo = { exists: false, size: '0 MB', lines: 0, filename: path.basename(mdPath) };
+  let mdInfo = { exists: false, size: '0 MB', lines: 0, filename: `${baseName}.md` };
   if (fs.existsSync(mdPath)) {
     const stat = fs.statSync(mdPath);
     const content = fs.readFileSync(mdPath, 'utf-8');
@@ -37,7 +53,7 @@ export const GET: APIRoute = async ({ url }) => {
       exists: true,
       size: (stat.size / (1024 * 1024)).toFixed(1) + ' MB',
       lines: content.split('\n').length,
-      filename: path.basename(mdPath),
+      filename: `${baseName}.md`,
     };
   }
 
@@ -57,10 +73,11 @@ export const GET: APIRoute = async ({ url }) => {
   } catch (e) {}
 
   return new Response(JSON.stringify({
-    file: mdInfo.filename,
-    report,
+    book: baseName,
+    pdfInfo,
     epubInfo,
     mdInfo,
+    report,
     ollama: {
       available: ollamaAvailable,
       models: ollamaModels,

@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Annotated, Optional
@@ -16,10 +18,33 @@ from src.auditor import audit_markdown_file
 from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
 
 app = typer.Typer(
-    help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3.",
+    help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3 z integracją WSL/Windows.",
     no_args_is_help=True,
 )
 console = Console()
+
+
+def get_windows_downloads_dir() -> Optional[Path]:
+    """Wykrywa katalog Pobrane użytkownika Windows w środowisku WSL."""
+    wsl_users_dir = Path("/mnt/c/Users")
+    if not wsl_users_dir.exists():
+        return None
+    for user_dir in wsl_users_dir.iterdir():
+        if user_dir.is_dir() and user_dir.name not in ["Public", "Default", "Default User", "All Users"]:
+            downloads = user_dir / "Downloads"
+            if downloads.exists() and downloads.is_dir():
+                return downloads
+    return None
+
+
+def copy_to_windows_downloads(epub_path: Path) -> Optional[Path]:
+    """Kopiuje plik EPUB bezpośrednio do folderu Pobrane w Windows."""
+    win_downloads = get_windows_downloads_dir()
+    if win_downloads and win_downloads.exists() and epub_path.exists():
+        dest = win_downloads / epub_path.name
+        shutil.copy2(epub_path, dest)
+        return dest
+    return None
 
 
 def has_text_layer(pdf_path: str, max_check_pages: int = 5) -> bool:
@@ -62,31 +87,30 @@ def extract_pdf(
     pages: Optional[str] = None,
     ocr: Optional[bool] = None,
 ) -> Path:
-    """Czysta funkcja biznesowa: ekstrakcja układu, tekstu i grafik z PDF do Markdown."""
+    """Czysta funkcja biznesowa: ekstrakcja PDF do Markdown."""
     if not input_pdf.exists():
         console.print(f"[bold red]Błąd: Nie znaleziono pliku wejściowego:[/bold red] {input_pdf}")
         raise typer.Exit(code=1)
 
-    md_dir = output_dir / "markdown"
-    assets_dir = md_dir / "assets"
-    assets_dir.mkdir(parents=True, exist_ok=True)
+    lang_list = [l.strip() for l in languages.split(",") if l.strip()]
 
-    # Inteligentna detekcja OCR
     if ocr is None:
         has_text = has_text_layer(str(input_pdf))
         do_ocr = not has_text
         if has_text:
-            console.print("[cyan]Wykryto warstwę tekstową w PDF: użycie natywnego układu bez OCR (zachowanie kolumn, błyskawiczna konwersja)...[/cyan]")
+            console.print("[green]Wykryto warstwę tekstową w PDF: użycie natywnego układu bez OCR (zachowanie kolumn, błyskawiczna konwersja)...[/green]")
         else:
-            console.print("[yellow]Brak warstwy tekstowej w PDF: uruchamianie silnika OCR...[/yellow]")
+            console.print("[yellow]Brak warstwy tekstowej: włączanie OCR (EasyOCR)...[/yellow]")
     else:
         do_ocr = ocr
-        if do_ocr:
-            console.print("[yellow]Wymuszono silnik OCR zgodnie z opcją CLI...[/yellow]")
-        else:
-            console.print("[cyan]Wyłączono OCR zgodnie z opcją CLI (tryb czystego tekstu PDF)...[/cyan]")
+        status_msg = "Wymuszono OCR" if do_ocr else "Wyłączono OCR"
+        console.print(f"[cyan]{status_msg}[/cyan]")
 
-    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
+    md_dir = output_dir / "markdown"
+    assets_dir = md_dir / "assets"
+    md_dir.mkdir(parents=True, exist_ok=True)
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
     converter = get_converter(do_ocr=do_ocr, langs=lang_list)
 
     convert_kwargs = {}
@@ -129,28 +153,63 @@ def extract_pdf(
     return md_file
 
 
+def ensure_markdown_exists(
+    input_md: Optional[Path] = None,
+    book: Optional[str] = None,
+    output_dir: Path = Path("output"),
+) -> Path:
+    """
+    Zapewnia istnienie pliku Markdown.
+    Jeśli podano --book lub --input-md i plik nie istnieje, automatycznie wyszukuje
+    odpowiadający plik PDF w input/ i uruchamia ekstrakcję Document AI.
+    Jeśli nic nie podano, szuka istniejącego pliku w katalogu output/markdown/.
+    """
+    md_dir = output_dir / "markdown"
+    md_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Ustalanie pożądanej nazwy pliku
+    if book:
+        target_stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
+        target_md = md_dir / f"{target_stem}.md"
+    elif input_md is not None:
+        target_md = input_md
+        target_stem = input_md.stem
+    else:
+        # Sprawdź, czy są już pliki .md
+        existing_mds = sorted(list(md_dir.glob("*.md")))
+        if existing_mds:
+            return existing_mds[0]
+        console.print(f"[bold red]Błąd: Nie znaleziono żadnego pliku .md w katalogu {md_dir}[/bold red]")
+        raise typer.Exit(code=1)
+
+    # 2. Jeśli plik istnieje, zwróć go
+    if target_md.exists():
+        return target_md
+
+    # 3. Jeśli nie istnieje, spróbuj znaleźć odpowiadający PDF w input/
+    candidate_pdf = Path("input") / f"{target_stem}.pdf"
+    if candidate_pdf.exists():
+        console.print(f"[bold yellow]Plik {target_md.name} nie istnieje. Automatyczne tworzenie ze skanu: {candidate_pdf.name}...[/bold yellow]")
+        return extract_pdf(candidate_pdf, output_dir=output_dir)
+
+    console.print(f"[bold red]Błąd:[/bold red] Plik {target_md} nie istnieje, a w katalogu input/ nie znaleziono odpowiadającego pliku {target_stem}.pdf.")
+    raise typer.Exit(code=1)
+
+
 def compile_epub(
     input_md: Optional[Path] = None,
     output_dir: Path = Path("output"),
     metadata_file: Optional[Path] = Path("metadata.yaml"),
     css_file: Optional[Path] = Path("templates/epub.css"),
     cover_image: Optional[Path] = None,
+    copy_to_windows: bool = True,
 ) -> Path:
     """Czysta funkcja biznesowa: kompilacja pliku Markdown do EPUB 3 za pomocą Pandoc."""
     md_dir = output_dir / "markdown"
     epub_dir = output_dir / "epub"
     epub_dir.mkdir(parents=True, exist_ok=True)
 
-    if input_md is None:
-        md_files = sorted(list(md_dir.glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono żadnego pliku .md w {md_dir}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
-
-    if not input_md.exists():
-        console.print(f"[bold red]Błąd:[/bold red] Plik {input_md} nie istnieje.")
-        raise typer.Exit(code=1)
+    input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     epub_file = epub_dir / f"{input_md.stem}.epub"
     console.print(f"[cyan]Kompilacja EPUB przy użyciu Pandoc: {input_md.name} -> {epub_file.name}...[/cyan]")
@@ -180,6 +239,14 @@ def compile_epub(
     try:
         subprocess.run(pandoc_cmd, check=True)
         console.print(f"[bold green]✓ Pomyślnie wygenerowano EPUB:[/bold green] {epub_file}")
+
+        # Integracja WSL / Windows
+        if copy_to_windows:
+            win_dest = copy_to_windows_downloads(epub_file)
+            if win_dest:
+                console.print(f"[bold green]✓ Skopiowano EPUB do Windows (Pobrane):[/bold green] {win_dest}")
+
+        console.print(f"[dim]Wskazówka WSL: Aby otworzyć folder z książką w Eksploratorze Windows, wpisz: explorer.exe output\\epub[/dim]")
         return epub_file
     except FileNotFoundError:
         console.print("[bold red]Błąd:[/bold red] Program 'pandoc' nie jest zainstalowany w ścieżce PATH.")
@@ -195,9 +262,13 @@ def compile_epub(
 @app.command()
 def extract(
     input_pdf: Annotated[
-        Path,
+        Optional[Path],
         typer.Option("--input-pdf", "-i", help="Ścieżka do wejściowego pliku PDF."),
-    ] = Path("input/ksiazka.pdf"),
+    ] = None,
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki z katalogu input/ (np. 'ksiazka')."),
+    ] = None,
     output_dir: Annotated[
         Path,
         typer.Option("--output-dir", "-o", help="Główny katalog wyjściowy."),
@@ -216,6 +287,16 @@ def extract(
     ] = None,
 ):
     """Krok 1: Ekstrakcja układu, tekstu i grafik z PDF do Markdown (z auto-detekcją OCR)."""
+    if book:
+        clean_stem = book.replace(".pdf", "")
+        input_pdf = Path("input") / f"{clean_stem}.pdf"
+    elif input_pdf is None:
+        pdf_files = sorted(list(Path("input").glob("*.pdf")))
+        if not pdf_files:
+            console.print("[bold red]Błąd:[/bold red] Brak plików .pdf w katalogu input/")
+            raise typer.Exit(code=1)
+        input_pdf = pdf_files[0]
+
     extract_pdf(input_pdf=input_pdf, output_dir=output_dir, languages=languages, pages=pages, ocr=ocr)
 
 
@@ -224,6 +305,10 @@ def clean(
     input_md: Annotated[
         Optional[Path],
         typer.Option("--input-md", "-m", help="Ścieżka do pliku Markdown do oczyszczenia."),
+    ] = None,
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki do oczyszczenia (np. 'ksiazka')."),
     ] = None,
     output_md: Annotated[
         Optional[Path],
@@ -234,14 +319,8 @@ def clean(
         typer.Option("--output-dir", "-o", help="Główny katalog wyjściowy."),
     ] = Path("output"),
 ):
-    """Krok 2: Czyszczenie Markdowna (de-hyphenation, normalizacja ułamków, usuwanie szumów)."""
-    if input_md is None:
-        md_dir = output_dir / "markdown"
-        md_files = sorted(list(md_dir.glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono żadnego pliku .md w {md_dir}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
+    """Krok 2: Czyszczenie Markdowna (de-hyphenation, normalizacja ułamków, polskie znaki diakrytyczne)."""
+    input_md = ensure_markdown_exists(input_md=input_md, book=book, output_dir=output_dir)
 
     console.print(f"[cyan]Czyszczenie i normalizacja: {input_md.name}...[/cyan]")
     out = clean_markdown_file(input_md, output_md)
@@ -254,6 +333,10 @@ def audit(
         Optional[Path],
         typer.Option("--input-md", "-m", help="Ścieżka do pliku Markdown do audytu."),
     ] = None,
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki do audytu (np. 'ksiazka')."),
+    ] = None,
     report_file: Annotated[
         Path,
         typer.Option("--report", "-r", help="Ścieżka wyjściowa dla raportu audytu JSON."),
@@ -264,13 +347,7 @@ def audit(
     ] = Path("output"),
 ):
     """Krok audytu: Analiza jakościowa pliku Markdown, wykrywanie anomalii i braków."""
-    if input_md is None:
-        md_dir = output_dir / "markdown"
-        md_files = sorted(list(md_dir.glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono żadnego pliku .md w {md_dir}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
+    input_md = ensure_markdown_exists(input_md=input_md, book=book, output_dir=output_dir)
 
     console.print(f"[cyan]Uruchamianie audytu jakościowego dla: {input_md.name}...[/cyan]")
     report = audit_markdown_file(input_md, report_file)
@@ -301,12 +378,7 @@ def inspect_anomaly_cmd(
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
     """Inspekcja konkretnej anomalii: wyświetla uszkodzony akapit, żetony błędu i otaczający kontekst."""
-    if input_md is None:
-        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
+    input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     try:
         data = get_anomaly_details(report_file, index, input_md)
@@ -332,12 +404,7 @@ def patch_cmd(
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
     """Podmienia wskazany uszkodzony akapit na zrekonstruowany tekst (tworząc kopię .bak)."""
-    if input_md is None:
-        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
+    input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     try:
         patch_paragraph(input_md, index, text)
@@ -349,17 +416,12 @@ def patch_cmd(
 
 @app.command(name="patch-batch")
 def patch_batch_cmd(
-    fixes_file: Annotated[Path, typer.Option("--file", "-f", help="Ścieżka do pliku JSON z poprawkami: { '51': 'nowy tekst' }.")],
+    fixes_file: Annotated[Path, typer.Option("--file", "-f", help="Ścieżka do pliku JSON ze słownikiem poprawek.")],
     input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m")] = None,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
     """Aplikuje paczkę poprawek z pliku JSON na pliku Markdown (tworząc kopię .bak)."""
-    if input_md is None:
-        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
-        if not md_files:
-            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
-            raise typer.Exit(code=1)
-        input_md = md_files[0]
+    input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     try:
         count = patch_batch_from_file(input_md, fixes_file)
@@ -373,7 +435,11 @@ def patch_batch_cmd(
 def build(
     input_md: Annotated[
         Optional[Path],
-        typer.Option("--input-md", "-m", help="Ścieżka do pliku .md (domyślnie szuka pierwszego .md w output/markdown/)."),
+        typer.Option("--input-md", "-m", help="Ścieżka do pliku .md (domyślnie auto-wybór)."),
+    ] = None,
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki do kompilacji (np. 'ksiazka')."),
     ] = None,
     output_dir: Annotated[
         Path,
@@ -391,23 +457,33 @@ def build(
         Optional[Path],
         typer.Option("--cover", help="Ścieżka do pliku okładki (JPG/PNG)."),
     ] = None,
+    copy_to_windows: Annotated[
+        bool,
+        typer.Option("--copy-windows/--no-copy-windows", help="Czy skopiować gotowy EPUB do folderu Pobrane w Windows."),
+    ] = True,
 ):
-    """Krok 3: Kompiluje plik Markdown do EPUB 3 za pomocą Pandoc."""
+    """Krok 3: Kompiluje plik Markdown do EPUB 3 za pomocą Pandoc (i opcjonalnie kopiuje do Windows)."""
+    input_md = ensure_markdown_exists(input_md=input_md, book=book, output_dir=output_dir)
     compile_epub(
         input_md=input_md,
         output_dir=output_dir,
         metadata_file=metadata_file,
         css_file=css_file,
         cover_image=cover_image,
+        copy_to_windows=copy_to_windows,
     )
 
 
 @app.command()
 def all(
     input_pdf: Annotated[
-        Path,
+        Optional[Path],
         typer.Option("--input-pdf", "-i", help="Ścieżka do wejściowego pliku PDF."),
-    ] = Path("input/ksiazka.pdf"),
+    ] = None,
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki z katalogu input/ (np. 'ksiazka')."),
+    ] = None,
     output_dir: Annotated[
         Path,
         typer.Option("--output-dir", "-o", help="Główny katalog wyjściowy."),
@@ -440,8 +516,22 @@ def all(
         Optional[Path],
         typer.Option("--cover", help="Ścieżka do pliku okładki (JPG/PNG)."),
     ] = None,
+    copy_to_windows: Annotated[
+        bool,
+        typer.Option("--copy-windows/--no-copy-windows", help="Czy skopiować gotowy EPUB do folderu Pobrane w Windows."),
+    ] = True,
 ):
-    """Pełny pipeline: ekstrakcja (z auto-detekcją OCR), czyszczenie Markdowna i kompilacja do EPUB."""
+    """Pełny pipeline: ekstrakcja, czyszczenie Markdowna, kompilacja EPUB 3 i kopiowanie do Windows."""
+    if book:
+        clean_stem = book.replace(".pdf", "")
+        input_pdf = Path("input") / f"{clean_stem}.pdf"
+    elif input_pdf is None:
+        pdf_files = sorted(list(Path("input").glob("*.pdf")))
+        if not pdf_files:
+            console.print("[bold red]Błąd:[/bold red] Brak plików .pdf w katalogu input/")
+            raise typer.Exit(code=1)
+        input_pdf = pdf_files[0]
+
     md_file = extract_pdf(
         input_pdf=input_pdf,
         output_dir=output_dir,
@@ -461,7 +551,101 @@ def all(
         metadata_file=metadata_file,
         css_file=css_file,
         cover_image=cover_image,
+        copy_to_windows=copy_to_windows,
     )
+
+
+@app.command(name="purge")
+def purge_cmd(
+    book: Annotated[
+        Optional[str],
+        typer.Option("--book", "-b", help="Nazwa książki do usunięcia (np. 'ksiazka')."),
+    ] = None,
+    all: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Czy usunąć wszystkie wygenerowane pliki ze wszystkich książek."),
+    ] = False,
+    keep_epub: Annotated[
+        bool,
+        typer.Option("--keep-epub", help="Zachowaj gotowy plik .epub, usuwając tylko pliki robocze (.md, .bak, assets)."),
+    ] = False,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
+):
+    """Usuwa wygenerowane pliki robocze po skończonej pracy (czyszczenie dysku)."""
+    deleted_files = 0
+
+    if book:
+        stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
+        files_to_remove = [
+            output_dir / "markdown" / f"{stem}.md",
+            output_dir / "markdown" / f"{stem}.md.bak",
+            output_dir / f"audit_{stem}.json",
+        ]
+        if not keep_epub:
+            files_to_remove.append(output_dir / "epub" / f"{stem}.epub")
+
+        for f in files_to_remove:
+            if f.exists():
+                f.unlink()
+                console.print(f"[yellow]Usunięto:[/yellow] {f}")
+                deleted_files += 1
+
+        console.print(f"[bold green]✓ Wyczyszczono pliki dla książki: {stem} (usunięto {deleted_files} plików)[/bold green]")
+        return
+
+    if all:
+        # Usuń wszystko z output/ zachowując strukturę i .gitkeep
+        for folder in [output_dir / "markdown" / "assets", output_dir / "markdown", output_dir / "epub"]:
+            if folder.exists():
+                for item in folder.iterdir():
+                    if item.name == ".gitkeep":
+                        continue
+                    if item.is_file():
+                        if keep_epub and folder.name == "epub" and item.suffix == ".epub":
+                            continue
+                        item.unlink()
+                        deleted_files += 1
+                    elif item.is_dir() and item.name != "assets":
+                        shutil.rmtree(item)
+                        deleted_files += 1
+
+        report = output_dir / "audit_report.json"
+        if report.exists():
+            report.unlink()
+            deleted_files += 1
+
+        console.print(f"[bold green]✓ Pomyślnie wyczyszczono katalog wyjściowy (usunięto {deleted_files} plików)[/bold green]")
+        return
+
+    console.print("[yellow]Podaj --book <nazwa> lub --all, aby określić co usunąć.[/yellow]")
+
+
+@app.command(name="open-windows")
+def open_windows_cmd(
+    folder: Annotated[
+        str,
+        typer.Option("--folder", "-f", help="Folder do otwarcia w Windows (epub, markdown, input lub downloads)."),
+    ] = "epub",
+):
+    """Otwiera wskazany folder w Eksploratorze Windows (WSL -> Windows)."""
+    if folder == "downloads":
+        target = get_windows_downloads_dir()
+        if not target or not target.exists():
+            console.print("[bold red]Błąd:[/bold red] Nie znaleziono folderu Pobrane w Windows.")
+            raise typer.Exit(code=1)
+    elif folder == "input":
+        target = Path("input")
+    elif folder in ["markdown", "assets"]:
+        target = Path("output") / folder
+    else:
+        target = Path("output/epub")
+
+    target.mkdir(parents=True, exist_ok=True)
+    try:
+        subprocess.run(["explorer.exe", str(target)], check=True)
+        console.print(f"[bold green]✓ Otwarto Eksplorator Windows w:[/bold green] {target}")
+    except Exception as e:
+        console.print(f"[bold red]Błąd otwierania Eksploratora Windows:[/bold red] {e}")
 
 
 if __name__ == "__main__":

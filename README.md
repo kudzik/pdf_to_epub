@@ -8,8 +8,8 @@ Nowoczesny, powtarzalny pipeline do ekstrakcji treści ze skanów PDF (książek
 * **Sanitizer & Normalizer:** Dedykowany moduł `src/cleaner.py` (de-hyphenation, normalizacja ułamków kulinarnych i miar, filtr szumu skanera, deduplikacja nagłówków).
 * **Kompilator EPUB:** [`pandoc`](https://pandoc.org/) 3.13+.
 * **CLI & Terminal:** [`typer`](https://typer.tiangolo.com/) oraz [`rich`](https://github.com/Textualize/rich).
-* **Testy:** [`pytest`](https://docs.pytest.org/) (33 testy jednostkowe i integracyjne).
-* **Interfejs Wizualny & Studio:** [Astro 5](https://astro.build/) (SSR Node) + [Tailwind CSS v4](https://tailwindcss.com/) na porcie `4343` z integracją lokalnego LLM (Ollama / RTX 4080 Super) oraz Autopilotem naprawczym.
+* **Testy:** [`pytest`](https://docs.pytest.org/) (43 testy jednostkowe i integracyjne z pełną obsługą znaków diakrytycznych i WSL).
+* **Interfejs Wizualny & Studio:** [Astro 5](https://astro.build/) (SSR Node) + [Tailwind CSS v4](https://tailwindcss.com/) na porcie `4343` z integracją lokalnego LLM (Ollama / RTX 4080 Super), selektorem książek, Autopilotem naprawczym oraz 1-klikowym eksportem do Windows na WSL.
 
 ---
 
@@ -114,12 +114,25 @@ uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   ```
   *(Zobacz dedykowany plik `PROMPT_FOR_AGENT.md` zawierający gotowy prompt do wklejenia w VS Code)*.
 
-* **Krok 5: Kompilacja do EPUB:**
+* **Krok 5: Kompilacja do EPUB i eksport do Windows:**
   ```bash
-  uv run python -m src.pipeline build
+  # Standardowa kompilacja (z automatycznym kopiowaniem do Pobranych w Windows)
+  uv run python -m src.pipeline build --book ksiazka
 
   # Opcjonalnie z własną okładką:
-  uv run python -m src.pipeline build --cover sciezka/do/okladki.jpg
+  uv run python -m src.pipeline build --book ksiazka --cover sciezka/do/okladki.jpg
+
+  # Otwórz folder wyjściowy bezpośrednio w Eksploratorze Windows (z WSL):
+  uv run python -m src.pipeline open-windows --folder epub
+  ```
+
+* **Krok 6: Czyszczenie plików roboczych po skończonej pracy (oszczędność dysku):**
+  ```bash
+  # Usuwa pliki robocze (.md, .bak, raporty audytu) dla danej książki, zachowując gotowy .epub:
+  uv run python -m src.pipeline purge --book ksiazka --keep-epub
+
+  # Pełne wyczyszczenie wszystkich plików roboczych:
+  uv run python -m src.pipeline purge --all
   ```
 
 ### 3. Nowoczesny Interfejs Wizualny (Web Studio UI)
@@ -132,6 +145,11 @@ npm install
 npm run dev   # Serwer deweloperski na http://localhost:4343
 # lub
 npm run start # Serwer produkcyjny SSR
+
+# Zatrzymanie serwera działającego w tle na porcie 4343:
+fuser -k 4343/tcp
+# lub:
+pkill -f "astro"
 ```
 
 #### Funkcje Web Studio:

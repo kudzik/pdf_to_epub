@@ -24,18 +24,19 @@ import '../styles/global.css';
         <div>
           <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
             PDF to EPUB Studio
-            <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">v2.0</span>
+            <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">WSL/Windows</span>
           </h1>
           <p class="text-xs text-zinc-400">Książki kucharskie &middot; OCR &middot; Markdown &middot; EPUB 3</p>
         </div>
       </div>
 
-      <!-- File Selector & AI Engine Pill -->
+      <!-- Book Selector, WSL Actions & AI Engine Pill -->
       <div class="flex items-center gap-3">
+        <!-- Wybór książki -->
         <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-sm">
-          <span class="text-xs text-zinc-400 font-medium">Plik:</span>
-          <select id="fileSelector" class="bg-transparent text-emerald-400 font-mono font-medium focus:outline-none cursor-pointer">
-            <option value="ksiazka.md" class="bg-zinc-900 text-zinc-100">ksiazka.md</option>
+          <span class="text-xs text-zinc-400 font-medium">Książka:</span>
+          <select id="bookSelector" class="bg-transparent text-emerald-400 font-mono font-medium focus:outline-none cursor-pointer">
+            <option value="ksiazka" class="bg-zinc-900 text-zinc-100">ksiazka</option>
           </select>
         </div>
 
@@ -63,7 +64,7 @@ import '../styles/global.css';
       <!-- Metric 1: Plik Markdown -->
       <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
-          <span>Źródło Markdown</span>
+          <span>Źródło Markdown (.md)</span>
           <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -102,7 +103,7 @@ import '../styles/global.css';
       <!-- Metric 3: Kompilacja EPUB -->
       <div class="bg-zinc-900/80 border border-zinc-800/80 rounded-xl p-4 flex flex-col justify-between">
         <div class="flex items-center justify-between text-zinc-400 text-xs font-medium uppercase tracking-wider mb-2">
-          <span>Kompilacja EPUB 3</span>
+          <span>Kompilacja EPUB 3 (.epub)</span>
           <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
           </svg>
@@ -138,28 +139,47 @@ import '../styles/global.css';
       </div>
     </div>
 
-    <!-- PIPELINE ACTION BAR -->
+    <!-- PIPELINE ACTION BAR (Z auto-tworzeniem Markdowna) -->
     <div class="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Akcje Pipeline:</span>
-        <button id="btnRunAudit" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700">
-          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400 mr-1">Akcje:</span>
+        <button id="btnRunExtract" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyekstrahuj PDF do czystego Markdowna">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Ekstrahuj z PDF
+        </button>
+        <button id="btnRunClean" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Rekonstrukcja polskich znaków, ułamków i de-hyphenation">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          Wyczyść Tekst
+        </button>
+        <button id="btnRunAudit" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-rose-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Sprawdź tekst pod kątem uszkodzeń OCR">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           Uruchom Audyt
         </button>
-        <button id="btnRunClean" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700">
-          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-          Wyczyść Tekst (Cleaner)
-        </button>
-        <button id="btnRunBuild" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm">
+        <button id="btnRunBuild" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Kompiluj Markdown do EPUB 3">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-          Kompiluj EPUB (Pandoc)
+          Kompiluj EPUB
         </button>
       </div>
 
-      <!-- Action status spinner / message -->
-      <div id="pipelineStatus" class="text-xs font-mono text-zinc-400 flex items-center gap-2">
-        <span>Gotowy do pracy</span>
+      <!-- WSL & Windows Easy Copy Buttons -->
+      <div class="flex items-center gap-2 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
+        <button id="btnCopyToWindows" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-indigo-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy EPUB bezpośrednio do Windows Downloads">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+          Kopiuj do Windows Pobrane
+        </button>
+        <button id="btnOpenWindowsExplorer" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Otwórz folder w Eksploratorze Windows (explorer.exe)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+          Otwórz w Windows
+        </button>
+        <button id="btnPurgeWorkfiles" class="px-2.5 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-lg text-xs font-medium transition border border-zinc-700" title="Usuń pliki robocze (.bak, raporty) po skończonej pracy">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
       </div>
+    </div>
+
+    <!-- Status feedback banner -->
+    <div id="pipelineStatusBanner" class="hidden rounded-xl p-3 text-xs font-mono border transition-all">
+      <span id="pipelineStatusText"></span>
     </div>
 
     <!-- AUTOPILOT CONTROL CARD (Sequential batch fixing) -->
@@ -170,11 +190,11 @@ import '../styles/global.css';
             <span class="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <h2 class="text-base font-bold text-white tracking-tight flex items-center gap-2">
               Autopilot Naprawczy AI
-              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-normal">Koniec z klikaniem 113 razy</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-normal">Koniec z klikaniem</span>
             </h2>
           </div>
           <p class="text-xs text-zinc-400 max-w-2xl leading-relaxed">
-            Autopilot przechodzi kolejno przez wszystkie wykryte uszkodzenia OCR i nanosi poprawki bezpośrednio do pliku Markdown z zachowaniem pełnego kontekstu kulinarno-językowego.
+            Autopilot przechodzi kolejno przez wszystkie wykryte uszkodzenia OCR i nanosi poprawki bezpośrednio do pliku Markdown, a po ukończeniu automatycznie kompiluje EPUB.
           </p>
         </div>
 
@@ -199,7 +219,7 @@ import '../styles/global.css';
         </div>
       </div>
 
-      <!-- Autopilot Live Progress Container (Ukryty domyślnie, widoczny w trakcie pracy) -->
+      <!-- Autopilot Live Progress Container -->
       <div id="autopilotProgressBox" class="mt-4 pt-4 border-t border-zinc-800/80 hidden space-y-2">
         <div class="flex items-center justify-between text-xs font-mono">
           <span id="autopilotStepLabel" class="text-emerald-400 font-semibold">Trwa naprawa akapitu...</span>
@@ -257,7 +277,7 @@ import '../styles/global.css';
         <span class="text-emerald-400 font-mono">http://localhost:4343</span>
       </div>
       <div class="text-[11px] text-zinc-400">
-        Niezmiennik: edycja wyłącznie w <code class="text-emerald-400">output/markdown/*.md</code>
+        Niezmiennik: nazwa wyjściowa <code class="text-emerald-400">&lt;książka&gt;.epub</code> odpowiada nazwie skanu PDF
       </div>
     </div>
   </footer>
@@ -271,7 +291,7 @@ import '../styles/global.css';
     let isAutopilotRunning = false;
     let stopRequested = false;
 
-    const fileSelector = document.getElementById('fileSelector');
+    const bookSelector = document.getElementById('bookSelector');
     const ollamaBadge = document.getElementById('ollamaBadge');
     const ollamaPing = document.getElementById('ollamaPing');
     const ollamaDot = document.getElementById('ollamaDot');
@@ -280,7 +300,8 @@ import '../styles/global.css';
     const anomalyCounterBadge = document.getElementById('anomalyCounterBadge');
     const severityFilter = document.getElementById('severityFilter');
     const anomalySearch = document.getElementById('anomalySearch');
-    const pipelineStatus = document.getElementById('pipelineStatus');
+    const pipelineStatusBanner = document.getElementById('pipelineStatusBanner');
+    const pipelineStatusText = document.getElementById('pipelineStatusText');
 
     // Autopilot DOM elements
     const btnStartOllamaAutopilot = document.getElementById('btnStartOllamaAutopilot');
@@ -294,37 +315,44 @@ import '../styles/global.css';
     const btnStopAutopilot = document.getElementById('btnStopAutopilot');
 
     // Pipeline action buttons
-    const btnRunAudit = document.getElementById('btnRunAudit');
+    const btnRunExtract = document.getElementById('btnRunExtract');
     const btnRunClean = document.getElementById('btnRunClean');
+    const btnRunAudit = document.getElementById('btnRunAudit');
     const btnRunBuild = document.getElementById('btnRunBuild');
     const btnDownloadEpub = document.getElementById('btnDownloadEpub');
+    const btnCopyToWindows = document.getElementById('btnCopyToWindows');
+    const btnOpenWindowsExplorer = document.getElementById('btnOpenWindowsExplorer');
+    const btnPurgeWorkfiles = document.getElementById('btnPurgeWorkfiles');
 
-    // Inicjalizacja: pobranie listy plików i statusu
+    // Inicjalizacja: pobranie listy książek i statusu
     async function init() {
-      await loadFiles();
+      await loadBooks();
       await fetchStatus();
       setupEventListeners();
     }
 
-    async function loadFiles() {
+    async function loadBooks() {
       try {
         const res = await fetch('/api/files');
         const data = await res.json();
-        if (data.mdFiles && data.mdFiles.length > 0) {
-          fileSelector.innerHTML = data.mdFiles.map(f => `<option value="${f}">${f}</option>`).join('');
+        if (data.books && data.books.length > 0) {
+          bookSelector.innerHTML = data.books.map(b => {
+            const badge = b.hasEpub ? '✓ EPUB gotowy' : b.hasMd ? 'MD gotowy' : 'Tylko PDF';
+            return `<option value="${b.stem}">${b.stem} (${badge})</option>`;
+          }).join('');
         }
       } catch (e) {
-        console.error('Błąd pobierania listy plików:', e);
+        console.error('Błąd pobierania listy książek:', e);
       }
     }
 
     async function fetchStatus() {
-      const currentFile = fileSelector.value || 'ksiazka.md';
+      const currentBook = bookSelector.value || 'ksiazka';
       try {
-        const res = await fetch(`/api/status?file=${encodeURIComponent(currentFile)}`);
+        const res = await fetch(`/api/status?book=${encodeURIComponent(currentBook)}`);
         const data = await res.json();
 
-        // 1. Zaktualizuj wskaźnik Ollama
+        // 1. Wskaźnik Ollama
         globalOllama = data.ollama || { available: false, models: [] };
         if (globalOllama.available) {
           ollamaBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
@@ -340,23 +368,30 @@ import '../styles/global.css';
           ollamaText.textContent = 'Ollama Offline (Uruchom w tle)';
         }
 
-        // 2. Metryki Markdown
+        // 2. Metryki Markdown (auto-tworzenie info)
         if (data.mdInfo && data.mdInfo.exists) {
           document.getElementById('statMdLines').textContent = data.mdInfo.lines.toLocaleString();
           document.getElementById('statMdSize').textContent = `Rozmiar: ${data.mdInfo.size}`;
           document.getElementById('statMdStatus').textContent = 'Zsynchronizowany';
+          document.getElementById('statMdStatus').className = 'text-emerald-400 font-medium';
+        } else {
+          document.getElementById('statMdLines').textContent = 'Brak';
+          document.getElementById('statMdSize').textContent = 'Rozmiar: 0 MB';
+          document.getElementById('statMdStatus').textContent = 'Utworzy się automatycznie';
+          document.getElementById('statMdStatus').className = 'text-amber-400 font-medium';
         }
 
         // 3. Metryki EPUB
         if (data.epubInfo && data.epubInfo.exists) {
           document.getElementById('statEpubSize').textContent = data.epubInfo.size;
           document.getElementById('statEpubTime').textContent = `Kompilacja: ${data.epubInfo.mtime}`;
-          document.getElementById('statEpubLabel').textContent = 'gotowy EPUB 3';
+          document.getElementById('statEpubLabel').textContent = `${data.epubInfo.filename}`;
           btnDownloadEpub.href = `/api/download?file=${encodeURIComponent(data.epubInfo.filename)}`;
           btnDownloadEpub.classList.remove('pointer-events-none', 'opacity-50');
         } else {
           document.getElementById('statEpubSize').textContent = 'Brak';
           document.getElementById('statEpubTime').textContent = 'Wymaga kompilacji';
+          document.getElementById('statEpubLabel').textContent = `${currentBook}.epub`;
           btnDownloadEpub.classList.add('pointer-events-none', 'opacity-50');
         }
 
@@ -364,9 +399,9 @@ import '../styles/global.css';
         globalReport = data.report;
         if (globalReport && globalReport.anomalies) {
           const total = globalReport.total_anomalies || globalReport.anomalies.length;
-          const high = globalReport.by_severity?.HIGH || 0;
-          const med = globalReport.by_severity?.MEDIUM || 0;
-          const low = globalReport.by_severity?.LOW || 0;
+          const high = globalReport.by_severity?.HIGH || globalReport.high_severity_count || 0;
+          const med = globalReport.by_severity?.MEDIUM || globalReport.medium_severity_count || 0;
+          const low = globalReport.by_severity?.LOW || globalReport.low_severity_count || 0;
 
           document.getElementById('statAnomalyTotal').textContent = total;
           document.getElementById('statHighBadge').textContent = `High: ${high}`;
@@ -378,8 +413,8 @@ import '../styles/global.css';
         } else {
           anomaliesList.innerHTML = `
             <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-8 text-center text-zinc-400">
-              <p class="font-medium">Brak wygenerowanego raportu audytu.</p>
-              <p class="text-xs text-zinc-500 mt-1">Kliknij "Uruchom Audyt", aby przeskanować plik Markdown pod kątem uszkodzeń OCR.</p>
+              <p class="font-medium">Brak wygenerowanego raportu audytu dla ${currentBook}.</p>
+              <p class="text-xs text-zinc-500 mt-1">Kliknij "Uruchom Audyt" lub "Wyczyść Tekst" — plik Markdown utworzy się automatycznie!</p>
             </div>
           `;
         }
@@ -394,7 +429,7 @@ import '../styles/global.css';
       let list = globalReport.anomalies;
 
       if (activeFilter !== 'ALL') {
-        list = list.filter(a => a.severity === activeFilter);
+        list = list.filter(a => a.severity.toUpperCase() === activeFilter);
       }
 
       if (searchQuery.trim()) {
@@ -402,6 +437,7 @@ import '../styles/global.css';
         list = list.filter(a => 
           (a.paragraph_index !== undefined && a.paragraph_index.toString().includes(q)) ||
           (a.raw_paragraph && a.raw_paragraph.toLowerCase().includes(q)) ||
+          (a.snippet && a.snippet.toLowerCase().includes(q)) ||
           (a.reason && a.reason.toLowerCase().includes(q))
         );
       }
@@ -410,8 +446,8 @@ import '../styles/global.css';
         anomaliesList.innerHTML = `
           <div class="bg-zinc-900/30 border border-zinc-800/80 rounded-xl p-8 text-center text-zinc-400">
             <svg class="w-8 h-8 mx-auto text-emerald-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            <p class="font-semibold text-white">Brak anomalii spełniających kryteria filtrów!</p>
-            <p class="text-xs text-zinc-500 mt-1">Wszystkie akapity w tej kategorii są czyste lub zostały naprawione.</p>
+            <p class="font-semibold text-white">Brak anomalii w tej kategorii!</p>
+            <p class="text-xs text-zinc-500 mt-1">Wszystkie akapity są czyste lub zostały zrekonstruowane.</p>
           </div>
         `;
         return;
@@ -419,21 +455,22 @@ import '../styles/global.css';
 
       anomaliesList.innerHTML = list.map(item => {
         const pIdx = item.paragraph_index;
-        const severityClass = item.severity === 'HIGH' 
+        const sev = (item.severity || 'low').toUpperCase();
+        const severityClass = sev === 'HIGH' 
           ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' 
-          : item.severity === 'MEDIUM' 
+          : sev === 'MEDIUM' 
             ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
             : 'bg-zinc-800 border-zinc-700 text-zinc-300';
 
-        const suggestedFix = heuristicFixSingle(item.raw_paragraph);
+        const displaySnippet = item.raw_paragraph || item.snippet || '';
 
         return `
           <div class="bg-zinc-900/70 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 transition space-y-3" id="card-${pIdx}">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 border border-zinc-700">#${pIdx}</span>
-                <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded border ${severityClass}">${item.severity}</span>
-                <span class="text-xs font-medium text-zinc-300">${escapeHtml(item.reason)}</span>
+                <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded border ${severityClass}">${sev}</span>
+                <span class="text-xs font-medium text-zinc-300">${escapeHtml(item.reason || item.categories?.join(', ') || 'Anomalia OCR')}</span>
               </div>
               <div class="flex items-center gap-2">
                 <button onclick="requestOllamaRepair(${pIdx})" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-emerald-400 rounded text-xs font-medium border border-zinc-700 transition flex items-center gap-1">
@@ -446,13 +483,13 @@ import '../styles/global.css';
             </div>
 
             <div class="text-xs font-mono bg-zinc-950 p-3 rounded-lg border border-zinc-800/80 text-zinc-300 whitespace-pre-wrap leading-relaxed">
-              ${highlightIssues(item.raw_paragraph)}
+              ${highlightIssues(displaySnippet)}
             </div>
 
             <!-- Edit / Patch Panel -->
             <div id="edit-box-${pIdx}" class="space-y-2 pt-2 border-t border-zinc-800/60 hidden">
               <label class="text-[11px] font-semibold text-zinc-400">Tekst po rekonstrukcji:</label>
-              <textarea id="input-${pIdx}" class="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs font-mono text-zinc-100 focus:outline-none focus:border-emerald-500">${escapeHtml(suggestedFix)}</textarea>
+              <textarea id="input-${pIdx}" class="w-full h-24 bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 text-xs font-mono text-zinc-100 focus:outline-none focus:border-emerald-500">${escapeHtml(displaySnippet)}</textarea>
               <div class="flex justify-end gap-2">
                 <button onclick="toggleEdit(${pIdx})" class="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200">Anuluj</button>
                 <button onclick="applyPatch(${pIdx})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold shadow transition">
@@ -465,28 +502,10 @@ import '../styles/global.css';
       }).join('');
     }
 
-    // Heurystyczny fixer dla podglądu
-    function heuristicFixSingle(text) {
-      if (!text) return '';
-      let fixed = text;
-      // Naprawa ułamków
-      fixed = fixed.replace(/(\d+)\s+([1-9])\s*\/\s*([1-9])/g, '$1 $2/$3');
-      fixed = fixed.replace(/\b(\d+)\s+([2348])\s*(tsp|tbsp|cup|szklank|łyżk)/gi, '$1/$2 $3');
-      // Usuwanie wklejonych znaków ^ i ° wewnątrz słów
-      fixed = fixed.replace(/([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])\^([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])/g, '$1 $2');
-      fixed = fixed.replace(/([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])°([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ])/g, '$1 $2');
-      // Typowe substytucje OCR
-      fixed = fixed.replace(/\bin die oven\b/gi, 'in the oven');
-      fixed = fixed.replace(/\bin die pan\b/gi, 'in the pan');
-      fixed = fixed.replace(/\bha\^been\b/gi, 'has been');
-      return fixed;
-    }
-
     function highlightIssues(text) {
       if (!text) return '';
       let safe = escapeHtml(text);
-      // Podświetl znaki ^ i °
-      safe = safe.replace(/(\^|°)/g, '<mark class="bg-rose-500/30 text-rose-300 px-0.5 rounded font-bold">$1</mark>');
+      safe = safe.replace(/(\^|°|£|¥|«|»)/g, '<mark class="bg-rose-500/30 text-rose-300 px-0.5 rounded font-bold">$1</mark>');
       return safe;
     }
 
@@ -499,18 +518,17 @@ import '../styles/global.css';
       if (box) box.classList.toggle('hidden');
     };
 
-    // Zastosowanie pojedynczej poprawki
     window.applyPatch = async function(pIdx) {
       const textarea = document.getElementById(`input-${pIdx}`);
       if (!textarea) return;
       const text = textarea.value;
-      const file = fileSelector.value || 'ksiazka.md';
+      const currentBook = bookSelector.value || 'ksiazka';
 
       try {
         const res = await fetch('/api/patch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: pIdx, text, file })
+          body: JSON.stringify({ index: pIdx, text, file: `${currentBook}.md` })
         });
         const result = await res.json();
         if (result.success) {
@@ -527,10 +545,8 @@ import '../styles/global.css';
       }
     };
 
-    // Pojedyncza naprawa przez Ollamę
     window.requestOllamaRepair = async function(pIdx) {
-      const card = document.getElementById(`card-${pIdx}`);
-      const file = fileSelector.value || 'ksiazka.md';
+      const currentBook = bookSelector.value || 'ksiazka';
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       if (!anomaly) return;
 
@@ -546,9 +562,9 @@ import '../styles/global.css';
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             index: pIdx,
-            paragraph: anomaly.raw_paragraph,
-            reason: anomaly.reason,
-            file: file,
+            paragraph: anomaly.raw_paragraph || anomaly.snippet,
+            reason: anomaly.reason || anomaly.categories?.join(', '),
+            file: `${currentBook}.md`,
             apply: false
           })
         });
@@ -556,15 +572,15 @@ import '../styles/global.css';
         if (data.success && data.repaired) {
           textarea.value = data.repaired;
         } else {
-          textarea.value = anomaly.raw_paragraph;
-          alert('Ollama błąd: ' + (data.error || 'Nieznany błąd'));
+          textarea.value = anomaly.raw_paragraph || anomaly.snippet;
+          alert('Ollama info: ' + (data.error || 'Błąd odpowiedzi'));
         }
       } catch (err) {
         alert('Błąd komunikacji: ' + err.message);
       }
     };
 
-    // AUTOPILOT AI: Automatyczna sekwencyjna pętla naprawy (bez 113 kliknięć!)
+    // AUTOPILOT AI (Ollama RTX 4080)
     async function startOllamaAutopilot() {
       if (!globalOllama.available) {
         alert(
@@ -583,7 +599,7 @@ import '../styles/global.css';
         return;
       }
 
-      const file = fileSelector.value || 'ksiazka.md';
+      const currentBook = bookSelector.value || 'ksiazka';
       const anomalies = globalReport.anomalies;
       const total = anomalies.length;
 
@@ -596,9 +612,7 @@ import '../styles/global.css';
       let repairedCount = 0;
 
       for (let i = 0; i < total; i++) {
-        if (stopRequested) {
-          break;
-        }
+        if (stopRequested) break;
 
         const anomaly = anomalies[i];
         const pIdx = anomaly.paragraph_index;
@@ -607,7 +621,7 @@ import '../styles/global.css';
         autopilotStepLabel.textContent = `Naprawa AI ${i + 1} z ${total} (Akapit #${pIdx})...`;
         autopilotProgressPercent.textContent = `${percent}%`;
         autopilotProgressBar.style.width = `${percent}%`;
-        autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason}`;
+        autopilotCurrentDetails.textContent = `Wada: ${anomaly.reason || 'Uszkodzenie'}`;
 
         try {
           const res = await fetch('/api/ollama-repair', {
@@ -615,9 +629,9 @@ import '../styles/global.css';
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               index: pIdx,
-              paragraph: anomaly.raw_paragraph,
-              reason: anomaly.reason,
-              file: file,
+              paragraph: anomaly.raw_paragraph || anomaly.snippet,
+              reason: anomaly.reason || anomaly.categories?.join(', '),
+              file: `${currentBook}.md`,
               apply: true
             })
           });
@@ -632,80 +646,152 @@ import '../styles/global.css';
 
       autopilotStepLabel.textContent = stopRequested 
         ? `Autopilot zatrzymany. Naprawiono ${repairedCount} akapitów.` 
-        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów. Automatyczna kompilacja EPUB...`;
+        : `✓ Zakończono! Naprawiono ${repairedCount} z ${total} akapitów. Kompilacja EPUB...`;
       
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
 
-      // Automatyczna rekompilacja EPUB i ponowny audyt po zakończeniu
+      // Automatyczna rekompilacja EPUB i audyt
       await triggerAction('build');
       await triggerAction('audit');
     }
 
-    // Rekonstrukcja wsadowa (Polskie Znaki, Ułamki, Akcenty i EPUB)
+    // Szybka Rekonstrukcja (Polskie znaki, ułamki i auto-rekompilacja EPUB)
     async function runHeuristicBatch() {
-      const file = fileSelector.value || 'ksiazka.md';
-      pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Trwa rekonstrukcja polskich znaków i normalizacja tekstu...';
-
+      showStatus('Trwa rekonstrukcja polskich znaków, ułamków i normalizacja tekstu...', 'info');
       try {
-        // 1. Wywołanie silnika czyszczącego z pełną tabelą znaków diakrytycznych
         await triggerAction('clean');
-
-        pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Kompilacja czystego EPUB 3 przez Pandoc...';
-        // 2. Automatyczna kompilacja EPUB
+        showStatus('Trwa kompilacja czystego EPUB 3 przez Pandoc...', 'info');
         await triggerAction('build');
-
-        pipelineStatus.innerHTML = '<span class="inline-block animate-spin">⟳</span> Weryfikacja jakościowa w toku...';
-        // 3. Odświeżenie audytu
+        showStatus('Odświeżanie audytu jakościowego...', 'info');
         await triggerAction('audit');
-
-        pipelineStatus.textContent = '✓ Sukces: Polskie znaki i ułamki zrekonstruowane, EPUB zaktualizowany!';
+        showStatus('✓ Sukces: Polskie znaki i ułamki zrekonstruowane, EPUB zaktualizowany!', 'success');
       } catch (err) {
-        pipelineStatus.textContent = 'Błąd rekonstrukcji: ' + err.message;
+        showStatus('Błąd: ' + err.message, 'error');
       }
     }
 
-    // Kopiowanie promptu dla Agenta w VS Code
+    // Kopiowanie do Windows Downloads
+    async function copyToWindowsDownloads() {
+      const currentBook = bookSelector.value || 'ksiazka';
+      showStatus(`Kopiowanie ${currentBook}.epub do Windows Downloads...`, 'info');
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'copy-windows', book: currentBook })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus(`✓ Pomyślnie skopiowano do Windows Downloads: ${data.destPath}`, 'success');
+        } else {
+          showStatus(`Błąd: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showStatus(`Błąd sieci: ${err.message}`, 'error');
+      }
+    }
+
+    // Otwieranie w Eksploratorze Windows
+    async function openWindowsExplorer() {
+      showStatus('Otwieranie folderu w Eksploratorze Windows...', 'info');
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'open-windows', targetFolder: 'epub' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus('✓ Otwarto Eksplorator Windows w katalogu output/epub', 'success');
+        } else {
+          showStatus(`Błąd: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showStatus(`Błąd: ${err.message}`, 'error');
+      }
+    }
+
+    // Sprzątanie plików roboczych po skończonej pracy
+    async function purgeWorkingFiles() {
+      const currentBook = bookSelector.value || 'ksiazka';
+      if (!confirm(`Czy na pewno chcesz usunąć pliki robocze (.bak, raporty audytu) dla książki "${currentBook}"?\nGotowy plik .epub zostanie zachowany.`)) {
+        return;
+      }
+      showStatus('Czyszczenie plików roboczych...', 'info');
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'purge', book: currentBook, keepEpub: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus(`✓ Wyczyszczono pliki robocze dla "${currentBook}". Gotowy plik .epub został zachowany!`, 'success');
+          await fetchStatus();
+        } else {
+          showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showStatus(`Błąd: ${err.message}`, 'error');
+      }
+    }
+
+    // Wywołanie akcji w CLI (extract, clean, audit, build)
+    async function triggerAction(actionName) {
+      const currentBook = bookSelector.value || 'ksiazka';
+      showStatus(`Wykonywanie akcji: ${actionName} dla książki "${currentBook}"...`, 'info');
+
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: actionName, book: currentBook })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showStatus(`✓ Akcja "${actionName}" ukończona pomyślnie.`, 'success');
+          await fetchStatus();
+          await loadBooks();
+        } else {
+          showStatus(`Błąd akcji "${actionName}": ${data.error}`, 'error');
+        }
+      } catch (err) {
+        showStatus(`Błąd komunikacji: ${err.message}`, 'error');
+      }
+    }
+
+    function showStatus(text, type = 'info') {
+      pipelineStatusBanner.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/40', 'text-rose-300', 'bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
+      if (type === 'success') {
+        pipelineStatusBanner.classList.add('bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300');
+      } else if (type === 'error') {
+        pipelineStatusBanner.classList.add('bg-rose-950/40', 'border-rose-500/40', 'text-rose-300');
+      } else {
+        pipelineStatusBanner.classList.add('bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
+      }
+      pipelineStatusText.textContent = text;
+    }
+
     function copyAgentPrompt() {
-      const file = fileSelector.value || 'ksiazka.md';
-      const promptText = `Jesteś Agentem AI w projekcie pdf-to-epub pracującym w VS Code.
-W pliku output/markdown/${file} wykryto listę uszkodzeń OCR.
-Przeprowadź naprawę akapit po akapicie zgodnie z instrukcją w AGENTS.md:
-1. Zbadaj anomalie poleceniem: uv run python -m src.pipeline inspect-anomaly <INDEX>
-2. Zastosuj zrekonstruowany tekst poleceniem: uv run python -m src.pipeline patch <INDEX> --text "..."
-3. Uruchom ponowny audyt: uv run python -m src.pipeline audit
-4. Po weryfikacji skompiluj EPUB: uv run python -m src.pipeline build`;
+      const currentBook = bookSelector.value || 'ksiazka';
+      const promptText = `Jesteś Agentem AI w projekcie pdf-to-epub pracującym w VS Code pod WSL/Windows.
+Pracujemy nad książką: "${currentBook}".
+W pliku output/markdown/${currentBook}.md wykryto uszkodzenia OCR.
+Instrukcja postępowania (zgodnie z AGENTS.md):
+1. Zbadaj anomalię: uv run python -m src.pipeline inspect-anomaly <INDEX>
+2. Zastosuj zrekonstruowany tekst: uv run python -m src.pipeline patch <INDEX> --text "..."
+3. Uruchom ponowny audyt: uv run python -m src.pipeline audit --book ${currentBook}
+4. Po weryfikacji skompiluj EPUB: uv run python -m src.pipeline build --book ${currentBook}
+Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane w Windows.`;
 
       navigator.clipboard.writeText(promptText).then(() => {
         alert('✓ Skopiowano prompt dla Agenta VS Code do schowka!');
       });
     }
 
-    // Wywołanie akcji w CLI (audit, clean, build)
-    async function triggerAction(actionName) {
-      const file = fileSelector.value || 'ksiazka.md';
-      pipelineStatus.innerHTML = `<span class="inline-block animate-spin">⟳</span> Wykonywanie akcji: ${actionName}...`;
-
-      try {
-        const res = await fetch('/api/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: actionName, file })
-        });
-        const data = await res.json();
-        if (data.success) {
-          pipelineStatus.textContent = `✓ Akcja ${actionName} ukończona pomyślnie.`;
-          await fetchStatus();
-        } else {
-          pipelineStatus.textContent = `Błąd ${actionName}: ${data.error}`;
-        }
-      } catch (err) {
-        pipelineStatus.textContent = `Błąd: ${err.message}`;
-      }
-    }
-
     function setupEventListeners() {
-      fileSelector.addEventListener('change', () => fetchStatus());
+      bookSelector.addEventListener('change', () => fetchStatus());
 
       severityFilter.addEventListener('change', (e) => {
         activeFilter = e.target.value;
@@ -717,9 +803,14 @@ Przeprowadź naprawę akapit po akapicie zgodnie z instrukcją w AGENTS.md:
         renderAnomalies();
       });
 
-      btnRunAudit.addEventListener('click', () => triggerAction('audit'));
+      btnRunExtract.addEventListener('click', () => triggerAction('extract'));
       btnRunClean.addEventListener('click', () => triggerAction('clean'));
+      btnRunAudit.addEventListener('click', () => triggerAction('audit'));
       btnRunBuild.addEventListener('click', () => triggerAction('build'));
+
+      btnCopyToWindows.addEventListener('click', copyToWindowsDownloads);
+      btnOpenWindowsExplorer.addEventListener('click', openWindowsExplorer);
+      btnPurgeWorkfiles.addEventListener('click', purgeWorkingFiles);
 
       btnStartOllamaAutopilot.addEventListener('click', startOllamaAutopilot);
       btnHeuristicBatch.addEventListener('click', runHeuristicBatch);
@@ -736,4 +827,3 @@ Przeprowadź naprawę akapit po akapicie zgodnie z instrukcją w AGENTS.md:
   </script>
 </body>
 </html>
-
