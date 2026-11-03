@@ -182,5 +182,35 @@ def test_audit_command(tmp_path: Path):
     assert report_file.exists()
 
 
+def test_inspect_and_patch_cli(tmp_path: Path):
+    """Weryfikuje wykonanie podkomend inspect-anomaly oraz patch z poziomu CLI."""
+    md_dir = tmp_path / "markdown"
+    md_dir.mkdir(parents=True)
+    sample_md = md_dir / "sample.md"
+    sample_md.write_text("Wstęp.\n\nUszkodzony akapit z b°ynthe.\n\nZakończenie.", encoding="utf-8")
+    report_file = tmp_path / "report.json"
+
+    # 1. Tworzymy raport audytu
+    res_audit = runner.invoke(app, ["audit", "--input-md", str(sample_md), "--report", str(report_file)])
+    assert res_audit.exit_code == 0
+
+    # 2. Inspekcja anomalii
+    res_inspect = runner.invoke(app, ["inspect-anomaly", "1", "--report", str(report_file), "--input-md", str(sample_md)])
+    assert res_inspect.exit_code == 0
+    assert "Anomalia Akapitu #1" in res_inspect.stdout
+    assert "b°ynthe" in res_inspect.stdout
+
+    # 3. Podmiana akapitu (patch)
+    res_patch = runner.invoke(app, ["patch", "1", "--text", "Naprawiony akapit tekstu.", "--input-md", str(sample_md)])
+    assert res_patch.exit_code == 0
+    assert "Pomyślnie podmieniono akapit #1" in res_patch.stdout
+
+    # 4. Sprawdzenie zawartości
+    new_text = sample_md.read_text(encoding="utf-8")
+    assert "Naprawiony akapit tekstu." in new_text
+    assert "b°ynthe" not in new_text
+
+
+
 
 

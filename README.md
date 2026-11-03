@@ -103,7 +103,17 @@ uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   uv run python -m src.pipeline audit
   ```
 
-* **Krok 4: Kompilacja do EPUB:**
+* **Krok 4: Inspekcja i naprawa uszkodzonych akapitów przez Agenta AI:**
+  ```bash
+  # Podgląd uszkodzonego akapitu z kontekstem
+  uv run python -m src.pipeline inspect-anomaly 51
+
+  # Zastosowanie poprawki (z automatyczną kopią .bak)
+  uv run python -m src.pipeline patch 51 --text "Zrekonstruowany tekst..."
+  ```
+  *(Zobacz dedykowany plik `PROMPT_FOR_AGENT.md` zawierający gotowy prompt do wklejenia w VS Code)*.
+
+* **Krok 5: Kompilacja do EPUB:**
   ```bash
   uv run python -m src.pipeline build
 

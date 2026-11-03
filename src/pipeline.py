@@ -13,6 +13,7 @@ from docling_core.types.doc.base import ImageRefMode
 
 from src.cleaner import clean_markdown_file
 from src.auditor import audit_markdown_file
+from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3.",
@@ -290,6 +291,82 @@ def audit(
         console.print("  • Wszystkie rozdziały ze spisu treści obecne w dokumencie: [bold green]TAK[/bold green]")
 
     console.print(f"\n[cyan]Pełny szczegółowy raport zapisano do:[/cyan] [bold]{report_file}[/bold]")
+
+
+@app.command(name="inspect-anomaly")
+def inspect_anomaly_cmd(
+    index: Annotated[int, typer.Argument(help="Indeks akapitu do inspekcji (z raportu audytu).")],
+    report_file: Annotated[Path, typer.Option("--report", "-r", help="Ścieżka do raportu audytu.")] = Path("output/audit_report.json"),
+    input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m", help="Ścieżka do pliku Markdown.")] = None,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
+):
+    """Inspekcja konkretnej anomalii: wyświetla uszkodzony akapit, żetony błędu i otaczający kontekst."""
+    if input_md is None:
+        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
+        if not md_files:
+            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
+            raise typer.Exit(code=1)
+        input_md = md_files[0]
+
+    try:
+        data = get_anomaly_details(report_file, index, input_md)
+    except Exception as e:
+        console.print(f"[bold red]Błąd:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold cyan]=== Anomalia Akapitu #{index} (Severity: {data['severity'].upper()}) ===[/bold cyan]")
+    console.print(f"[yellow]Wykryte błędy:[/yellow] {', '.join(data['sample_tokens'])}")
+    console.print(f"[yellow]Kategorie:[/yellow] {', '.join(data['categories'])}")
+    if data["context_before"]:
+        console.print(f"\n[dim]--- Kontekst przed ---[/dim]\n[dim]{data['context_before']}[/dim]")
+    console.print(f"\n[bold red]--- USZKODZONY TEKST (DO REKONSTRUKCJI) ---[/bold red]\n{data['raw_paragraph']}")
+    if data["context_after"]:
+        console.print(f"\n[dim]--- Kontekst po ---[/dim]\n[dim]{data['context_after']}[/dim]")
+
+
+@app.command(name="patch")
+def patch_cmd(
+    index: Annotated[int, typer.Argument(help="Indeks akapitu do podmiany.")],
+    text: Annotated[str, typer.Option("--text", "-t", help="Zrekonstruowany, poprawny tekst akapitu.")],
+    input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m")] = None,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
+):
+    """Podmienia wskazany uszkodzony akapit na zrekonstruowany tekst (tworząc kopię .bak)."""
+    if input_md is None:
+        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
+        if not md_files:
+            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
+            raise typer.Exit(code=1)
+        input_md = md_files[0]
+
+    try:
+        patch_paragraph(input_md, index, text)
+        console.print(f"[bold green]✓ Pomyślnie podmieniono akapit #{index} w {input_md.name} (utworzono {input_md.name}.bak)[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Błąd:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command(name="patch-batch")
+def patch_batch_cmd(
+    fixes_file: Annotated[Path, typer.Option("--file", "-f", help="Ścieżka do pliku JSON z poprawkami: { '51': 'nowy tekst' }.")],
+    input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m")] = None,
+    output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
+):
+    """Aplikuje paczkę poprawek z pliku JSON na pliku Markdown (tworząc kopię .bak)."""
+    if input_md is None:
+        md_files = sorted(list((output_dir / "markdown").glob("*.md")))
+        if not md_files:
+            console.print(f"[bold red]Błąd:[/bold red] Brak pliku .md w {output_dir / 'markdown'}")
+            raise typer.Exit(code=1)
+        input_md = md_files[0]
+
+    try:
+        count = patch_batch_from_file(input_md, fixes_file)
+        console.print(f"[bold green]✓ Pomyślnie zaaplikowano {count} poprawek do {input_md.name} (utworzono {input_md.name}.bak)[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Błąd:[/bold red] {e}")
+        raise typer.Exit(code=1)
 
 
 @app.command()

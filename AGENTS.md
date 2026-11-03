@@ -38,6 +38,18 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   ```bash
   uv run python -m src.pipeline audit
   ```
+- **Inspekcja konkretnej anomalii z kontekstem przed i po:**
+  ```bash
+  uv run python -m src.pipeline inspect-anomaly 51
+  ```
+- **Bezpieczna aplikacja poprawki akapitu (tworzy kopię .bak):**
+  ```bash
+  uv run python -m src.pipeline patch 51 --text "Zrekonstruowany tekst..."
+  ```
+- **Aplikacja paczki poprawek z pliku JSON:**
+  ```bash
+  uv run python -m src.pipeline patch-batch --file fixes.json
+  ```
 - **Kompilacja EPUB po korekcie Markdowna:**
   ```bash
   uv run python -m src.pipeline build
