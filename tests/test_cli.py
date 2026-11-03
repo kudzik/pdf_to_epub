@@ -95,7 +95,7 @@ def test_extract_regression_does_not_pass_none_page_range(monkeypatch, tmp_path:
             captured_kwargs.update(kwargs)
             return MockResult()
 
-    monkeypatch.setattr("src.pipeline.get_converter", lambda langs: MockConverter())
+    monkeypatch.setattr("src.pipeline.get_converter", lambda *args, **kwargs: MockConverter())
 
     result = runner.invoke(
         app,
@@ -111,4 +111,61 @@ def test_extract_regression_does_not_pass_none_page_range(monkeypatch, tmp_path:
     assert "page_range" not in captured_kwargs, (
         f"page_range nie powinno znajdować się w kwargs, jeśli nie podano --pages! Otrzymano: {captured_kwargs}"
     )
+
+
+def test_all_command_execution(monkeypatch, tmp_path: Path):
+    """Weryfikuje, czy komenda 'all' bezproblemowo łączy extract i build bez błędu Typer OptionInfo."""
+    dummy_pdf = tmp_path / "dummy.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.4 dummy content")
+
+    class MockDoc:
+        def save_as_markdown(self, target_path, *args, **kwargs):
+            Path(target_path).write_text("# Rozdział 1\nTreść książki.", encoding="utf-8")
+
+    class MockResult:
+        document = MockDoc()
+
+    class MockConverter:
+        def convert(self, source, **kwargs):
+            return MockResult()
+
+    monkeypatch.setattr("src.pipeline.get_converter", lambda *args, **kwargs: MockConverter())
+
+    metadata = tmp_path / "metadata.yaml"
+    metadata.write_text('title: "Książka"\nlang: "pl-PL"\n', encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "all",
+            "--input-pdf",
+            str(dummy_pdf),
+            "--output-dir",
+            str(tmp_path),
+            "--metadata",
+            str(metadata),
+        ],
+    )
+    assert result.exit_code == 0, f"Błąd w 'all': {result.stdout}"
+    assert "Pomyślnie wygenerowano EPUB" in result.stdout
+    assert (tmp_path / "epub" / "dummy.epub").exists()
+
+
+def test_clean_command(tmp_path: Path):
+    """Weryfikuje wykonanie podkomendy 'clean' przez CLI."""
+    md_dir = tmp_path / "markdown"
+    md_dir.mkdir(parents=True)
+    dirty_md = md_dir / "dirty.md"
+    dirty_md.write_text("■ ^p-\nTake ½ tsp salt and ingre\xad dients.\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["clean", "--input-md", str(dirty_md)])
+    assert result.exit_code == 0
+    assert "Pomyślnie oczyszczono" in result.stdout
+
+    cleaned_content = dirty_md.read_text(encoding="utf-8")
+    assert "■ ^p-" not in cleaned_content
+    assert "1/2 tsp" in cleaned_content
+    assert "ingredients" in cleaned_content
+
+
 

@@ -1,33 +1,40 @@
 # Instrukcja dla Agenta AI w projekcie pdf-to-epub
 
 ## Cel projektu
-Konwersja skanowanych dokumentów PDF (książek z tekstem, tabelami i ilustracjami) do struktury Markdown (jako Source of Truth oraz bazy wiedzy pod RAG/LLM) oraz kompilacja do walidującego się standardu EPUB 3 z zachowaniem hierarchii nagłówków i grafik.
+Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym, tabelami, przepisami i grafikami) do czystego formatu Markdown (baza wiedzy pod RAG/LLM) oraz kompilacja do walidującego się standardu EPUB 3 z zachowaniem hierarchii nagłówków i grafik.
 
 ## Środowisko
 - **Python:** 3.13+ zarządzany przez `uv`.
-- **Zależności:** `docling[easyocr]`, `typer`, `rich`.
+- **Zależności:** `docling[easyocr]`, `pypdfium2`, `typer`, `rich`, `pytest`.
 - **Kompilator EPUB:** `pandoc` 3.13+.
 
 ## Architektura i niezmienniki procesu
-1. **Niezmiennik źródła prawdy:** Katalog `output/markdown/` oraz wygenerowany w nim plik `<nazwa>.md` stanowią jedyne źródło prawdy. Jeśli poprawiasz literówki OCR, błędy formatowania nagłówków czy podział akapitów, edytuj plik `.md`.
-2. **Zakaz niepotrzebnego ponownego OCR:** Jeśli plik `.md` już istnieje i pracujesz nad korektą treści, **nie uruchamiaj ponownie** `extract` ani `all`, ponieważ surowy OCR z Doclinga bezpowrotnie nadpisze Twoje poprawki! Używaj wtedy wyłącznie `build`.
-3. **Integralność grafik:** Wszystkie wyekstrahowane obrazy znajdują się w `output/markdown/assets/` i są linkowane w Markdownie relatywnie jako `assets/<nazwa>.png`. Nie zmieniaj ich ścieżek, chyba że usuwasz niepotrzebny artefakt graficzny.
-4. **Style i metadane:** Metadane publikacji (autor, tytuł, język `pl-PL`) znajdują się w `metadata.yaml`, a style CSS w `templates/epub.css`.
+1. **Pipeline 3-etapowy:**
+   - **Krok 1: Ekstrakcja (`extract`):** Odczyt struktury Document AI. Jeśli PDF ma warstwę tekstową, domyślnie pomija wolny EasyOCR, zachowując perfekcyjny podział kolumn i ułamki.
+   - **Krok 2: Czyszczenie (`clean`):** Moduł `src/cleaner.py` automatycznie wykonuje de-hyphenation (scalanie rozbitych słów), zamienia ułamki Unicode (`½` ➔ `1/2`), naprawia miary kulinarne (`1 2 tsp` ➔ `1/2 tsp`), usuwa artefakty skanera (`■ ^p-`, `FlraS -*`) oraz powtarzające się nagłówki żywej paginy.
+   - **Krok 3: Kompilacja (`build`):** Pandoc kompiluje czysty Markdown do EPUB 3 ze stylami `templates/epub.css` i metadanymi `metadata.yaml`.
+2. **Niezmiennik źródła prawdy:** Katalog `output/markdown/` oraz wygenerowany w nim plik `<nazwa>.md` stanowią jedyne źródło prawdy. Jeśli poprawiasz treść, edytuj plik `.md`, a następnie uruchom `build`.
+3. **Zakaz niepotrzebnego ponownego OCR:** Jeśli plik `.md` już istnieje i pracujesz nad korektą treści, **nie uruchamiaj ponownie** `extract` ani `all`, ponieważ surowy odczyt nadpisze Twoje poprawki! Używaj wtedy `clean` oraz `build`.
+4. **Integralność grafik:** Wszystkie wyekstrahowane obrazy znajdują się w `output/markdown/assets/` i są linkowane w Markdownie relatywnie jako `assets/<nazwa>.png`.
 
 ## Komendy operacyjne dla Agenta AI
-- **Pierwszy pełny przebieg (OCR + kompilacja EPUB):**
+- **Pełny automatyczny przebieg (Ekstrakcja + Czyszczenie + EPUB):**
   ```bash
   uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
   ```
-- **Tylko ekstrakcja i OCR (PDF -> Markdown + grafiki):**
+- **Tylko ekstrakcja (PDF -> surowy Markdown):**
   ```bash
   uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf
   ```
-- **Szybki test ekstrakcji na pierwszych 3 stronach:**
+- **Szybki test ekstrakcji na wybranych stronach:**
   ```bash
-  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf --pages 1-3
+  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf --pages 1-5
   ```
-- **Kompilacja / Przebudowa EPUB po korekcie Markdowna:**
+- **Czyszczenie i normalizacja pliku Markdown:**
+  ```bash
+  uv run python -m src.pipeline clean
+  ```
+- **Kompilacja EPUB po korekcie Markdowna:**
   ```bash
   uv run python -m src.pipeline build
   ```
@@ -35,4 +42,7 @@ Konwersja skanowanych dokumentów PDF (książek z tekstem, tabelami i ilustracj
   ```bash
   uv run python -m src.pipeline build --cover assets/cover.jpg
   ```
-
+- **Uruchomienie testów jednostkowych:**
+  ```bash
+  uv run pytest
+  ```

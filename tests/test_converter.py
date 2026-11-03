@@ -6,7 +6,7 @@ from src.pipeline import get_converter
 def test_converter_options_and_language_config():
     """Weryfikuje, czy get_converter poprawnie konfiguruje silnik OCR dla języków polskiego i angielskiego."""
     langs = ["pl", "en"]
-    converter = get_converter(langs)
+    converter = get_converter(do_ocr=True, langs=langs)
 
     assert InputFormat.PDF in converter.format_to_options
     pdf_opts = converter.format_to_options[InputFormat.PDF].pipeline_options
@@ -15,6 +15,13 @@ def test_converter_options_and_language_config():
     assert pdf_opts.generate_picture_images is True, "Wycinanie ilustracji powinno być włączone."
     assert isinstance(pdf_opts.ocr_options, EasyOcrOptions)
     assert pdf_opts.ocr_options.lang == langs, f"Oczekiwano języków {langs}, otrzymano {pdf_opts.ocr_options.lang}"
+
+
+def test_converter_no_ocr_mode():
+    """Weryfikuje, czy get_converter z do_ocr=False poprawnie wyłącza OCR."""
+    converter = get_converter(do_ocr=False, langs=["en"])
+    pdf_opts = converter.format_to_options[InputFormat.PDF].pipeline_options
+    assert pdf_opts.do_ocr is False
 
 
 def test_page_range_parsing():
