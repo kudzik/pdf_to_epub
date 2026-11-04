@@ -115,6 +115,11 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Test wycinków trudnych bloków (ułamki, stopnie, miary kulinarne) modelem wizyjnym Ollama:
   uv run python -m src.pipeline vlm-test --pages 58,25 --model moondream:latest
   ```
+- **Weryfikacja bramki Gate G2 i ślepy test holdout (Gate G2 / R14):**
+  ```bash
+  # Uruchomienie konwersji kandydata na 10 stronach holdout i weryfikacja kryteriów sekcji 8:
+  uv run python -m src.pipeline gate-g2-evaluate
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

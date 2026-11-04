@@ -1734,6 +1734,79 @@ def vlm_test_cmd(
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
+@app.command(name="gate-g2-evaluate")
+def gate_g2_evaluate_cmd(
+    input_pdf: Annotated[
+        Path,
+        typer.Option("--input-pdf", "-i", help="Ścieżka do bazowego pliku PDF."),
+    ] = Path("input/ksiazka.pdf"),
+    manifest_path: Annotated[
+        Path,
+        typer.Option("--manifest", "-m", help="Ścieżka do manifestu stron testowych."),
+    ] = Path("benchmarks/fixtures/test_pages_manifest.json"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raporty Gate G2."),
+    ] = Path("output/benchmarks/gate_g2_evaluation"),
+):
+    """Przeprowadza ewaluację Gate G2 na 10 odłożonych stronach holdout i weryfikuje kryteria sekcji 8."""
+    from rich.table import Table
+    from src.gate_g2_evaluation import run_gate_g2_holdout_evaluation, save_gate_g2_report
+
+    console.print(f"[bold blue]=== Rozpoczynanie formalnej ewaluacji Bramki Gate G2 (10 stron holdout) ===[/bold blue]")
+    try:
+        report = run_gate_g2_holdout_evaluation(
+            pdf_path=input_pdf,
+            holdout_manifest_path=manifest_path,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas ewaluacji Gate G2:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_gate_g2_report(report, output_dir)
+
+    table = Table(title=f"Wyniki Ewaluacji Stron Holdout — Gate G2 ({report.run_id})")
+    table.add_column("PDF", justify="right", style="cyan")
+    table.add_column("Kolumny", justify="center")
+    table.add_column("Gutter", justify="center")
+    table.add_column("Kąt skew", justify="right", style="dim")
+    table.add_column("Bloki", justify="right")
+    table.add_column("Czas (s)", justify="right", style="green")
+    table.add_column("Przeplatanie?", justify="center")
+
+    for ps in report.page_summaries:
+        skew_str = f"{ps.skew_angle_deg:+.1f}°" if ps.skew_angle_deg is not None else "0.0°"
+        gut_str = "[green]TAK[/green]" if ps.has_gutter else "NIE"
+        inter_str = "[bold red]TAK[/bold red]" if ps.interleaving_detected else "[bold green]NIE[/bold green]"
+        table.add_row(
+            str(ps.page_no),
+            str(ps.column_count),
+            gut_str,
+            skew_str,
+            str(ps.total_blocks),
+            f"{ps.duration_seconds:.2f}s",
+            inter_str,
+        )
+
+    console.print(table)
+
+    crit_table = Table(title="Kryteria Akceptacji Bramki Gate G2 (Sekcja 8)")
+    crit_table.add_column("Kryterium", style="white")
+    crit_table.add_column("Status", justify="center")
+
+    for k, v in report.criteria_checklist.items():
+        status_str = "[bold green]PASS[/bold green]" if v else "[bold red]FAIL[/bold red]"
+        crit_table.add_row(k.replace("_", " ").capitalize(), status_str)
+
+    console.print(crit_table)
+    console.print(f"\n[bold]Latencja na stronę:[/bold] p50 = [bold green]{report.p50_duration_s:.2f}s[/bold green], p95 = [bold green]{report.p95_duration_s:.2f}s[/bold green], max = {report.max_duration_s:.2f}s")
+    console.print(f"[bold]Ochrona produkcji (output/markdown/ksiazka.md):[/bold] [bold green]{'NIENARUSZONE' if report.production_preserved else 'NARUSZONE!'}[/bold green]")
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT BRAMKI GATE G2: {report.verdict}[/bold {verdict_color}]")
+    console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
