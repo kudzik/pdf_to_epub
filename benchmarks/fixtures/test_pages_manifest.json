@@ -1,0 +1,547 @@
+{
+  "manifest_version": "1.0",
+  "book_name": "ksiazka",
+  "source_pdf_path": "input/ksiazka.pdf",
+  "total_pages_in_pdf": 914,
+  "created_at": "2026-11-04T08:58:56.559470+00:00",
+  "description": "Zestaw 30 reprezentatywnych stron testowych: 20 rozwojowych (dev) do strojenia benchmarków i reguł oraz 10 odłożonych (holdout) do ślepego testu końcowego.",
+  "dev_pages": [
+    {
+      "pdf_page": 25,
+      "printed_page": "23",
+      "chapter": "Foreword",
+      "layout_type": "prose_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": true,
+      "key_challenges": [
+        "de-hyphenation na końcu linii",
+        "tekst ciągły",
+        "wygięcie strony przy grzbiecie"
+      ],
+      "description": "Wstęp: ciągły tekst narracyjny, rozbite słowa przy prawym marginesie."
+    },
+    {
+      "pdf_page": 26,
+      "printed_page": "24",
+      "chapter": "Foreword",
+      "layout_type": "page_spread_transition",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": true,
+      "key_challenges": [
+        "przejście zdania między stronami 25 a 26",
+        "nagłówek żywej paginy"
+      ],
+      "description": "Wstęp: przejście zdania ze strony 25, żywa pagina '24 Foreword'."
+    },
+    {
+      "pdf_page": 33,
+      "printed_page": "31",
+      "chapter": "Foreword",
+      "layout_type": "prose_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": true,
+      "key_challenges": [
+        "uszkodzenie OCR numeru strony (odczytane jako 211 zamiast 31)",
+        "szum skanera"
+      ],
+      "description": "Wstęp: zniekształcenia OCR w nagłówku, artefakty znakowe."
+    },
+    {
+      "pdf_page": 34,
+      "printed_page": "32",
+      "chapter": "Foreword",
+      "layout_type": "prose_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "zakończenie akapitu narracyjnego",
+        "definicje technik kulinarnych"
+      ],
+      "description": "Wstęp: definicje pojęć kulinarnych, podsumowanie rozdziału wstępnego."
+    },
+    {
+      "pdf_page": 40,
+      "printed_page": "38",
+      "chapter": "Foreword",
+      "layout_type": "prose_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": true,
+      "key_challenges": [
+        "temperatury ze stopniami",
+        "skróty miar",
+        "drobny druk"
+      ],
+      "description": "Wstęp techniczny: temperatury, stopnie i miary w tekście ciągłym."
+    },
+    {
+      "pdf_page": 54,
+      "printed_page": "52",
+      "chapter": "Spices, Herbs, Seasonings",
+      "layout_type": "table_or_glossary",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": true,
+      "key_challenges": [
+        "uszkodzone polskie znaki",
+        "daszki i stopnie w środku wyrazów",
+        "krótkie bloki"
+      ],
+      "description": "Przyprawy: słowniczek ziół, uszkodzenia diakrytyków przez brak UTF-8."
+    },
+    {
+      "pdf_page": 58,
+      "printed_page": "56",
+      "chapter": "Spices, Herbs, Seasonings",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": true,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "temperatura 375°F vs zniekształcenie 3758",
+        "ułamki w proporcjach ziół"
+      ],
+      "description": "Mieszanki przypraw: krytyczny test rozpoznania temperatury i ułamków."
+    },
+    {
+      "pdf_page": 72,
+      "printed_page": "70",
+      "chapter": "Spices, Herbs, Seasonings",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "ułamki wagowe (2/3 oz.)",
+        "drożdże świeże",
+        "proporcje zakwasu"
+      ],
+      "description": "Drożdże i zaczyny: miary ułamkowe uncji i gramów."
+    },
+    {
+      "pdf_page": 96,
+      "printed_page": "94",
+      "chapter": "Cold Hors d'Oeuvres, Appetizers & Starter Courses",
+      "layout_type": "recipe_two_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "układ dwukolumnowy",
+        "bilingwalny tytuł SALT HERRING (SLEDZ)",
+        "lista składników"
+      ],
+      "description": "Zimne zakąski: dwukolumnowy przepis na śledzia, polskie znaki w tytule."
+    },
+    {
+      "pdf_page": 119,
+      "printed_page": "117",
+      "chapter": "Cold Hors d'Oeuvres, Appetizers & Starter Courses",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "kilka podprzepisów na jednej stronie",
+        "czas chłodzenia",
+        "ułamki łyżeczek"
+      ],
+      "description": "Zakąski mięsne: plasterkowanie, zawijanie w gazę, chłodzenie."
+    },
+    {
+      "pdf_page": 125,
+      "printed_page": "123",
+      "chapter": "Cold Hors d'Oeuvres, Appetizers & Starter Courses",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": true,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "galarety i auszpiki",
+        "proporcje żelatyny",
+        "struktura tabelaryczna"
+      ],
+      "description": "Galarety mięsne: proporcje wywaru i żelatyny, klarowanie."
+    },
+    {
+      "pdf_page": 142,
+      "printed_page": "140",
+      "chapter": "Cold Savory Sauces, Dressings & Relishes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "sosy zimne",
+        "skróty łyżek i łyżeczek (tbsp, tsp)",
+        "ocet vs cytryna"
+      ],
+      "description": "Sosy zimne: majonezy i sosy chrzanowe, skróty kulinarne."
+    },
+    {
+      "pdf_page": 161,
+      "printed_page": "159",
+      "chapter": "Cold-Appetizer & Supper Salads",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "sałatki warzywne i mięsne",
+        "polskie znaki diakrytyczne",
+        "składniki w punktach"
+      ],
+      "description": "Sałatki: surówki i sałatki jarzynowe, polska terminologia."
+    },
+    {
+      "pdf_page": 193,
+      "printed_page": "191",
+      "chapter": "Soups—Hot & Cold, Savory & Sweet",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "barszcz czysty i zabielany",
+        "przecedzanie wywaru",
+        "zakwas buraczany"
+      ],
+      "description": "Zupy: klasyczny barszcz czerwony, etapy gotowania i cedzenia."
+    },
+    {
+      "pdf_page": 234,
+      "printed_page": "232",
+      "chapter": "Soup Garnishes & Accompaniments",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "dodatki do zup: kołduny, uszka",
+        "lepienie ciasta",
+        "farsz grzybowy"
+      ],
+      "description": "Dodatki do zup: ciasto na uszka, proporcje farszu i ciasta."
+    },
+    {
+      "pdf_page": 263,
+      "printed_page": "261",
+      "chapter": "Hot Meats & Meat Dishes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "dania mięsne na gorąco",
+        "wstawki historyczne o kuchni szlacheckiej"
+      ],
+      "description": "Dania mięsne: pieczenie staropolskie, tło kulturowe."
+    },
+    {
+      "pdf_page": 329,
+      "printed_page": "327",
+      "chapter": "Poultry & Rabbit",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "drób i dziczyzna",
+        "faszerowanie kaczki jabłkami",
+        "temperatura pieczenia"
+      ],
+      "description": "Drób: pieczona kaczka, temperatura i czas pieczenia."
+    },
+    {
+      "pdf_page": 386,
+      "printed_page": "375",
+      "chapter": "Fish Entrees",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "dania rybne",
+        "ryba po polsku",
+        "jaja na twardo i masło"
+      ],
+      "description": "Ryby: ryba po polsku z jajkiem i koperkiem, proporcje masła."
+    },
+    {
+      "pdf_page": 435,
+      "printed_page": "420",
+      "chapter": "Mushroom Dishes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "grzyby suszone i świeże",
+        "moczenie i wywar grzybowy",
+        "czas duszenia"
+      ],
+      "description": "Dania z grzybów: suszone borowiki, duszenie ze śmietaną."
+    },
+    {
+      "pdf_page": 485,
+      "printed_page": "470",
+      "chapter": "Noodles, Dumplings, Pancakes & C.",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "pierogi i kluski",
+        "zagniatanie ciasta",
+        "lepienie brzegów"
+      ],
+      "description": "Mączne: ciasto pierogowe, technika wałkowania i zagniatania."
+    }
+  ],
+  "holdout_pages": [
+    {
+      "pdf_page": 517,
+      "printed_page": "502",
+      "chapter": "Hot Savory Sauces, Gravies & Toppings",
+      "layout_type": "recipe_single_column",
+      "has_fractions": true,
+      "has_temperatures": false,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "zasmażka biała i ciemna",
+        "proporcje mąki do tłuszczu",
+        "sos grzybowy"
+      ],
+      "description": "Sosy gorące: technika zasmażki i sosy na bazie wywarów."
+    },
+    {
+      "pdf_page": 560,
+      "printed_page": "527",
+      "chapter": "Cooked Vegetables",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "kapusta zasmażana",
+        "buraczki zasmażane",
+        "balans słodko-kwaśny"
+      ],
+      "description": "Warzywa gotowane: zasmażana kapusta, terminologia diakrytyczna."
+    },
+    {
+      "pdf_page": 620,
+      "printed_page": "587",
+      "chapter": "Dairy Products, Home Cheese Making & Egg Dishes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "domowy twaróg",
+        "temperatura ścinania skrzepu",
+        "odsączanie serwatki"
+      ],
+      "description": "Nabiał: produkcja domowego białego sera, kontrola temperatury."
+    },
+    {
+      "pdf_page": 650,
+      "printed_page": "617",
+      "chapter": "Puddings, Kisiels, Jellies & Other Desserts",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "kisiel żurawinowy",
+        "mąka ziemniaczana",
+        "kremy i budynie"
+      ],
+      "description": "Desery: tradycyjny kisiel, rozpuszczanie skrobi, gotowanie owoców."
+    },
+    {
+      "pdf_page": 680,
+      "printed_page": "647",
+      "chapter": "Babkas, Mazurkas, Tortes & Other Cakes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "ciasta drożdżowe",
+        "temperatura pieczenia babki",
+        "bakalie i lukier"
+      ],
+      "description": "Ciasta: wielkanocna babka drożdżowa, wyrastanie i pieczenie."
+    },
+    {
+      "pdf_page": 700,
+      "printed_page": "667",
+      "chapter": "Pastries & Small Cakes",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "chruściki / faworki",
+        "temperatura głębokiego tłuszczu",
+        "kruchość ciasta"
+      ],
+      "description": "Drobne wypieki: smażenie faworków, spirytus w cieście, temperatura smalcu."
+    },
+    {
+      "pdf_page": 740,
+      "printed_page": "707",
+      "chapter": "Beverages Hot & Cold",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "kompoty i napoje ziołowe",
+        "czas parzenia",
+        "miód i przyprawy korzenne"
+      ],
+      "description": "Napoje: kompot z suszu, parzenie ziół, syropy owocowe."
+    },
+    {
+      "pdf_page": 800,
+      "printed_page": "767",
+      "chapter": "Home-canning, Pickling & Preserving",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "ogórki kiszone i konserwowe",
+        "proporcje solanki",
+        "pasteryzacja słoików"
+      ],
+      "description": "Przetwory: kiszenie ogórków, koper, chrzan, sterylizacja słoików."
+    },
+    {
+      "pdf_page": 840,
+      "printed_page": "807",
+      "chapter": "Bread & Rolls",
+      "layout_type": "recipe_single_column",
+      "has_fractions": false,
+      "has_temperatures": true,
+      "has_bilingual_titles": false,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "chleb na zakwasie",
+        "chałka",
+        "temperatury zapiekania i studzenia"
+      ],
+      "description": "Pieczywo: chleb polski, wyrabianie ciasta żytniego, pieczenie."
+    },
+    {
+      "pdf_page": 905,
+      "printed_page": "872",
+      "chapter": "Recipe Index in Polish",
+      "layout_type": "index_multi_column",
+      "has_fractions": false,
+      "has_temperatures": false,
+      "has_bilingual_titles": true,
+      "has_tables": false,
+      "has_illustrations": false,
+      "has_curved_gutter_or_noise": false,
+      "key_challenges": [
+        "3-kolumnowy gęsty skorowidz",
+        "alfabetyczny porządek polskich liter",
+        "numery stron przepisów"
+      ],
+      "description": "Skorowidz polski: gęsty indeks wielokolumnowy, polskie znaki w nagłówkach."
+    }
+  ]
+}
