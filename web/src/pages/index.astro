@@ -219,7 +219,7 @@ import '../styles/global.css';
           <!-- Ollama Autopilot Button -->
           <button id="btnStartOllamaAutopilot" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
-            <span>Uruchom Autopilot</span>
+            <span id="btnStartOllamaAutopilotText">Uruchom Autopilot</span>
           </button>
 
           <!-- Heuristic Batch Button -->
@@ -515,7 +515,10 @@ import '../styles/global.css';
     let isAutopilotRunning = false;
     let activeRepairController = null;
     const repairStates = new Map();
+    const saveStatuses = new Map();
+    const verifyStatuses = new Map();
     let stopRequested = false;
+    let autopilotResumeIndex = 0;
 
     const bookSelector = document.getElementById('bookSelector');
     const ollamaBadge = document.getElementById('ollamaBadge');
@@ -685,6 +688,28 @@ import '../styles/global.css';
       }
     }
 
+    async function fetchHistoryStatuses() {
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      try {
+        const res = await fetch(`/api/history?book=${encodeURIComponent(currentBook)}`);
+        const data = await res.json();
+        if (data && data.success && data.ledger && Array.isArray(data.ledger.records)) {
+          for (const rec of data.ledger.records) {
+            const idx = rec.paragraph_index;
+            if (rec.decision === 'applied') {
+              saveStatuses.set(`${currentBook}:${idx}`, 'saved');
+            } else if (rec.decision === 'verified') {
+              verifyStatuses.set(`${currentBook}:${idx}`, 'verified');
+            } else if (rec.decision === 'rejected') {
+              verifyStatuses.set(`${currentBook}:${idx}`, 'rejected');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Błąd pobierania historii:', e);
+      }
+    }
+
     async function fetchStatus() {
       const currentBook = bookSelector.value || 'ksiazka';
       try {
@@ -772,6 +797,7 @@ import '../styles/global.css';
           document.getElementById('statLowBadge').textContent = `Low: ${low}`;
           anomalyCounterBadge.textContent = `${total} usterek`;
 
+          await fetchHistoryStatuses();
           renderAnomalies();
         } else {
           anomaliesList.innerHTML = `
@@ -829,17 +855,48 @@ import '../styles/global.css';
             : 'bg-zinc-800 border-zinc-700 text-zinc-300';
 
         const displaySnippet = item.raw_paragraph || item.snippet || '';
+        const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+        const pageEst = item.page || (item.approx_line ? Math.max(1, Math.round(item.approx_line / 35)) : Math.max(1, Math.min(914, Math.round((pIdx / (globalReport?.total_paragraphs || 8084)) * 914))));
+        const currentSaveMap = (typeof saveStatuses !== 'undefined') ? saveStatuses : new Map();
+        const currentVerifyMap = (typeof verifyStatuses !== 'undefined') ? verifyStatuses : new Map();
+        const saveState = currentSaveMap.get(`${currentBook}:${pIdx}`) || 'unsaved';
+        const verifyState = currentVerifyMap.get(`${currentBook}:${pIdx}`) || 'pending';
+        const isSaved = saveState === 'saved';
+        const saveBadgeClass = isSaved 
+          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold' 
+          : 'bg-zinc-800 text-zinc-400 border border-zinc-700';
+        const saveBadgeText = isSaved ? '✓ Zapisany w MD' : 'Niezapisany';
+
+        const verifyBadgeClass = verifyState === 'verified'
+          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold'
+          : verifyState === 'rejected'
+            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold'
+            : 'bg-zinc-800 text-zinc-400 border border-zinc-700';
+        const verifyBadgeText = verifyState === 'verified'
+          ? '✓ Zweryfikowany (OK)'
+          : verifyState === 'rejected'
+            ? '✗ Odrzucony'
+            : 'Oczekuje na weryfikację';
 
         return `
           <div class="bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700/80 rounded-2xl p-4 transition space-y-3 shadow-lg" id="card-${pIdx}">
             <!-- Header bar -->
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2">
                 <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 border border-zinc-700">#${pIdx}</span>
                 <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded border ${severityClass}">${sev}</span>
+                <!-- Osobne statusy zapisu oraz weryfikacji -->
+                <span id="save-status-${pIdx}" class="text-[10px] font-mono px-2 py-0.5 rounded ${saveBadgeClass}">${saveBadgeText}</span>
+                <span id="verify-status-${pIdx}" class="text-[10px] font-mono px-2 py-0.5 rounded ${verifyBadgeClass}">${verifyBadgeText}</span>
                 <span class="text-xs font-medium text-zinc-300">${escapeHtml(item.reason || item.categories?.join(', ') || 'Anomalia OCR')}</span>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
+                <button onclick="toggleScan(${pIdx})" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium border border-zinc-700 transition flex items-center gap-1" title="Podgląd wycinka/skanu strony PDF">
+                  <span>🔍 Skan PDF</span>
+                </button>
+                <button onclick="toggleHistory(${pIdx})" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium border border-zinc-700 transition flex items-center gap-1" title="Pokaż historię decyzji i audyt zmian">
+                  <span>📜 Historia</span>
+                </button>
                 <button onclick="requestOllamaRepair(${pIdx})" class="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-xs font-medium border border-emerald-500/30 transition flex items-center gap-1 shadow-sm active:scale-95" title="Napraw z użyciem wybranego modelu LLM">
                   <span>⚡ AI Fix</span>
                 </button>
@@ -849,6 +906,39 @@ import '../styles/global.css';
                 <button onclick="toggleEdit(${pIdx})" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium border border-zinc-700 transition">
                   Edytuj
                 </button>
+              </div>
+            </div>
+
+            <!-- SCAN PREVIEW PANEL -->
+            <div id="scan-box-${pIdx}" class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-2 hidden">
+              <div class="flex items-center justify-between text-xs font-mono">
+                <span class="text-zinc-300 font-bold flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  Wycinek / Skan strony PDF: <span id="scan-page-label-${pIdx}" class="text-emerald-400 font-bold">strona ${pageEst}</span>
+                </span>
+                <div class="flex items-center gap-2">
+                  <label class="text-[11px] text-zinc-400">Strona:</label>
+                  <input type="number" id="scan-page-input-${pIdx}" value="${pageEst}" min="1" max="914" class="w-16 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs font-mono text-white" />
+                  <button onclick="reloadScan(${pIdx})" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700">Wczytaj</button>
+                  <button onclick="toggleScan(${pIdx})" class="text-zinc-500 hover:text-zinc-300 text-xs">Zamknij</button>
+                </div>
+              </div>
+              <div class="flex justify-center bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/80 overflow-hidden">
+                <img id="scan-img-${pIdx}" src="/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${pageEst}" alt="Skan strony #${pageEst}" class="max-h-96 max-w-full rounded border border-zinc-700/60 object-contain shadow-md" onerror="this.onerror=null; this.alt='Nie udało się załadować obrazu skanu';" loading="lazy" />
+              </div>
+            </div>
+
+            <!-- DECISION HISTORY PANEL -->
+            <div id="history-box-${pIdx}" class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-2 hidden">
+              <div class="flex items-center justify-between text-xs font-mono border-b border-zinc-800/80 pb-1.5">
+                <span class="text-zinc-300 font-bold flex items-center gap-1.5">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Historia decyzji i audyt zmian akapitu #${pIdx}
+                </span>
+                <button onclick="toggleHistory(${pIdx})" class="text-zinc-500 hover:text-zinc-300 text-xs">Zamknij</button>
+              </div>
+              <div id="history-content-${pIdx}" class="text-xs space-y-2 max-h-56 overflow-y-auto">
+                <span class="text-zinc-500 italic">Kliknij, aby wczytać historię...</span>
               </div>
             </div>
 
@@ -883,9 +973,13 @@ import '../styles/global.css';
                 <div id="repaired-preview-${pIdx}" class="text-xs font-mono text-emerald-200/90 whitespace-pre-wrap leading-relaxed py-1">
                   ${escapeHtml(reconstructParagraphHeuristic(displaySnippet))}
                 </div>
-                <div id="metrics-footer-${pIdx}" class="text-[10px] font-mono text-emerald-400/80 border-t border-emerald-900/30 pt-1 flex items-center justify-between">
+                <div id="metrics-footer-${pIdx}" class="text-[10px] font-mono text-emerald-400/80 border-t border-emerald-900/30 pt-1 flex flex-wrap items-center justify-between gap-1.5">
                   <span>Propozycja algorytmiczna</span>
-                  <button onclick="applyHeuristicToCard(${pIdx})" class="text-emerald-300 hover:text-white underline text-[10px]">Zatwierdź wersję</button>
+                  <div class="flex items-center gap-1.5">
+                    <button onclick="markVerified(${pIdx})" class="px-2 py-0.5 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-[10px] font-medium transition" title="Oznacz akapit jako zweryfikowany i poprawny">✓ Zweryfikuj</button>
+                    <button onclick="markRejected(${pIdx})" class="px-2 py-0.5 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-[10px] font-medium transition" title="Oznacz akapit jako odrzucony">✗ Odrzuć</button>
+                    <button onclick="applyHeuristicToCard(${pIdx})" class="text-emerald-300 hover:text-white underline text-[10px]">Zatwierdź wersję</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -918,6 +1012,9 @@ import '../styles/global.css';
       const preview = document.getElementById(`repaired-preview-${pIdx}`);
       const footer = document.getElementById(`metrics-footer-${pIdx}`);
       const input = document.getElementById(`input-${pIdx}`);
+      const saveBadge = document.getElementById(`save-status-${pIdx}`);
+      const verifyBadge = document.getElementById(`verify-status-${pIdx}`);
+
       if (badge) {
         badge.classList.remove('animate-pulse');
         badge.textContent = state.label;
@@ -925,18 +1022,38 @@ import '../styles/global.css';
       if (preview) preview.textContent = state.text;
       if (footer) footer.textContent = state.details;
       if (input && state.text && !state.working) input.value = state.text;
+
+      if (saveBadge && (state.saved || state.label?.startsWith('Zapisano'))) {
+        saveBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        saveBadge.textContent = '✓ Zapisany w MD';
+      }
+      if (verifyBadge) {
+        if (state.verified) {
+          verifyBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+          verifyBadge.textContent = '✓ Zweryfikowany (OK)';
+        } else if (state.rejected) {
+          verifyBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+          verifyBadge.textContent = '✗ Odrzucony';
+        }
+      }
     }
 
     function rememberRepair(pIdx, data) {
       const sourcePages = [...new Set((data.sources || []).flatMap(s => s.pages))];
+      const curBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      const isApplied = Boolean(data.success && data.applied);
+      if (isApplied && typeof saveStatuses !== 'undefined') {
+        saveStatuses.set(`${curBook}:${pIdx}`, 'saved');
+      }
       const state = {
-        label: data.success && data.applied ? (data.method === 'source-ocr' ? 'Zapisano — ponowny OCR źródła' : data.method === 'heuristic' ? 'Zapisano reguły — sprawdź audyt' : 'Zapisano — korekta tekstowa') : 'Do kontroli — nie zapisano',
+        saved: isApplied,
+        label: isApplied ? (data.method === 'source-ocr' ? 'Zapisano — ponowny OCR źródła' : data.method === 'heuristic' ? 'Zapisano reguły — sprawdź audyt' : 'Zapisano — korekta tekstowa') : 'Do kontroli — nie zapisano',
         text: data.repaired || 'Brak wyniku rekonstrukcji.',
-        details: data.success && data.applied
+        details: isApplied
           ? `Zapisano do Markdown. ${sourcePages.length ? `Źródło: strony PDF ${sourcePages.join(', ')}. ` : ''}Podobieństwo do starego OCR: ${data.metrics?.similarity ?? '—'}% (ocena heurystyczna).`
           : `${data.error || 'Nie zapisano zmian.'} ${sourcePages.length ? `Sprawdzono strony PDF: ${sourcePages.join(', ')}.` : ''} Propozycja wymaga kontroli.`,
       };
-      repairStates.set(`${bookSelector.value}:${pIdx}`, state);
+      repairStates.set(`${curBook}:${pIdx}`, state);
       displayRepairState(pIdx, state);
       return state;
     }
@@ -957,6 +1074,154 @@ import '../styles/global.css';
       if (box) box.classList.toggle('hidden');
     };
 
+    window.toggleScan = function(pIdx) {
+      const box = document.getElementById(`scan-box-${pIdx}`);
+      if (!box) return;
+      box.classList.toggle('hidden');
+    };
+
+    window.reloadScan = function(pIdx) {
+      const input = document.getElementById(`scan-page-input-${pIdx}`);
+      const img = document.getElementById(`scan-img-${pIdx}`);
+      const label = document.getElementById(`scan-page-label-${pIdx}`);
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      const pageVal = input ? input.value : '1';
+      if (label) label.textContent = `strona ${pageVal}`;
+      if (img) {
+        img.src = `/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${encodeURIComponent(pageVal)}&t=${Date.now()}`;
+      }
+    };
+
+    window.toggleHistory = async function(pIdx) {
+      const box = document.getElementById(`history-box-${pIdx}`);
+      if (!box) return;
+      box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        await loadHistoryForCard(pIdx);
+      }
+    };
+
+    async function loadHistoryForCard(pIdx) {
+      const container = document.getElementById(`history-content-${pIdx}`);
+      if (!container) return;
+      container.innerHTML = '<span class="text-zinc-500 italic">Ładowanie historii z rejestru...</span>';
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      try {
+        const res = await fetch(`/api/history?book=${encodeURIComponent(currentBook)}`);
+        const data = await res.json();
+        if (!data.success || !data.ledger || !Array.isArray(data.ledger.records)) {
+          container.innerHTML = '<span class="text-zinc-500 italic">Brak zapisanej historii.</span>';
+          return;
+        }
+        const records = data.ledger.records.filter(r => r.paragraph_index === pIdx);
+        if (records.length === 0) {
+          container.innerHTML = '<span class="text-zinc-500 italic">Brak wpisów w historii dla tego akapitu. Decyzje i modyfikacje pojawią się tutaj po zatwierdzeniu.</span>';
+          return;
+        }
+        container.innerHTML = records.map(r => {
+          const dateStr = new Date(r.timestamp).toLocaleTimeString('pl-PL') + ' ' + new Date(r.timestamp).toLocaleDateString('pl-PL');
+          const dec = (r.decision || 'applied').toLowerCase();
+          const decClass = dec === 'applied' 
+            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+            : dec === 'verified'
+              ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30'
+              : dec === 'rejected'
+                ? 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+                : 'text-zinc-400 bg-zinc-800 border-zinc-700';
+          const anchor = data.anchors && data.anchors[r.record_id];
+          const anchorText = anchor ? (anchor.status === 'valid' ? '✓ Kotwica OK' : anchor.status === 'shifted' ? `↕ Przesunięty (${anchor.shift_offset})` : '⚠ Zgubiona kotwica') : '';
+
+          return `
+            <div class="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono space-y-1">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <span class="px-1.5 py-0.5 rounded border text-[10px] font-bold ${decClass}">${dec.toUpperCase()}</span>
+                  <span class="text-zinc-300 font-medium">${escapeHtml(r.source_engine || 'studio')}</span>
+                </div>
+                <span class="text-[10px] text-zinc-500">${dateStr}</span>
+              </div>
+              <div class="text-zinc-300 text-[11px] font-sans">
+                <strong>Powód:</strong> ${escapeHtml(r.decision_reason || 'Brak uzasadnienia')}
+              </div>
+              ${anchorText ? `<div class="text-[10px] text-zinc-500">Stan kotwicy: <span class="text-zinc-400">${anchorText}</span> &middot; Rekord: #${r.record_id}</div>` : ''}
+            </div>
+          `;
+        }).reverse().join('');
+      } catch (err) {
+        container.innerHTML = `<span class="text-rose-400">Błąd ładowania historii: ${escapeHtml(err.message)}</span>`;
+      }
+    }
+
+    window.markVerified = async function(pIdx) {
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      const anomaly = globalReport?.anomalies?.find(a => a.paragraph_index === pIdx);
+      const text = document.getElementById(`repaired-preview-${pIdx}`)?.textContent || anomaly?.raw_paragraph || '';
+      try {
+        const res = await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            book: currentBook,
+            index: pIdx,
+            original: anomaly?.raw_paragraph || anomaly?.snippet || '',
+            text,
+            decision: 'verified',
+            reason: 'Zweryfikowano manualnie przez operatora (OK)',
+            engine: 'operator'
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          verifyStatuses.set(`${currentBook}:${pIdx}`, 'verified');
+          const verifyBadge = document.getElementById(`verify-status-${pIdx}`);
+          if (verifyBadge) {
+            verifyBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+            verifyBadge.textContent = '✓ Zweryfikowany (OK)';
+          }
+          showToast(`✓ Oznaczono akapit #${pIdx} jako zweryfikowany`, 'success');
+        } else {
+          showToast('Błąd zapisu weryfikacji: ' + data.error, 'error');
+        }
+      } catch (err) {
+        showToast('Błąd sieciowy: ' + err.message, 'error');
+      }
+    };
+
+    window.markRejected = async function(pIdx) {
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      const anomaly = globalReport?.anomalies?.find(a => a.paragraph_index === pIdx);
+      const text = document.getElementById(`repaired-preview-${pIdx}`)?.textContent || anomaly?.raw_paragraph || '';
+      try {
+        const res = await fetch('/api/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            book: currentBook,
+            index: pIdx,
+            original: anomaly?.raw_paragraph || anomaly?.snippet || '',
+            text,
+            decision: 'rejected',
+            reason: 'Odrzucono przez operatora (usterka wymaga ponownej rewizji)',
+            engine: 'operator'
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          verifyStatuses.set(`${currentBook}:${pIdx}`, 'rejected');
+          const verifyBadge = document.getElementById(`verify-status-${pIdx}`);
+          if (verifyBadge) {
+            verifyBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+            verifyBadge.textContent = '✗ Odrzucony';
+          }
+          showToast(`Oznaczono akapit #${pIdx} jako odrzucony`, 'info');
+        } else {
+          showToast('Błąd zapisu odrzucenia: ' + data.error, 'error');
+        }
+      } catch (err) {
+        showToast('Błąd sieciowy: ' + err.message, 'error');
+      }
+    };
+
     window.applyPatch = async function(pIdx) {
       const textarea = document.getElementById(`input-${pIdx}`);
       if (!textarea) return;
@@ -969,10 +1234,16 @@ import '../styles/global.css';
         const res = await fetch('/api/patch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: pIdx, text, original: anomaly?.raw_paragraph, file: `${currentBook}.md` })
+          body: JSON.stringify({ index: pIdx, text, original: anomaly?.raw_paragraph, file: `${currentBook}.md`, reason: 'Ręczna korekta z panelu Web Studio' })
         });
         const result = await res.json();
         if (result.success) {
+          saveStatuses.set(`${currentBook}:${pIdx}`, 'saved');
+          const saveBadge = document.getElementById(`save-status-${pIdx}`);
+          if (saveBadge) {
+            saveBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            saveBadge.textContent = '✓ Zapisany w MD';
+          }
           const qualityBadge = document.getElementById(`quality-badge-${pIdx}`);
           const metricsFooter = document.getElementById(`metrics-footer-${pIdx}`);
           const previewEl = document.getElementById(`repaired-preview-${pIdx}`);
@@ -1014,10 +1285,18 @@ import '../styles/global.css';
         const res = await fetch('/api/patch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ index: pIdx, text: repaired, original: raw, file: `${currentBook}.md` })
+          body: JSON.stringify({ index: pIdx, text: repaired, original: raw, file: `${currentBook}.md`, reason: 'Normalizacja ułamków i szumów OCR' })
         });
         const result = await res.json();
         if (result.success) {
+          if (result.changed) {
+            saveStatuses.set(`${currentBook}:${pIdx}`, 'saved');
+            const saveBadge = document.getElementById(`save-status-${pIdx}`);
+            if (saveBadge) {
+              saveBadge.className = 'text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+              saveBadge.textContent = '✓ Zapisany w MD';
+            }
+          }
           const qualityBadge = document.getElementById(`quality-badge-${pIdx}`);
           const metricsFooter = document.getElementById(`metrics-footer-${pIdx}`);
           const previewEl = document.getElementById(`repaired-preview-${pIdx}`);
@@ -1205,8 +1484,14 @@ import '../styles/global.css';
       let failedCount = 0;
       bookSelector.disabled = true;
 
-      for (let i = 0; i < total; i++) {
-        if (stopRequested) break;
+      const resumeIdx = (typeof autopilotResumeIndex !== 'undefined') ? autopilotResumeIndex : 0;
+      const startIndex = (resumeIdx > 0 && resumeIdx < total) ? resumeIdx : 0;
+
+      for (let i = startIndex; i < total; i++) {
+        if (stopRequested) {
+          if (typeof autopilotResumeIndex !== 'undefined') autopilotResumeIndex = i;
+          break;
+        }
 
         const anomaly = anomalies[i];
         const pIdx = anomaly.paragraph_index;
@@ -1250,7 +1535,6 @@ import '../styles/global.css';
         }, 1000);
         let repairError = '';
 
-
         if (isAiOnline) {
           try {
             activeRepairController = new AbortController();
@@ -1279,14 +1563,23 @@ import '../styles/global.css';
             }
           } catch (e) {
             repairError = e.message;
+            if (e.name === 'AbortError' || stopRequested) {
+              // ANULOWANIE BEZ ZAPISU DO PLIKU
+              clearInterval(ticker);
+              activeRepairController = null;
+              card?.classList.remove('ring-2', 'ring-cyan-400', 'animate-pulse');
+              card?.setAttribute('aria-busy', 'false');
+              if (typeof autopilotResumeIndex !== 'undefined') autopilotResumeIndex = i;
+              break;
+            }
             rememberRepair(pIdx, { error: e.message });
           } finally {
             activeRepairController = null;
           }
         }
 
-        // Fallback do silnika regułowego, jeśli Ollama offline lub zawiodła
-        if (!isAiOnline) {
+        // Fallback do silnika regułowego, jeśli Ollama offline lub wybrany silnik regułowy
+        if (!isAiOnline && !stopRequested) {
           repairedText = reconstructParagraphHeuristic(rawSnippet);
           try {
             const patchResponse = await fetch('/api/patch', {
@@ -1296,7 +1589,8 @@ import '../styles/global.css';
                 index: pIdx,
                 text: repairedText,
                 original: rawSnippet,
-                file: `${currentBook}.md`
+                file: `${currentBook}.md`,
+                reason: 'Normalizacja ułamków i szumów OCR (Autopilot)'
               })
             });
             const patchResult = await patchResponse.json();
@@ -1315,6 +1609,12 @@ import '../styles/global.css';
         autopilotProgressBar.style.width = `${completedPercent}%`;
         card?.classList.remove('ring-2', 'ring-cyan-400', 'animate-pulse');
         card?.setAttribute('aria-busy', 'false');
+
+        if (stopRequested) {
+          if (typeof autopilotResumeIndex !== 'undefined') autopilotResumeIndex = i + 1;
+          break;
+        }
+
         if (!repairedText) {
           failedCount++;
           if (liveDiffAfter && !repairStates.has(`${currentBook}:${pIdx}`)) liveDiffAfter.textContent = repairError || 'Brak wyniku naprawy';
@@ -1326,7 +1626,6 @@ import '../styles/global.css';
           const changed = repairedText.trim() !== rawSnippet.trim();
           if (changed) repairedCount++;
           const resultLabel = !changed ? 'Bez zmian — wymaga kontroli' : metricData ? `Jakość: ${metricData.qualityScore}%` : 'Zapisano reguły — sprawdź audyt';
-
 
           // 1. Aktualizacja Live Diff Panel
           if (liveDiffAfter) liveDiffAfter.textContent = repairedText;
@@ -1368,7 +1667,20 @@ import '../styles/global.css';
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
       bookSelector.disabled = false;
-      if (stopRequested) return;
+      if (stopRequested) {
+        const resumeBtnText = document.getElementById('btnStartOllamaAutopilotText');
+        if (resumeBtnText) {
+          const rIdx = typeof autopilotResumeIndex !== 'undefined' ? autopilotResumeIndex : 0;
+          resumeBtnText.textContent = `Wznów Autopilot (od #${anomalies[rIdx]?.paragraph_index ?? 0})`;
+        }
+        return;
+      }
+
+      if (typeof autopilotResumeIndex !== 'undefined') autopilotResumeIndex = 0;
+      const resumeBtnText = document.getElementById('btnStartOllamaAutopilotText');
+      if (resumeBtnText) {
+        resumeBtnText.textContent = 'Uruchom Autopilot';
+      }
 
       // Do not build a new EPUB when the run changed no paragraphs.
       if (!repairedCount) {
