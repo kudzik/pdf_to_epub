@@ -84,8 +84,10 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: `Nieobsługiwana akcja: ${action}` }), { status: 400 });
     }
 
+    const startTime = Date.now();
     const { stdout, stderr } = await execPromise(command, { cwd: rootDir, env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") } });
-    return new Response(JSON.stringify({ success: true, stdout, stderr }), {
+    const durationMs = Date.now() - startTime;
+    return new Response(JSON.stringify({ success: true, stdout, stderr, durationMs }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
