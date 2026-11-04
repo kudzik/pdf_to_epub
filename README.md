@@ -1,240 +1,175 @@
-# PDF to EPUB Converter (Modern Document AI + Pandoc)
+# PDF to EPUB & RAG Knowledge Base Converter
 
-Plan naprawy ekstrakcji i checklista realizacji: [PLAN_REKONSTRUKCJI.md](docs/PLAN_REKONSTRUKCJI.md).
+Kompleksowy, przemysłowy pipeline do rekonstrukcji skanów i dokumentów PDF (w tym trudnych publikacji dwukolumnowych, tabel, przepisów kulinarnych i grafik) do czystego, semantycznego formatu **Markdown** (jako jedno źródło prawdy / baza wiedzy pod RAG) oraz kompilacji do weryfikowanego standardu **EPUB 3** oraz wektorowej bazy wiedzy dla modeli LLM.
 
-Nowoczesny, powtarzalny pipeline do ekstrakcji treści ze skanów PDF (książek, artykułów, publikacji kulinarnych z wielokolumnowym tekstem, tabelami i grafikami) do edytowalnego formatu **Markdown** (jako Source of Truth / RAG) oraz kompilacji do standardu **EPUB 3** gotowego do odczytu na czytnikach e-booków (Kindle, Kobo, PocketBook, Apple Books).
-
-## 🚀 Stos technologiczny
-* **Język i środowisko:** Python 3.13+ zarządzany przez [`uv`](https://github.com/astral-sh/uv).
-* **Document AI & Ekstrakcja:** [`docling`](https://github.com/DS4SD/docling) (analiza układu RT-DETR, detekcja kolumn, tabel i grafik) + [`pypdfium2`](https://github.com/pypdfium2-team/pypdfium2) (inteligentna detekcja warstwy tekstu).
-* **Sanitizer & Normalizer:** Dedykowany moduł `src/cleaner.py` (de-hyphenation, normalizacja ułamków kulinarnych i miar, filtr szumu skanera, deduplikacja nagłówków).
-* **Kompilator EPUB:** [`pandoc`](https://pandoc.org/) 3.13+.
-* **CLI & Terminal:** [`typer`](https://typer.tiangolo.com/) oraz [`rich`](https://github.com/Textualize/rich).
-* **Testy:** [`pytest`](https://docs.pytest.org/) (43 testy jednostkowe i integracyjne z pełną obsługą znaków diakrytycznych i WSL).
-* **Interfejs Wizualny & Studio:** [Astro 7](https://astro.build/) (SSR Node) + [Tailwind CSS v4](https://tailwindcss.com/) na porcie `4343` z integracją lokalnego LLM (Ollama / RTX 4080 Super), selektorem książek, Autopilotem naprawczym oraz 1-klikowym eksportem do Windows na WSL.
+Szczegółowy plan rekonstrukcji i historia bramek jakościowych: [docs/PLAN_REKONSTRUKCJI.md](docs/PLAN_REKONSTRUKCJI.md).  
+Końcowy raport certyfikacji projektu (Gate G0–G5): [docs/FINAL_PROJECT_REPORT.md](docs/FINAL_PROJECT_REPORT.md).
 
 ---
 
-## 📁 Struktura projektu
+## 🚀 Kluczowe Osiągnięcia i Wyniki (Projekt Ukończony)
+
+* **100% pokrycia korpusu:** 914 z 914 stron książki *Polish Heritage Cookery* zrekonstruowane bezstratnie (0 braków stron).
+* **327 762 słowa i 13 362 akapity:** Eliminacja 32 528 słów zduplikowanych nagłówków, szumów skanera i artefaktów.
+* **100% integralności grafik:** Wszystkie **113 ilustracji** z `output/markdown/assets/*.png` bezstratnie zachowane i poprawnie zalinkowane w publikacji Markdown oraz w kontenerze EPUB 3.
+* **Wierność jednostek i miar kulinarnych:** Precyzyjne wyekstrahowanie **18 729 miar** (rozróżnianie `t.` łyżeczka vs `T.` łyżka, `1/2`, `1/4`, temperatury `°F` / `°C`).
+* **Zwalidowany kontener EPUB 3:** Wygenerowany plik `output/epub/ksiazka.epub` (6.39 MB) pomyślnie przeszedł rygorystyczny audyt specyfikacji IDPF/W3C (werdykt: **PASS**).
+* **Baza wiedzy RAG:** Wygenerowano **717 chunków semantycznych** (679 ustrukturyzowanych przepisów) w formacie JSONL ze sprzętową wektoryzacją (768-dim) na karcie **NVIDIA GeForce RTX 4080 SUPER**.
+* **100% pokrycia testami:** **163 testy Pytest** (Python 3.13) + **28 testów Node.js** (Astro Studio) zdanych bezbłędnie.
+
+---
+
+## 🛠️ Stos Technologiczny
+
+| Warstwa | Technologia / Narzędzie | Rola w systemie |
+| --- | --- | --- |
+| **Zarządzanie środowiskiem** | Python 3.13+ (`uv`), Node.js 20+ | Nowoczesny, deterministyczny menedżer zależności |
+| **Document AI** | `docling` 2.146.0 (RT-DETR, TableFormer) | Detekcja układu strony, bloków, tabel i bounding boxów |
+| **Silnik OCR** | `rapidocr-onnxruntime` + `pypdfium2` | Błyskawiczny, deterministyczny OCR z renderingiem 300 DPI |
+| **Geometria i układy** | `src/geometry.py` | Autorski dewarping (wariancja rzutów), detekcja guttera i separacja 2 kolumn |
+| **Kontrola i jakość** | `src/block_validator.py`, `src/write_control.py` | Rygorystyczny filtr niezmienników miar, ochrona grafik i blokady zapisu |
+| **Reconciliacja i migracja** | `src/migration.py` | Mapowanie tokenowe shingli, bezpieczna publikacja i atomowy rollback |
+| **Kompilator EPUB 3** | `pandoc` 3.13+ | Kompilacja Markdown do EPUB 3 ze stylami `templates/epub.css` |
+| **Walidator EPUB 3** | `src/epub_validator.py` | Audyt kontenera, `mimetype`, `container.xml`, `content.opf`, nawigacji i mediów |
+| **Eksporter RAG / LLM** | `src/rag_exporter.py` | Chunking semantyczny, metadane przepisów i eksport JSONL |
+| **Akceleracja GPU** | NVIDIA RTX 4080 SUPER + Ollama | Generowanie embeddingów modelem `nomic-embed-text` |
+| **Studio Web & UI** | Astro 7 (SSR) + Tailwind CSS v4 | Wizualna inspekcja skanów, katalog wad i Autopilot naprawczy |
+
+---
+
+## 📁 Struktura Projektu
 
 ```text
 pdf_to_epub/
 ├── input/
-│   └── ksiazka.pdf          # Wejściowy plik PDF
+│   └── ksiazka.pdf                   # Wejściowy plik PDF (914 stron)
 ├── output/
-│   ├── markdown/            # Wyjściowy Markdown + wycięte obrazy (Source of Truth)
-│   │   ├── assets/          # Wyekstrahowane grafiki z książki
-│   │   └── ksiazka.md       # Czysty tekst pod RAG / LLM / korektę
-│   └── epub/
-│       └── ksiazka.epub     # Gotowy e-book EPUB 3
+│   ├── markdown/                     # Produkcyjny Markdown (Jedno Źródło Prawdy)
+│   │   ├── assets/                   # 113 wyekstrahowanych ilustracji
+│   │   └── ksiazka.md                # 327k słów, 13k akapitów
+│   ├── epub/
+│   │   └── ksiazka.epub              # Zwalidowany e-book EPUB 3 (6.39 MB)
+│   ├── rag/
+│   │   ├── ksiazka_rag_chunks.jsonl  # 717 chunków z embeddingami GPU
+│   │   └── ksiazka_rag_summary.json  # Raport podsumowujący bazy wiedzy
+│   ├── candidates/                   # Izolowane przebiegi kandydata przed publikacją
+│   ├── snapshots/                    # Trwałe migawki stanu bazowego z sumami SHA-256
+│   └── benchmarks/                   # Raporty jakości, CER/WER, bramki G1–G5
 ├── src/
-│   ├── __init__.py
-│   ├── cleaner.py           # Sanitizer Markdowna (de-hyphenation, ułamki, szumy)
-│   └── pipeline.py          # Główny skrypt CLI (extract, clean, build, all)
-├── templates/
-│   └── epub.css             # Arkusz stylów dla czytników (responsywne grafiki)
-├── metadata.yaml            # Metadane publikacji (tytuł, autor, język)
-├── tests/                   # Zestaw 20 testów jednostkowych i integracyjnych
-├── AGENTS.md                # Instrukcja operacyjna dla agentów AI
-├── pyproject.toml
-└── README.md
+│   ├── block_validator.py            # Walidacja niezmienników (miary kulinarne, temperatury)
+│   ├── cleaner.py                    # Sanitizer tekstu (de-hyphenation, ułamki, szumy)
+│   ├── epub_validator.py             # Walidator kontenera EPUB 3
+│   ├── extraction_adapter.py         # Adapter Docling i wycinanie wycinków bloków
+│   ├── full_candidate_runner.py      # Biegacz 914 stron z checkpointami partii
+│   ├── geometry.py                   # Dewarping, prostowanie, detekcja kolumn
+│   ├── ground_truth.py               # Wzorce referencyjne ze skanów 300 DPI
+│   ├── history.py                    # Księga decyzji i kotwice indeksów akapitów
+│   ├── migration.py                  # Reconciliacja, manifest grafik, publikacja, rollback
+│   ├── ocr_modes.py                  # Jawne silniki OCR (native, rapidocr, full_page)
+│   ├── pilot_evaluation.py           # Pilot 50 stron i ekstrapolacja kosztu
+│   ├── pipeline.py                   # Główny interfejs CLI (wszystkie polecenia)
+│   ├── rag_exporter.py               # Podział semantyczny i embeddingi GPU Ollama
+│   ├── snapshot.py                   # Zarządzanie snapshotami bazy
+│   └── write_control.py              # Atomowy zapis z blokadami fcntl.flock
+├── web/                              # Interfejs Astro Studio UI (port 4343)
+├── benchmarks/fixtures/              # Kanoniczny manifest stron i wzorce Ground Truth
+├── templates/epub.css                # Arkusz stylów CSS dla EPUB
+├── metadata.yaml                     # Metadane publikacji
+├── docs/PLAN_REKONSTRUKCJI.md        # Szczegółowa specyfikacja i dziennik decyzji
+├── AGENTS.md                         # Instrukcja operacyjna dla agentów AI
+└── pyproject.toml                    # Zależności i konfiguracja pytest
 ```
 
 ---
 
-## 🛠️ Architektura procesu
+## ⚡ Szybki Start i Podstawowe Komendy CLI
 
-```text
-       ┌───────────────┐
-       │ Wejściowy PDF │
-       └───────┬───────┘
-               │
-               ▼
-    [1. extract] Inteligentna ekstrakcja (Docling Layout AI)
-    - Auto-detekcja warstwy tekstowej (pomija powolny OCR, zachowując 2 kolumny)
-    - Opcjonalny fallback do OCR (EasyOCR) dla czystych bitmap
-               │
-               ▼
-    [2. clean] Sanitizer Markdowna & Normalizacja kulinarna
-    - De-hyphenation (scalanie rozbitych wyrazów: cul- tural ➔ cultural)
-    - Normalizacja ułamków kulinarnych (½ ➔ 1/2, 1 2 tsp ➔ 1/2 tsp)
-    - Usuwanie szumów skanera (losowe znaczki: ■ ^p-, FlraS -*)
-    - Deduplikacja żywej paginy (powtarzające się nagłówki stron)
-               │
-               ▼
-    [3. Source of Truth] Czysty plik output/markdown/ksiazka.md
-               │
-               ▼
-    [4. build] Kompilacja Pandoc (split-level 2, style CSS, okładka)
-               │
-               ▼
-       ┌───────────────┐
-       │ Gotowy EPUB 3 │
-       └───────────────┘
-```
+Wszystkie komendy uruchamiane są deterministycznie przez `uv run`:
 
----
-
-## 📖 Użycie
-
-### 1. Pełny cykl end-to-end
+### 1. Kompilacja i Walidacja EPUB 3
 ```bash
-uv run python -m src.pipeline all --input-pdf input/ksiazka.pdf
+# Kompilacja publikacji produkcyjnej do formatu EPUB 3 (trwa ~6 sekund):
+uv run python -m src.pipeline build --book ksiazka
+
+# Rygorystyczna walidacja kontenera EPUB 3 (mimetype, container, opf, spine, nav, assets):
+uv run python -m src.pipeline epub-validate --epub output/epub/ksiazka.epub
+
+# Otwarcie folderu z e-bookiem bezpośrednio w Eksploratorze Windows (dla WSL):
+uv run python -m src.pipeline open-windows --folder epub
 ```
 
-### 2. Krok po kroku
+### 2. Eksport Bazy Wiedzy RAG (z akceleracją GPU)
+```bash
+# Podział na ustrukturyzowane chunki pod RAG (format JSONL i JSON):
+uv run python -m src.pipeline rag-export --input-md output/markdown/ksiazka.md
 
-* **Krok 1: Ekstrakcja z PDF do Markdown:**
-  ```bash
-  # Cały dokument (z automatyczną detekcją warstwy tekstowej)
-  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf
+# Pełny eksport z generowaniem embeddingów na GPU (RTX 4080 SUPER) modelem nomic-embed-text:
+uv run python -m src.pipeline rag-export --input-md output/markdown/ksiazka.md --embed --model nomic-embed-text
+```
 
-  # Szybki test na stronach 1-5
-  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf --pages 1-5
+### 3. Migracja, Publikacja Kandydata i Rollback (Gate G4)
+```bash
+# Porównanie różnic pomiędzy kandydatem a produkcją:
+uv run python -m src.pipeline candidate-diff --candidate output/candidates/cand_full_914_frozen/ksiazka.md
 
-  # Wymuszenie silnika OCR na bitmapach
-  uv run python -m src.pipeline extract --input-pdf input/ksiazka.pdf --ocr
-  ```
+# Bezpieczna, atomowa publikacja kandydata do produkcji ze snapshotem bazowym:
+uv run python -m src.pipeline candidate-publish --candidate output/candidates/cand_full_914_frozen/ksiazka.md
 
-* **Krok 2: Czyszczenie Markdowna:**
-  ```bash
-  uv run python -m src.pipeline clean
-  ```
+# Natychmiastowy rollback i przywrócenie poprzedniego stanu produkcyjnego z .pre_r18_bak:
+uv run python -m src.pipeline candidate-rollback
+```
 
-* **Krok 3: Audyt jakościowy (wykrywanie anomalii OCR i braków):**
-  ```bash
-  uv run python -m src.pipeline audit
-  ```
+### 4. Ekstrakcja i Konwersja Pełnej Książki (Gate G3/G4)
+```bash
+# Pełna konwersja 914 stron z automatycznymi checkpointami (partie po 50 stron):
+uv run python -m src.pipeline full-candidate-convert
 
-* **Krok 4: Inspekcja i naprawa uszkodzonych akapitów przez Agenta AI:**
-  ```bash
-  # Podgląd uszkodzonego akapitu z kontekstem
-  uv run python -m src.pipeline inspect-anomaly 51
+# Szybki test ekstrakcji na wybranych stronach w trybie RapidOCR z geometrią:
+uv run python -m src.pipeline candidate-convert --pages 25-26 --mode rapidocr --geometry
+```
 
-  # Zastosowanie poprawki (z automatyczną kopią .bak)
-  uv run python -m src.pipeline patch 51 --text "Zrekonstruowany tekst..."
-  ```
-  *(Zobacz dedykowany plik `PROMPT_FOR_AGENT.md` zawierający gotowy prompt do wklejenia w VS Code)*.
+### 5. Audyt i Kontrola Jakości Markdowna
+```bash
+# Audyt jakościowy (wykrywanie anomalii OCR, rozbitych ułamków i szumów):
+uv run python -m src.pipeline audit --book ksiazka
 
-* **Krok 5: Kompilacja do EPUB i eksport do Windows:**
-  ```bash
-  # Standardowa kompilacja (z automatycznym kopiowaniem do Pobranych w Windows)
-  uv run python -m src.pipeline build --book ksiazka
+# Czyszczenie i normalizacja tekstu Markdown:
+uv run python -m src.pipeline clean --book ksiazka
+```
 
-  # Opcjonalnie z własną okładką:
-  uv run python -m src.pipeline build --book ksiazka --cover sciezka/do/okladki.jpg
+---
 
-  # Otwórz folder wyjściowy bezpośrednio w Eksploratorze Windows (z WSL):
-  uv run python -m src.pipeline open-windows --folder epub
-  ```
+## 🖥️ Web Studio UI (Astro 7 + Tailwind CSS)
 
-* **Krok 6: Czyszczenie plików roboczych po skończonej pracy (oszczędność dysku):**
-  ```bash
-  # Usuwa pliki robocze (.md, .bak, raporty audytu) dla danej książki, zachowując gotowy .epub:
-  uv run python -m src.pipeline purge --book ksiazka --keep-epub
-
-  # Pełne wyczyszczenie wszystkich plików roboczych:
-  uv run python -m src.pipeline purge --all
-  ```
-
-### 3. Nowoczesny Interfejs Wizualny (Web Studio UI)
-
-Projekt posiada dedykowany interfejs webowy zbudowany w **Astro 7 + Tailwind CSS v4**, działający na porcie **`4343`** (wygodnym i wolnym od konfliktów z innymi narzędziami dev):
+Interfejs graficzny dedykowany do inspekcji skanów i nadzorowania poprawek:
 
 ```bash
 cd web
 npm install
-npm run dev   # Serwer deweloperski na http://localhost:4343
-# lub
-npm run start # Serwer produkcyjny SSR
-
-# Zatrzymanie serwera działającego w tle na porcie 4343:
-fuser -k 4343/tcp
-# lub:
-pkill -f "astro"
+npm run dev   # Uruchomienie na porcie http://localhost:4343
 ```
 
-#### Funkcje Web Studio:
-* **Wybór pliku:** Przełączanie między różnymi książkami w `output/markdown/` i `input/`.
-* **Katalog Wad OCR:** Wyszukiwanie, filtrowanie po wadze (High, Medium, Low), podgląd diff uszkodzonych słów (np. `ha^been`, `1 2 tsp`, `in die oven`) oraz edytor bezpośredni.
-* **Autopilot Naprawczy:** Rozwiązuje problem ręcznego klikania 113 razy — automatycznie iteruje przez uszkodzone akapity i nanosi poprawki.
-* **Integracja z lokalnym Ollama (RTX 4080 Super):** Jeśli Ollama działa w tle, web UI łączy się z modelem (np. `qwen2.5:14b`), rekonstruując usterki bez płatnych tokenów API.
-* **Bezpośrednie pobieranie EPUB:** Jedno kliknięcie, aby pobrać gotowy `.epub`.
+* **Podgląd skanów 300 DPI:** Wycinki stron PDF powiązane bezpośrednio z indeksami akapitów.
+* **Księga decyzji (History Ledger):** Pełny rejestr wprowadzonych modyfikacji z uzasadnieniem i weryfikacją kotwic indeksów.
+* **Autopilot:** Bezpieczny automat przeglądający wady z możliwością natychmiastowego zatrzymania (AbortController) bez uszkadzania pliku produkcyjnego.
 
 ---
 
-### 4. Wykorzystanie lokalnego GPU (NVIDIA RTX 4080 SUPER 16GB + Ollama na Windows/WSL)
+## 🧪 Uruchamianie Testów
 
-Posiadając kartę **NVIDIA GeForce RTX 4080 SUPER (16 GB VRAM)**, masz do dyspozycji potężną platformę do lokalnego wnioskowania AI:
-* **Zero opłat:** Brak konieczności płacenia za API (OpenAI/Anthropic).
-* **Rekomendowany model:** `qwen2.5:14b-instruct` (lub `llama3.1:8b`). Plik modelu 14B w kwantyzacji Q4 zajmuje około 9 GB; zużycie VRAM zależy również od kontekstu. Szybkość i jakość trzeba zmierzyć na rzeczywistych danych. Ten model przyjmuje tekst, a nie obrazy stron.
+Gwarancja jakości (Definition of Done) wymaga 100% zaliczenia obu zestawów testów:
 
-#### Konfiguracja Ollama na Windows dla środowiska WSL:
-Gdy Ollama jest zainstalowana bezpośrednio w Windows, domyślnie nasłuchuje tylko na `127.0.0.1` wewnątrz Windows, odrzucając pakiety z wirtualnej sieci WSL. Aby umożliwić połączenie:
-
-1. **Udostępnij port dla WSL:** Otwórz **PowerShell** w Windows i wklej:
-   ```powershell
-   [Environment]::SetEnvironmentVariable("OLLAMA_HOST", "0.0.0.0", "User")
-   ```
-2. **Zrestartuj Ollama:** Zamknij Ollama z zasobnika systemowego Windows (koło zegarka ➔ *Quit Ollama*) i uruchom ją ponownie.
-3. **Uruchom model:**
-   ```powershell
-   ollama run qwen2.5:14b
-   ```
-4. **Weryfikacja w Web Studio:** Otwórz `http://localhost:4343`. Wskaźnik w prawym górnym rogu zmieni się na zielony **[Ollama Online]**.
-   Silnik regułowy poprawia tylko znane wzorce. Nie rekonstruuje dowolnego uszkodzonego tekstu i nie gwarantuje kompletnej korekty.
-
----
-
-### 5. Uruchamianie testów
 ```bash
+# Testy backendowe Python (163 testy):
 uv run pytest
+
+# Testy frontendowe Node.js (28 testów):
+npm --prefix web test
 ```
 
+---
 
-## Naprawa OCR z kontrolą źródła
+## 📄 Licencja i Informacje Prawne
 
-Przed naprawą istniejącego Markdowna nie uruchamiaj `extract` ani `all`.
-
-1. „AI Fix” oraz Autopilot wysyłają **pełny akapit**, nie skrót z raportu.
-2. Model zwraca JSON z tekstem i informacją o niepewności. Drobna korekta tekstowa przechodzi kontrolę liczb, jednostek i podobieństwa. Oceny są heurystykami, nie dowodem braku halucynacji.
-3. Gdy pierwsza propozycja jest niepewna, nie zmienia tekstu lub nie przechodzi kontroli, `src/source_ocr.py` odnajduje fragment w warstwie tekstowej PDF i odczytuje ponownie tylko dopasowaną stronę lub dwie kolejne strony. Obraz jest prostowany, odczytywany przez EasyOCR, a pola tekstowe porządkowane. Nie jest to ponowna ekstrakcja książki: proces **nie zapisuje Markdowna**.
-4. Model otrzymuje niezależny odczyt skanu. Usunięcie fałszywych cyfr starego OCR jest dopuszczalne tylko po kontroli względem tego odczytu. Samo oznaczenie przez model „to błąd OCR” nie wystarcza.
-5. Odnośniki `![...](assets/...)` pozostają poza modelem, w tej samej kolejności i między tymi samymi fragmentami tekstu. Zapis AI, ręczny i wsadowy odrzuca usunięcie lub zmianę grafik.
-6. Zapis sprawdza aktualność akapitu, zachowuje jego indeks i tworzy `.bak`. Błędy i brak zmiany nie są liczone jako poprawione rekordy. Odrzucona propozycja pozostaje widoczna do kontroli.
-
-Wymagania: `input/<nazwa>.pdf`, istniejące modele EasyOCR (`pl`, `en`) oraz działająca Ollama. Odczyt źródła używa CPU i nie pobiera modeli automatycznie. Cache jest w `output/source_cache/`; zmiana pliku PDF unieważnia go. Nieczytelne granice, powtarzające się fragmenty i niska pewność odczytu powodują odrzucenie propozycji. Dokument bez użytecznej warstwy tekstowej nie może być automatycznie dopasowany przez ten mechanizm. Złożone tabele i kolumny nadal wymagają sprawdzenia.
-
-### Uruchamianie i wersja serwera
-
-`npm run build` nie przeładowuje już działającego `astro preview`. Po zmianach zatrzymaj serwer preview tego projektu i uruchom go ponownie (Astro 7 może działać w tle, więc samo zamknięcie terminala nie wystarcza):
-
-```bash
-cd web
-npm run stop
-npm run build
-npm run start
-npm run status
-```
-
-Do pracy nad kodem używaj `npm run dev`; sprawdź port wypisany przez Astro. Gdy 4343 jest zajęty, serwer deweloperski może przejść na kolejny port. API `/api/status?book=ksiazka` zwraca `repairVersion: "source-ocr-v1"` w wersji z naprawą opartą o źródło.
-
-### Testy bez ukrywania błędów
-
-```bash
-UV_CACHE_DIR=/tmp/pdf-epub-uv-cache uv run pytest
-cd web
-npm test
-# Wymaga działającej aplikacji, Ollama qwen2.5:14b i oryginalnego PDF:
-npm run test:live
-# Rzeczywisty zapis do tymczasowej książki i test konfliktu (oryginał pozostaje bez zmian):
-npm run test:live:write
-# Inny port testowanego serwera:
-STUDIO_TEST_URL=http://127.0.0.1:4397 npm run test:live
-```
-
-`web/tests/fixtures/foreword.json` zawiera oryginalny uszkodzony tekst oraz osobną transkrypcję wzorcową ze skanu. **Wzorzec nie jest wysyłany modelowi.** Test rzeczywisty wysyła `apply:false`, porównuje wynik słowo po słowie, kontroluje grafiki i sumę SHA-256 książki. Próg 3,5% błędów słownych dotyczy wyłącznie tego przypadku regresji; nie oznacza certyfikacji jakości całej książki. Raport z pełnym wynikiem trafia do `web/tests/artifacts/live-repair.json`. Testy jednostkowe z atrapą modelu sprawdzają zachowanie programu, nie skuteczność rzeczywistej rekonstrukcji.
-
-Dokumentacja implementacji: [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs), [Ollama vision](https://docs.ollama.com/capabilities/vision), [EasyOCR API](https://www.jaided.ai/easyocr/documentation/).
-
-Krótki dwujęzyczny nagłówek jest osobnym przypadkiem regresji: `cd web && npm run test:live:heading`. Test tworzy tymczasową książkę z sąsiednimi akapitami; nie wysyła modelowi poprawionego nagłówka. API pobiera kontekst z Markdowna po indeksie, a wyszukiwanie źródła używa sąsiadów, gdy sam tytuł jest zbyt krótki. Nagłówki zawsze wymagają sprawdzenia źródła; dopasowanie obejmuje do trzech wierszy, aby zachować angielską i polską nazwę.
+Projekt zrealizowany zgodnie z zasadami czystego kodu, test-driven development (TDD) oraz ścisłą dyscypliną Git/GitHub (Conventional Commits, Pull Requests, Milestones, Issues).
+Wszystkie algorytmy i narzędzia działają lokalnie bez konieczności wysyłania wrażliwych danych do zewnętrznych płatnych chmur.
