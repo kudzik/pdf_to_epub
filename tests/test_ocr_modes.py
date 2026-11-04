@@ -1,0 +1,92 @@
+"""Unit tests for explicit OCR modes, candidate export isolation, and production guards."""
+
+import json
+from pathlib import Path
+import pytest
+
+from src.ocr_modes import (
+    OcrEngineMode,
+    ProductionOverwriteError,
+    CandidateRunConfig,
+    CandidateRunManifest,
+    ensure_candidate_does_not_overwrite_production,
+    get_mode_converter,
+    run_candidate_conversion,
+    load_candidate_manifest,
+)
+from docling.datamodel.pipeline_options import OcrMode
+
+
+def test_production_overwrite_guard():
+    # Attempting to target production Markdown raises error
+    prod_md = Path("output/markdown/ksiazka.md")
+    with pytest.raises(ProductionOverwriteError, match="Zablokowano próbę bezpośredniego zapisu"):
+        ensure_candidate_does_not_overwrite_production(prod_md)
+
+    # Attempting to target production directory raises error
+    prod_dir = Path("output/markdown")
+    with pytest.raises(ProductionOverwriteError, match="Zablokowano próbę zapisu kandydata do katalogu produkcyjnego"):
+        ensure_candidate_does_not_overwrite_production(prod_dir)
+
+    # Candidate directories are safe and permitted
+    ensure_candidate_does_not_overwrite_production(Path("output/candidates/test_run"))
+    ensure_candidate_does_not_overwrite_production(Path("output/benchmarks/test_run"))
+
+
+def test_ocr_engine_modes():
+    assert OcrEngineMode.NATIVE.value == "native"
+    assert OcrEngineMode.FULL_PAGE.value == "full_page"
+    assert OcrEngineMode.LAYOUT_REGIONS.value == "layout_regions"
+
+
+def test_get_mode_converter_native():
+    converter, summary = get_mode_converter(OcrEngineMode.NATIVE, ["pl", "en"])
+    assert summary["mode"] == "native"
+    assert summary["do_ocr"] is False
+
+
+def test_get_mode_converter_full_page():
+    converter, summary = get_mode_converter(OcrEngineMode.FULL_PAGE, ["pl", "en"])
+    assert summary["mode"] == "full_page"
+    assert summary["do_ocr"] is True
+    assert summary["ocr_mode"] == "FULL_PAGE"
+
+
+def test_candidate_run_conversion_native(tmp_path: Path):
+    pdf_path = Path("input/ksiazka.pdf")
+    if not pdf_path.exists():
+        pytest.skip("Input PDF not available.")
+
+    cand_base = tmp_path / "candidates"
+    manifest = run_candidate_conversion(
+        pdf_path=pdf_path,
+        pages=[25],
+        mode=OcrEngineMode.NATIVE,
+        languages=["pl", "en"],
+        output_base_dir=cand_base,
+        run_id="test_run_native_p25",
+    )
+
+    assert manifest.config.run_id == "test_run_native_p25"
+    assert manifest.config.mode == OcrEngineMode.NATIVE
+    assert manifest.total_pages == 1
+    assert manifest.pages_converted == [25]
+    assert manifest.total_blocks > 0
+    assert manifest.is_production_truth is False
+    assert manifest.candidate_markdown_sha256 is not None
+
+    cand_dir = cand_base / "test_run_native_p25"
+    manifest_file = cand_dir / "manifest.json"
+    assert manifest_file.exists()
+
+    loaded_manifest = load_candidate_manifest(manifest_file)
+    assert loaded_manifest.config.run_id == manifest.config.run_id
+    assert loaded_manifest.candidate_markdown_sha256 == manifest.candidate_markdown_sha256
+
+    # Verify extracted page sidecar exists
+    extracted_page_file = cand_dir / "pages" / "page_025_extracted.json"
+    assert extracted_page_file.exists()
+
+    # Verify candidate markdown file exists
+    cand_md = cand_dir / f"{pdf_path.stem}.md"
+    assert cand_md.exists()
