@@ -264,10 +264,29 @@ import '../styles/global.css';
             Główne Kroki Pipeline'u:
           </span>
           <div class="flex flex-wrap items-center gap-2">
-            <button id="btnRunExtract" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 1: Wyekstrahuj PDF do czystego Markdowna">
-              <span class="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center text-[10px] font-bold">1</span>
-              <span>Ekstrahuj z PDF</span>
-            </button>
+            <!-- Rozszerzony Krok 1 z wyborem zakresu stron i silnika OCR -->
+            <div class="flex items-center rounded-xl bg-zinc-800/80 border border-zinc-700 p-0.5 shadow-sm">
+              <button id="btnRunExtract" class="px-3 py-1.5 hover:bg-zinc-700 text-cyan-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 active:scale-95" title="Krok 1: Wyekstrahuj PDF do czystego Markdowna">
+                <span class="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span>Ekstrahuj z PDF</span>
+              </button>
+              <div class="h-4 w-px bg-zinc-700 mx-1"></div>
+              <select id="extractRangeSelect" class="bg-transparent text-cyan-200 text-[11px] font-mono focus:outline-none pr-1 cursor-pointer" title="Zakres stron do ekstrakcji">
+                <option value="1-10" selected>Strony 1-10 (Szybki test ~15s)</option>
+                <option value="1-25">Strony 1-25 (Wstęp)</option>
+                <option value="all">Pełna książka (1-914)</option>
+                <option value="custom">Własny zakres...</option>
+              </select>
+              <input id="extractCustomPages" type="text" placeholder="np. 20-30" class="w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-white hidden ml-1" title="Podaj zakres stron, np. 20-30 lub 5" />
+            </div>
+
+            <select id="extractOcrEngine" class="bg-zinc-800/80 border border-zinc-700 text-zinc-300 text-[11px] font-mono rounded-xl px-2 py-2 focus:outline-none cursor-pointer" title="Silnik OCR do użycia przy ekstrakcji">
+              <option value="rapidocr" selected>⚡ RapidOCR (Szybki, zalecany)</option>
+              <option value="auto">Auto (detekcja jakości)</option>
+              <option value="native">Tylko warstwa tekstowa PDF</option>
+              <option value="easyocr">EasyOCR</option>
+            </select>
+
             <button id="btnRunClean" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 2: Rekonstrukcja polskich znaków, ułamków i de-hyphenation">
               <span class="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[10px] font-bold">2</span>
               <span>Wyczyść Tekst</span>
@@ -665,6 +684,39 @@ import '../styles/global.css';
           Rozumiem
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- FULL SCREEN HIGH-RES SCAN VIEWER MODAL WITH PAN & ZOOM -->
+  <div id="scanViewerModal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden flex flex-col select-none" role="dialog" aria-modal="true" aria-labelledby="scanModalTitle">
+    <!-- Top Control Bar -->
+    <div class="h-14 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0 shadow-lg">
+      <div class="flex items-center gap-3">
+        <h3 id="scanModalTitle" class="text-xs sm:text-sm font-bold text-white font-mono flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+          <span class="hidden sm:inline">Podgląd Skanu 300 DPI:</span>
+        </h3>
+        <div class="flex items-center gap-1 font-mono text-xs">
+          <button id="btnModalPrevPage" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700 font-bold transition">◀</button>
+          <span id="scanModalPageIndicator" class="px-3 py-1 bg-zinc-950 text-emerald-400 font-bold border border-zinc-800 rounded">Strona 1 / 914</span>
+          <button id="btnModalNextPage" class="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700 font-bold transition">▶</button>
+        </div>
+      </div>
+      <!-- Zoom and Action Buttons -->
+      <div class="flex items-center gap-2">
+        <div class="flex items-center bg-zinc-950 rounded-lg border border-zinc-800 p-0.5 text-xs font-mono">
+          <button id="btnModalZoomOut" class="px-2.5 py-1 hover:bg-zinc-800 text-zinc-300 rounded font-bold" title="Pomniejsz">-</button>
+          <span id="scanModalZoomLevel" class="px-2 py-1 text-zinc-400 min-w-14 text-center">100%</span>
+          <button id="btnModalZoomIn" class="px-2.5 py-1 hover:bg-zinc-800 text-zinc-300 rounded font-bold" title="Powiększ">+</button>
+          <button id="btnModalZoomFit" class="px-2.5 py-1 hover:bg-zinc-800 text-zinc-300 rounded border-l border-zinc-800 text-[11px]" title="Zresetuj do 100%">100%</button>
+        </div>
+        <a id="btnModalOpenTab" href="#" target="_blank" class="hidden sm:inline px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-mono border border-zinc-700">Nowa karta ↗</a>
+        <button id="btnModalClose" class="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-lg text-xs font-bold border border-rose-800 transition">✕ Zamknij (Esc)</button>
+      </div>
+    </div>
+    <!-- Interactive Viewport -->
+    <div id="scanModalViewport" class="flex-1 overflow-auto flex items-center justify-center p-6 bg-zinc-950 relative">
+      <img id="scanModalImg" src="" alt="Skan strony PDF" class="max-w-none transition-transform duration-75 shadow-2xl rounded border border-zinc-800 pointer-events-none" style="transform: scale(1); transform-origin: center center;" />
     </div>
   </div>
 
@@ -1158,6 +1210,9 @@ import '../styles/global.css';
                 <button onclick="requestOllamaRepair(${pIdx})" class="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-xs font-medium border border-emerald-500/30 transition flex items-center gap-1 shadow-sm active:scale-95" title="Napraw z użyciem wybranego modelu LLM">
                   <span>⚡ AI Fix</span>
                 </button>
+                <button onclick="requestScanOcrRepair(${pIdx})" class="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-medium border border-indigo-500/30 transition flex items-center gap-1 active:scale-95" title="Bezpośrednia transkrypcja z wycinka skanu (RapidOCR + VLM)">
+                  <span>📷 Skan OCR</span>
+                </button>
                 <button onclick="applyHeuristicToCard(${pIdx})" class="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg text-xs font-medium border border-amber-500/30 transition flex items-center gap-1 active:scale-95" title="Szybka naprawa znaków i ułamków">
                   <span>Rekonstrukcja</span>
                 </button>
@@ -1169,20 +1224,27 @@ import '../styles/global.css';
 
             <!-- SCAN PREVIEW PANEL -->
             <div id="scan-box-${pIdx}" class="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-2 hidden">
-              <div class="flex items-center justify-between text-xs font-mono">
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                 <span class="text-zinc-300 font-bold flex items-center gap-1.5">
                   <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                   Wycinek / Skan strony PDF: <span id="scan-page-label-${pIdx}" class="text-emerald-400 font-bold">strona ${pageEst}</span>
                 </span>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="stepScanPage(${pIdx}, -1)" class="px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700" title="Poprzednia strona">◀</button>
                   <label class="text-[11px] text-zinc-400">Strona:</label>
-                  <input type="number" id="scan-page-input-${pIdx}" value="${pageEst}" min="1" max="914" class="w-16 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs font-mono text-white" />
+                  <input type="number" id="scan-page-input-${pIdx}" value="${pageEst}" min="1" max="914" class="w-16 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs font-mono text-white text-center" />
+                  <button onclick="stepScanPage(${pIdx}, 1)" class="px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700" title="Następna strona">▶</button>
                   <button onclick="reloadScan(${pIdx})" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded border border-zinc-700">Wczytaj</button>
-                  <button onclick="toggleScan(${pIdx})" class="text-zinc-500 hover:text-zinc-300 text-xs">Zamknij</button>
+                  <button onclick="openScanModal(${pIdx})" class="px-2.5 py-0.5 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs rounded border border-emerald-500/40 font-semibold flex items-center gap-1" title="Otwórz pełny ekran z funkcją Pan & Zoom">🔍 Pełny ekran</button>
+                  <button onclick="toggleScan(${pIdx})" class="text-zinc-500 hover:text-zinc-300 text-xs ml-1">Zamknij</button>
                 </div>
               </div>
-              <div class="flex justify-center bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/80 overflow-hidden">
-                <img id="scan-img-${pIdx}" src="/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${pageEst}" alt="Skan strony #${pageEst}" class="max-h-96 max-w-full rounded border border-zinc-700/60 object-contain shadow-md" onerror="this.onerror=null; this.alt='Nie udało się załadować obrazu skanu';" loading="lazy" />
+              <div class="flex flex-col items-center bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/80 overflow-hidden relative group">
+                <img id="scan-img-${pIdx}" src="/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${pageEst}" alt="Skan strony #${pageEst}" class="max-h-[500px] max-w-full rounded border border-zinc-700/60 object-contain shadow-md cursor-zoom-in transition-transform duration-200" onclick="openScanModal(${pIdx})" onerror="this.onerror=null; this.alt='Nie udało się załadować obrazu skanu';" loading="lazy" />
+                <div class="mt-2 flex items-center justify-between w-full text-[11px] font-mono text-zinc-400 px-1">
+                  <span>Kliknij obraz, aby otworzyć powiększenie i przesuwanie (Pan & Zoom)</span>
+                  <a id="scan-direct-link-${pIdx}" href="/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${pageEst}" target="_blank" class="text-cyan-400 hover:underline">Otwórz plik PNG (nowa karta) ↗</a>
+                </div>
               </div>
             </div>
 
@@ -1332,22 +1394,118 @@ import '../styles/global.css';
       if (box) box.classList.toggle('hidden');
     };
 
-    window.toggleScan = function(pIdx) {
+    window.toggleScan = async function(pIdx) {
       const box = document.getElementById(`scan-box-${pIdx}`);
       if (!box) return;
       box.classList.toggle('hidden');
+      if (!box.classList.contains('hidden')) {
+        const input = document.getElementById(`scan-page-input-${pIdx}`);
+        const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+        if (input && !input.dataset.located) {
+          try {
+            const label = document.getElementById(`scan-page-label-${pIdx}`);
+            const img = document.getElementById(`scan-img-${pIdx}`);
+            const directLink = document.getElementById(`scan-direct-link-${pIdx}`);
+            const res = await fetch(`/api/locate-page?book=${encodeURIComponent(currentBook)}&index=${pIdx}`);
+            const data = await res.json();
+            if (data.success && data.page) {
+              input.value = data.page;
+              input.dataset.located = 'true';
+              if (label) label.textContent = `strona ${data.page} (pewność: ${(data.confidence * 100).toFixed(0)}%)`;
+              if (img) img.src = `/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${data.page}&t=${Date.now()}`;
+              if (directLink) directLink.href = `/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${data.page}`;
+            }
+          } catch (e) {
+            // zachowaj wartość początkową
+          }
+        }
+      }
+    };
+
+    window.stepScanPage = function(pIdx, delta) {
+      const input = document.getElementById(`scan-page-input-${pIdx}`);
+      if (!input) return;
+      const current = parseInt(input.value, 10) || 1;
+      const next = Math.max(1, Math.min(914, current + delta));
+      input.value = next;
+      input.dataset.located = 'true';
+      window.reloadScan(pIdx);
     };
 
     window.reloadScan = function(pIdx) {
       const input = document.getElementById(`scan-page-input-${pIdx}`);
       const img = document.getElementById(`scan-img-${pIdx}`);
       const label = document.getElementById(`scan-page-label-${pIdx}`);
+      const directLink = document.getElementById(`scan-direct-link-${pIdx}`);
       const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
       const pageVal = input ? input.value : '1';
       if (label) label.textContent = `strona ${pageVal}`;
       if (img) {
         img.src = `/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${encodeURIComponent(pageVal)}&t=${Date.now()}`;
       }
+      if (directLink) {
+        directLink.href = `/api/scan-image?book=${encodeURIComponent(currentBook)}&page=${encodeURIComponent(pageVal)}`;
+      }
+    };
+
+    let modalCurrentPage = 1;
+    let modalCurrentBook = 'ksiazka';
+    let modalCurrentZoom = 1.0;
+
+    window.openScanModal = function(pIdx) {
+      const input = document.getElementById(`scan-page-input-${pIdx}`);
+      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+      const pageVal = input ? parseInt(input.value, 10) || 1 : 1;
+      openScanViewer(pageVal, currentBook);
+    };
+
+    function openScanViewer(pageNo, book) {
+      modalCurrentPage = pageNo;
+      modalCurrentBook = book;
+      modalCurrentZoom = 1.0;
+      const modal = document.getElementById('scanViewerModal');
+      const img = document.getElementById('scanModalImg');
+      const pageIndicator = document.getElementById('scanModalPageIndicator');
+      const zoomLevel = document.getElementById('scanModalZoomLevel');
+      const openTab = document.getElementById('btnModalOpenTab');
+
+      if (pageIndicator) pageIndicator.textContent = `Strona ${modalCurrentPage} / 914`;
+      if (zoomLevel) zoomLevel.textContent = '100%';
+      if (openTab) openTab.href = `/api/scan-image?book=${encodeURIComponent(modalCurrentBook)}&page=${modalCurrentPage}`;
+      if (img) {
+        img.style.transform = `scale(${modalCurrentZoom})`;
+        img.src = `/api/scan-image?book=${encodeURIComponent(modalCurrentBook)}&page=${modalCurrentPage}&t=${Date.now()}`;
+      }
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeScanViewer() {
+      const modal = document.getElementById('scanViewerModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function stepModalPage(delta) {
+      const next = Math.max(1, Math.min(914, modalCurrentPage + delta));
+      if (next !== modalCurrentPage) {
+        openScanViewer(next, modalCurrentBook);
+      }
+    }
+
+    function setModalZoom(newZoom) {
+      modalCurrentZoom = Math.max(0.5, Math.min(3.0, newZoom));
+      const img = document.getElementById('scanModalImg');
+      const zoomLevel = document.getElementById('scanModalZoomLevel');
+      if (img) img.style.transform = `scale(${modalCurrentZoom})`;
+      if (zoomLevel) zoomLevel.textContent = `${Math.round(modalCurrentZoom * 100)}%`;
+    }
+
+    window.requestScanOcrRepair = async function(pIdx) {
+      showToast(`Pobieranie wycinka skanu i weryfikacja OCR dla #${pIdx}...`, 'info');
+      const box = document.getElementById(`scan-box-${pIdx}`);
+      if (box && box.classList.contains('hidden')) {
+        await window.toggleScan(pIdx);
+      }
+      await window.requestOllamaRepair(pIdx);
     };
 
     window.toggleHistory = async function(pIdx) {
@@ -2137,7 +2295,9 @@ import '../styles/global.css';
         btnCopyToWindows, btnOpenWindowsExplorer,
         btnPurgeEpub, btnPurgeCache, btnPurgeWorkfiles,
         btnStartOllamaAutopilot, btnHeuristicBatch, btnNextActionCta,
-        bookSelector
+        bookSelector,
+        document.getElementById('extractRangeSelect'),
+        document.getElementById('extractOcrEngine')
       ];
 
       if (busy) {
@@ -2461,11 +2621,54 @@ import '../styles/global.css';
       setSystemBusy(true, actionName, label);
       showStatus(`Wykonywanie: ${label}...`, 'info');
 
+      let bodyData = { action: actionName, book: currentBook };
+      let progressTimer = null;
+
+      if (actionName === 'extract') {
+        const rangeSelect = document.getElementById('extractRangeSelect');
+        const customInput = document.getElementById('extractCustomPages');
+        const engineSelect = document.getElementById('extractOcrEngine');
+
+        let pagesVal = '';
+        if (rangeSelect) {
+          if (rangeSelect.value === 'custom' && customInput) {
+            pagesVal = customInput.value.trim();
+          } else if (rangeSelect.value !== 'all') {
+            pagesVal = rangeSelect.value;
+          }
+        }
+        const ocrEngineVal = engineSelect ? engineSelect.value : 'rapidocr';
+        bodyData.pages = pagesVal;
+        bodyData.ocrEngine = ocrEngineVal;
+        if (ocrEngineVal === 'native') {
+          bodyData.ocrMode = 'native';
+        }
+
+        // Odpytywanie postępu ekstrakcji w czasie rzeczywistym
+        progressTimer = setInterval(async () => {
+          try {
+            const stRes = await fetch(`/api/status?book=${encodeURIComponent(currentBook)}`);
+            const stData = await stRes.json();
+            if (stData.extractProgress && stData.extractProgress.status === 'running') {
+              const p = stData.extractProgress;
+              const titleEl = document.getElementById('liveProgressTitle');
+              const barEl = document.getElementById('liveProgressBar');
+              if (titleEl && p.total_pages) {
+                titleEl.textContent = `Ekstrakcja: strona ${p.current_page}/${p.total_pages} (${p.percent}%)`;
+              }
+              if (barEl && p.percent) {
+                barEl.style.width = `${p.percent}%`;
+              }
+            }
+          } catch (e) {}
+        }, 1200);
+      }
+
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: actionName, book: currentBook })
+          body: JSON.stringify(bodyData)
         });
         const data = await res.json();
         const durationMs = data.durationMs || (systemBusySeconds * 1000);
@@ -2496,6 +2699,7 @@ import '../styles/global.css';
         logSessionActivity(label, false, 0, err.message);
         return false;
       } finally {
+        if (progressTimer) clearInterval(progressTimer);
         setSystemBusy(false);
       }
     }
@@ -2628,6 +2832,40 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
           const action = pendingConfirmAction;
           closeConfirmModal();
           await action();
+        }
+      });
+
+      // Scan Viewer Modal Listeners
+      const btnModalClose = document.getElementById('btnModalClose');
+      const btnModalPrevPage = document.getElementById('btnModalPrevPage');
+      const btnModalNextPage = document.getElementById('btnModalNextPage');
+      const btnModalZoomIn = document.getElementById('btnModalZoomIn');
+      const btnModalZoomOut = document.getElementById('btnModalZoomOut');
+      const btnModalZoomFit = document.getElementById('btnModalZoomFit');
+
+      if (btnModalClose) btnModalClose.addEventListener('click', closeScanViewer);
+      if (btnModalPrevPage) btnModalPrevPage.addEventListener('click', () => stepModalPage(-1));
+      if (btnModalNextPage) btnModalNextPage.addEventListener('click', () => stepModalPage(1));
+      if (btnModalZoomIn) btnModalZoomIn.addEventListener('click', () => setModalZoom(modalCurrentZoom + 0.25));
+      if (btnModalZoomOut) btnModalZoomOut.addEventListener('click', () => setModalZoom(modalCurrentZoom - 0.25));
+      if (btnModalZoomFit) btnModalZoomFit.addEventListener('click', () => setModalZoom(1.0));
+
+      const extractRangeSelect = document.getElementById('extractRangeSelect');
+      const extractCustomPages = document.getElementById('extractCustomPages');
+      if (extractRangeSelect && extractCustomPages) {
+        extractRangeSelect.addEventListener('change', () => {
+          if (extractRangeSelect.value === 'custom') {
+            extractCustomPages.classList.remove('hidden');
+            extractCustomPages.focus();
+          } else {
+            extractCustomPages.classList.add('hidden');
+          }
+        });
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeScanViewer();
         }
       });
     }

@@ -1,7 +1,9 @@
+import json
 import os
+import re
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
 import pypdfium2 as pdfium
@@ -10,7 +12,12 @@ from rich.console import Console
 from rich.table import Table
 
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions
+from docling.datamodel.pipeline_options import (
+    PdfPipelineOptions,
+    EasyOcrOptions,
+    RapidOcrOptions,
+    OcrMode,
+)
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.progress import PageCompletedProgress
 from docling_core.types.doc.base import ImageRefMode
@@ -56,31 +63,87 @@ def copy_to_windows_downloads(epub_path: Path) -> Optional[Path]:
     return None
 
 
-def has_text_layer(pdf_path: str, max_check_pages: int = 5) -> bool:
-    """Sprawdza, czy plik PDF posiada wbudowaną warstwę tekstową."""
+def evaluate_text_layer_quality(pdf_path: str, max_check_pages: int = 5) -> dict[str, Any]:
+    """
+    Ocenia obecność i jakość wbudowanej warstwy tekstowej w pliku PDF.
+    Rozróżnia czysty, cyfrowy wektor (np. InDesign, TeX, Word) od
+    starego, uszkodzonego OCR ze skanera (np. Acrobat 5/6, zniekształcone znaki).
+    """
     try:
         pdf = pdfium.PdfDocument(pdf_path)
         total_pages = len(pdf)
-        check_indices = [min(i, total_pages - 1) for i in [1, 5, 10, 15] if i < total_pages]
+        check_indices = [min(i, total_pages - 1) for i in [0, 1, 5, 10, 25] if i < total_pages]
         if not check_indices:
             check_indices = [0]
+
+        total_chars = 0
+        total_garbage = 0
+        total_words = 0
+
         for idx in check_indices:
             text = pdf[idx].get_textpage().get_text_range().strip()
-            if len(text) > 50:
-                return True
-        return False
-    except Exception:
-        return False
+            total_chars += len(text)
+            words = re.findall(r"\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{2,}\b", text)
+            total_words += len(words)
+            garbage = re.findall(r"[\^■~¥|\\]|[a-zA-Z0-9]+[°*#@]+[a-zA-Z0-9]*|[“«»?]{2,}|[•\-\*]{2,}", text)
+            total_garbage += len(garbage)
+
+        has_text = total_chars > 50
+        if not has_text:
+            return {
+                "has_text": False,
+                "is_clean": False,
+                "quality_score": 0.0,
+                "recommended_ocr": True,
+                "reason": "Brak warstwy tekstowej",
+            }
+
+        words_ratio = (total_words * 5) / max(1, total_chars)
+        garbage_density = total_garbage / max(1, (total_chars / 1000))
+        is_clean = (garbage_density < 0.5) and (words_ratio > 0.6) and (total_garbage == 0)
+        quality_score = max(0.0, min(1.0, 1.0 - (garbage_density * 0.15)))
+
+        return {
+            "has_text": has_text,
+            "is_clean": is_clean,
+            "quality_score": round(quality_score, 2),
+            "total_chars": total_chars,
+            "total_words": total_words,
+            "total_garbage": total_garbage,
+            "recommended_ocr": not is_clean,
+            "reason": "Czysty wektor cyfrowy" if is_clean else f"Uszkodzona warstwa OCR (śmieci: {total_garbage})",
+        }
+    except Exception as exc:
+        return {
+            "has_text": False,
+            "is_clean": False,
+            "quality_score": 0.0,
+            "recommended_ocr": True,
+            "reason": f"Błąd odczytu: {exc}",
+        }
 
 
-def get_converter(do_ocr: bool, langs: list[str]) -> DocumentConverter:
-    """Inicjalizuje DocumentConverter z opcjonalną obsługą OCR."""
+def has_text_layer(pdf_path: str, max_check_pages: int = 5) -> bool:
+    """Sprawdza, czy plik PDF posiada wysokiej jakości warstwę tekstową bez konieczności OCR."""
+    quality = evaluate_text_layer_quality(pdf_path, max_check_pages=max_check_pages)
+    return quality["is_clean"]
+
+
+def get_converter(do_ocr: bool, langs: list[str], engine: str = "easyocr") -> DocumentConverter:
+    """Inicjalizuje DocumentConverter z obsługą OCR (RapidOCR lub EasyOCR)."""
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_page_images = False
     pipeline_options.generate_picture_images = True
     pipeline_options.do_ocr = do_ocr
     if do_ocr:
-        pipeline_options.ocr_options = EasyOcrOptions(lang=langs)
+        if engine.lower() == "rapidocr":
+            rapid_lang = "pl" if "pl" in langs else (langs[0] if langs else "latin")
+            pipeline_options.ocr_options = RapidOcrOptions(
+                mode=OcrMode.FULL_PAGE,
+                lang=[rapid_lang],
+            )
+        else:
+            pipeline_options.ocr_options = EasyOcrOptions(lang=langs)
 
     return DocumentConverter(
         format_options={
@@ -95,6 +158,7 @@ def extract_pdf(
     languages: str = "pl,en",
     pages: Optional[str] = None,
     ocr: Optional[bool] = None,
+    ocr_engine: str = "rapidocr",
 ) -> Path:
     """Czysta funkcja biznesowa: ekstrakcja PDF do Markdown."""
     if not input_pdf.exists():
@@ -104,15 +168,16 @@ def extract_pdf(
     lang_list = [l.strip() for l in languages.split(",") if l.strip()]
 
     if ocr is None:
-        has_text = has_text_layer(str(input_pdf))
-        do_ocr = not has_text
-        if has_text:
-            console.print("[green]Wykryto warstwę tekstową w PDF: użycie natywnego układu bez OCR (zachowanie kolumn, błyskawiczna konwersja)...[/green]")
+        eval_res = evaluate_text_layer_quality(str(input_pdf))
+        do_ocr = not eval_res["is_clean"]
+        if eval_res["is_clean"]:
+            console.print(f"[green]Wykryto czystą cyfrową warstwę tekstową w PDF (jakość: {eval_res['quality_score']:.2f}): użycie natywnego układu bez OCR...[/green]")
         else:
-            console.print("[yellow]Brak warstwy tekstowej: włączanie OCR (EasyOCR)...[/yellow]")
+            reason = "wykryto zanieczyszczoną warstwę OCR ze skanera" if eval_res["has_text"] else "brak warstwy tekstowej"
+            console.print(f"[yellow]Wymagany OCR ({reason}, jakość: {eval_res['quality_score']:.2f}): włączanie silnika {ocr_engine}...[/yellow]")
     else:
         do_ocr = ocr
-        status_msg = "Wymuszono OCR" if do_ocr else "Wyłączono OCR"
+        status_msg = f"Wymuszono OCR ({ocr_engine})" if do_ocr else "Wyłączono OCR (użycie natywnego tekstu)"
         console.print(f"[cyan]{status_msg}[/cyan]")
 
     md_dir = output_dir / "markdown"
@@ -120,7 +185,20 @@ def extract_pdf(
     md_dir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(parents=True, exist_ok=True)
 
-    converter = get_converter(do_ocr=do_ocr, langs=lang_list)
+    converter = get_converter(do_ocr=do_ocr, langs=lang_list, engine=ocr_engine)
+
+    progress_file = output_dir / f"extract_progress_{input_pdf.stem}.json"
+    try:
+        progress_file.write_text(json.dumps({
+            "status": "starting",
+            "current_page": 0,
+            "completed_pages": 0,
+            "total_pages": 0,
+            "percent": 0.0,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }, ensure_ascii=False))
+    except Exception:
+        pass
 
     convert_kwargs = {}
     if pages:
@@ -140,7 +218,19 @@ def extract_pdf(
 
     def on_progress(event):
         if isinstance(event, PageCompletedProgress) and event.total_pages:
-            console.print(f"[cyan]Postęp ekstrakcji:[/cyan] strona {event.page_no} (ukończono {event.completed_pages}/{event.total_pages})")
+            pct = round((event.completed_pages / event.total_pages) * 100, 1)
+            console.print(f"[cyan]Postęp ekstrakcji:[/cyan] strona {event.page_no} (ukończono {event.completed_pages}/{event.total_pages} - {pct}%)")
+            try:
+                progress_file.write_text(json.dumps({
+                    "status": "running",
+                    "current_page": event.page_no,
+                    "completed_pages": event.completed_pages,
+                    "total_pages": event.total_pages,
+                    "percent": pct,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }, ensure_ascii=False))
+            except Exception:
+                pass
 
     convert_kwargs["progress_callback"] = on_progress
 
@@ -156,6 +246,16 @@ def extract_pdf(
         image_mode=ImageRefMode.REFERENCED,
         artifacts_dir=Path("assets"),
     )
+
+    try:
+        progress_file.write_text(json.dumps({
+            "status": "completed",
+            "percent": 100.0,
+            "markdown_file": str(md_file),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }, ensure_ascii=False))
+    except Exception:
+        pass
 
     console.print(f"[bold green]✓ Zapisano Markdown:[/bold green] {md_file}")
     console.print(f"[bold green]✓ Grafiki wyodrębniono do:[/bold green] {assets_dir}")
@@ -294,8 +394,12 @@ def extract(
         Optional[bool],
         typer.Option("--ocr/--no-ocr", help="Wymuszenie lub wyłączenie OCR (domyślnie auto-detekcja)."),
     ] = None,
+    ocr_engine: Annotated[
+        str,
+        typer.Option("--ocr-engine", help="Silnik OCR: 'rapidocr' (szybki, domyślny) lub 'easyocr'."),
+    ] = "rapidocr",
 ):
-    """Krok 1: Ekstrakcja układu, tekstu i grafik z PDF do Markdown (z auto-detekcją OCR)."""
+    """Krok 1: Ekstrakcja układu, tekstu i grafik z PDF do Markdown (z inteligentną oceną jakości OCR)."""
     if book:
         clean_stem = book.replace(".pdf", "")
         input_pdf = Path("input") / f"{clean_stem}.pdf"
@@ -306,7 +410,14 @@ def extract(
             raise typer.Exit(code=1)
         input_pdf = pdf_files[0]
 
-    extract_pdf(input_pdf=input_pdf, output_dir=output_dir, languages=languages, pages=pages, ocr=ocr)
+    extract_pdf(
+        input_pdf=input_pdf,
+        output_dir=output_dir,
+        languages=languages,
+        pages=pages,
+        ocr=ocr,
+        ocr_engine=ocr_engine,
+    )
 
 
 @app.command()

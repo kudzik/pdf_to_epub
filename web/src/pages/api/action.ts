@@ -9,7 +9,16 @@ const execPromise = util.promisify(exec);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { action, file, book, keepEpub = false, targetFolder = 'output' } = await request.json();
+    const {
+      action,
+      file,
+      book,
+      keepEpub = false,
+      targetFolder = 'output',
+      pages,
+      ocrMode,
+      ocrEngine = 'rapidocr',
+    } = await request.json();
     const rootDir = getProjectRootDir();
     
     // Ustalanie nazwy książki (stem)
@@ -23,7 +32,15 @@ export const POST: APIRoute = async ({ request }) => {
     let command = '';
 
     if (action === 'extract') {
-      command = `uv run python -m src.pipeline extract --book "${bookStem}"`;
+      const pagesFlag = (pages && typeof pages === 'string' && pages.trim()) ? ` --pages "${pages.trim()}"` : '';
+      let ocrFlag = '';
+      if (ocrMode === 'native' || ocrMode === 'no-ocr') {
+        ocrFlag = ' --no-ocr';
+      } else if (ocrMode === 'ocr' || ocrMode === 'force') {
+        ocrFlag = ' --ocr';
+      }
+      const engineFlag = (ocrEngine && ['rapidocr', 'easyocr'].includes(ocrEngine)) ? ` --ocr-engine ${ocrEngine}` : ' --ocr-engine rapidocr';
+      command = `uv run python -m src.pipeline extract --book "${bookStem}"${pagesFlag}${ocrFlag}${engineFlag}`;
     } else if (action === 'clean') {
       command = `uv run python -m src.pipeline clean --book "${bookStem}"`;
     } else if (action === 'audit') {
@@ -86,7 +103,12 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const startTime = Date.now();
-    const { stdout, stderr } = await execPromise(command, { cwd: rootDir, env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") } });
+    const { stdout, stderr } = await execPromise(command, {
+      cwd: rootDir,
+      timeout: 600_000,
+      maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+    });
     const durationMs = Date.now() - startTime;
     return new Response(JSON.stringify({ success: true, stdout, stderr, durationMs }), {
       headers: { 'Content-Type': 'application/json' },

@@ -62,6 +62,15 @@ export const GET: APIRoute = async ({ url }) => {
     };
   }
 
+  // Sprawdzenie postępu ekstrakcji
+  const progressPath = path.join(rootDir, 'output', `extract_progress_${baseName}.json`);
+  let extractProgress = null;
+  if (fs.existsSync(progressPath)) {
+    try {
+      extractProgress = JSON.parse(fs.readFileSync(progressPath, 'utf-8'));
+    } catch (e) {}
+  }
+
   // Sprawdzenie dostępności lokalnego silnika Ollama (localhost oraz Windows Host IP)
   const ollama = await probeOllama();
   const windowsHostIp = getWindowsHostIp();
@@ -73,6 +82,7 @@ export const GET: APIRoute = async ({ url }) => {
     epubInfo,
     mdInfo,
     report,
+    extractProgress,
     ollama: {
       available: ollama.available,
       endpoint: ollama.endpoint,
