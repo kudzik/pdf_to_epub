@@ -59,3 +59,4 @@ test('status.ts: checks and reports extractProgress', () => {
   assert.ok(content.includes('extract_progress_'), 'Must look for extract_progress_*.json');
   assert.ok(content.includes('extractProgress'), 'Must expose extractProgress in response JSON');
 });
+

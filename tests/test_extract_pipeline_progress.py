@@ -30,3 +30,4 @@ def test_extract_pdf_tracks_progress(tmp_path: Path):
     assert data["status"] == "completed"
     assert data["percent"] == 100.0
     assert "updated_at" in data
+

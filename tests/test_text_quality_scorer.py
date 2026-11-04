@@ -57,3 +57,4 @@ def test_get_converter_supports_easyocr():
     """Verify get_converter initializes with EasyOCR options properly."""
     conv = get_converter(do_ocr=True, langs=["pl", "en"], engine="easyocr")
     assert conv is not None
+
