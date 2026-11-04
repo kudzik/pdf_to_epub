@@ -59,7 +59,7 @@ test('Stepper Reset on Purge: verifies complete reset of stages and metrics', ()
   assert.ok(indexContent.includes("statLow.textContent = 'Low: 0'"), 'Low severity badge must reset to 0');
 
   // 4. Stepper requires Markdown existence for EPUB completion invariant
-  assert.ok(indexContent.includes('const isEpubValid = epubExists && mdExists;'), 'EPUB step must only be marked complete if source MD exists');
+  assert.ok(indexContent.includes('const isEpubValid = epubExists && mdExists && data.epubInfo?.current !== false;'), 'EPUB step must only be marked complete if source MD exists');
   assert.ok(indexContent.includes('stepBadge2.textContent = mdExists ?'), 'Step 2 badge text must dynamically toggle between MD and completed');
   assert.ok(indexContent.includes('stepBadge3.textContent = mdExists ?'), 'Step 3 badge text must dynamically toggle');
   assert.ok(indexContent.includes('stepCard2.className = mdExists'), 'Step 2 card background must toggle on mdExists');

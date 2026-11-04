@@ -149,7 +149,7 @@ import '../styles/global.css';
         <div class="space-y-0.5">
           <div class="flex items-center gap-2">
             <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Zalecana kolejna akcja</span>
-            <span id="nextActionStepTag" class="text-xs text-zinc-400 font-mono">Krok 1 z 5</span>
+            <span id="nextActionStepTag" class="text-xs text-zinc-400 font-mono">Krok 1 z 4</span>
           </div>
           <h2 id="nextActionTitle" class="text-base font-bold text-white tracking-tight">Krok 1: Wyekstrahuj PDF do Markdown</h2>
           <p id="nextActionDescription" class="text-xs text-zinc-400 leading-relaxed max-w-2xl">
@@ -262,7 +262,7 @@ import '../styles/global.css';
         <div class="space-y-1.5">
           <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-            Główne Kroki Pipeline'u (Kolejność 1 ➔ 5):
+            Główne Kroki Pipeline'u (Kolejność 1 ➔ 4; Autopilot w kroku 3):
           </span>
           <div class="flex flex-wrap items-center gap-2">
             <!-- Rozszerzony Krok 1 z wyborem zakresu stron i silnika OCR -->
@@ -296,12 +296,12 @@ import '../styles/global.css';
               <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold">3</span>
               <span>Uruchom Audyt</span>
             </button>
-            <button id="btnRunAutopilot" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 4: Uruchom Autopilota AI do automatycznej naprawy wad">
-              <span class="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center text-[10px] font-bold">4</span>
+            <button id="btnRunAutopilot" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 3: Uruchom Autopilota AI do automatycznej naprawy wad">
+              <span class="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center text-[10px] font-bold">3</span>
               <span id="btnRunAutopilotText">Autopilot AI</span>
             </button>
-            <button id="btnRunBuild" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95" title="Krok 5: Kompiluj Markdown do EPUB 3 przez Pandoc">
-              <span class="w-4 h-4 rounded-full bg-white/20 text-white border border-white/40 flex items-center justify-center text-[10px] font-bold">5</span>
+            <button id="btnRunBuild" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95" title="Krok 4: Kompiluj Markdown do EPUB 3 przez Pandoc">
+              <span class="w-4 h-4 rounded-full bg-white/20 text-white border border-white/40 flex items-center justify-center text-[10px] font-bold">4</span>
               <span>Kompiluj EPUB</span>
             </button>
           </div>
@@ -1885,7 +1885,7 @@ import '../styles/global.css';
     // AUTOPILOT AI (Z dynamicznym wyborem modelu z Ollama lub silnika regułowego)
     async function startOllamaAutopilot() {
       if (!globalReport || !globalReport.anomalies || globalReport.anomalies.length === 0) {
-        showStatus('Brak wykrytych anomalii do naprawy. Plik jest czysty!', 'info');
+        showStatus('Brak wykrytych anomalii do naprawy. Audyt nie gwarantuje poprawności całego tekstu.', 'info');
         return;
       }
 
@@ -2407,8 +2407,8 @@ import '../styles/global.css';
       const hasReport = !!data.report;
       const anomaliesCount = (data.report && Array.isArray(data.report.anomalies)) ? data.report.anomalies.length : 0;
       const epubExists = !!data.epubInfo?.exists;
-      const isEpubValid = epubExists && mdExists;
-      const isCleaned = Boolean(data.cleanInfo?.cleaned);
+      const isEpubValid = epubExists && mdExists && data.epubInfo?.current !== false;
+      const isCleaned = mdExists && Boolean(data.cleanInfo?.cleaned);
 
       // Usunięcie podświetleń z kart
       [stepCard1, stepCard2, stepCard3, stepCard4, stepCard5].forEach(c => {
@@ -2466,7 +2466,7 @@ import '../styles/global.css';
       }
       if (stepBadge3) {
         stepBadge3.className = mdExists ? (isCleaned ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 font-bold') : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge3.textContent = mdExists ? (isCleaned ? '✓ CZYSTY' : 'DOSTĘPNY') : 'OCZEKUJE';
+        stepBadge3.textContent = mdExists ? (isCleaned ? '✓ WYKONANO' : 'DOSTĘPNY') : 'OCZEKUJE';
       }
 
       // Krok 3: Audyt i Naprawa OCR
@@ -2481,12 +2481,12 @@ import '../styles/global.css';
       }
       if (stepTitle4) stepTitle4.textContent = 'Audyt i Naprawa OCR';
       if (stepSub4) {
-        stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? '0 wad (Czysty!)' : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
+        stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? '0 wykrytych anomalii' : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
       }
       if (stepStatus4) {
         if (hasReport) {
           stepStatus4.innerHTML = anomaliesCount === 0 
-            ? '<span class="text-emerald-400 font-medium">✓ Zweryfikowany (0 wad)</span>' 
+            ? '<span class="text-emerald-400 font-medium">✓ Audyt zakończony</span>'
             : `<span class="text-amber-400 font-medium">⚠ ${anomaliesCount} wad do naprawy</span>`;
         } else {
           stepStatus4.innerHTML = mdExists 
@@ -2499,7 +2499,7 @@ import '../styles/global.css';
           stepBadge4.className = anomaliesCount === 0 
             ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' 
             : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-rose-500/20 text-rose-300 font-bold';
-          stepBadge4.textContent = anomaliesCount === 0 ? '✓ CZYSTY' : `${anomaliesCount} WAD`;
+          stepBadge4.textContent = anomaliesCount === 0 ? '✓ AUDYT' : `${anomaliesCount} WAD`;
         } else {
           stepBadge4.className = 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
           stepBadge4.textContent = 'AUDIT';
@@ -2536,7 +2536,7 @@ import '../styles/global.css';
       }
 
       // Wyznaczenie Rekomendowanego Następnego Kroku (Hero Banner CTA):
-      let tag = 'Krok 1 z 5';
+      let tag = 'Krok 1 z 4';
       let title = '';
       let desc = '';
       let cta = '';
@@ -2550,44 +2550,44 @@ import '../styles/global.css';
         actionHandler = () => openWindowsExplorer('input');
         if (stepCard1) stepCard1.classList.add('ring-2', 'ring-rose-400', 'animate-pulse');
       } else if (pdfExists && !mdExists) {
-        tag = 'Krok 1 z 5 (Rozpocznij tutaj)';
+        tag = 'Krok 1 z 4 (Rozpocznij tutaj)';
         title = 'Krok 1: Wyekstrahuj PDF do surowego Markdowna';
         desc = `Znaleziono plik ${data.pdfInfo?.filename || 'PDF'} (${data.pdfInfo?.size || ''}). Odczytaj strukturę i układ kolumn do pliku Markdown.`;
         cta = 'Ekstrahuj z PDF';
         actionHandler = () => triggerAction('extract');
-        if (stepCard1) stepCard1.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
+        if (stepCard2) stepCard2.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
       } else if (mdExists && !isCleaned) {
-        tag = 'Krok 2 z 5 (Zalecany)';
-        title = 'Krok 2: Wyczyść i znormalizuj tekst (Usuń krzaki)';
-        desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Usuń rozbicia wyrazów (de-hyphenation), ułamki 1/2, szum skanera i zrekonstruuj polskie znaki.`;
+        tag = 'Krok 2 z 4 (Zalecany)';
+        title = 'Krok 2: Wyczyść i znormalizuj tekst';
+        desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Usuń rozbicia wyrazów (de-hyphenation), ułamki 1/2, szum skanera.`;
         cta = 'Wyczyść Tekst';
         actionHandler = () => triggerAction('clean');
-        if (stepCard2) stepCard2.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+        if (stepCard3) stepCard3.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
       } else if (mdExists && isCleaned && !hasReport) {
-        tag = 'Krok 3 z 5 (Zalecany)';
+        tag = 'Krok 3 z 4 (Zalecany)';
         title = 'Krok 3: Uruchom Audyt jakościowy OCR';
         desc = `Tekst został oczyszczony. Przeskanuj go pod kątem pozostałych anomalii OCR i uszkodzeń słów.`;
         cta = 'Uruchom Audyt';
         actionHandler = () => triggerAction('audit');
-        if (stepCard3) stepCard3.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
+        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
       } else if (mdExists && hasReport && anomaliesCount > 0) {
-        tag = 'Krok 4 z 5 (Zalecany)';
-        title = `Krok 4: Uruchom Autopilot Naprawczy (${anomaliesCount} usterek)`;
-        desc = `Wykryto ${anomaliesCount} anomalii OCR. Uruchom Autopilota AI (akceleracja GPU RTX 4080 Super) lub Szybką Rekonstrukcję, aby nanieść poprawki.`;
+        tag = 'Krok 3 z 4 (Naprawa)';
+        title = `Krok 3: Uruchom Autopilot Naprawczy (${anomaliesCount} usterek)`;
+        desc = `Wykryto ${anomaliesCount} anomalii OCR. Uruchom Autopilota AI lub Szybką Rekonstrukcję, aby nanieść poprawki.`;
         cta = 'Uruchom Autopilot Naprawczy';
         actionHandler = () => startOllamaAutopilot();
         if (stepCard4) stepCard4.classList.add('ring-2', 'ring-purple-400', 'animate-pulse');
-      } else if (mdExists && (!isEpubValid || (hasReport && anomaliesCount === 0))) {
-        tag = 'Krok 5 z 5 (Zalecany)';
-        title = 'Krok 5: Skompiluj gotowy e-book EPUB 3';
-        desc = 'Tekst jest zweryfikowany i gotowy do kompilacji za pomocą Pandoc ze stylami CSS.';
+      } else if (mdExists && !isEpubValid) {
+        tag = 'Krok 4 z 4 (Zalecany)';
+        title = 'Krok 4: Skompiluj gotowy e-book EPUB 3';
+        desc = 'Audyt nie wykrył anomalii. Możesz skompilować EPUB; poprawność i kompletność treści wymagają porównania z PDF.';
         cta = 'Kompiluj EPUB 3';
         actionHandler = () => triggerAction('build');
         if (stepCard5) stepCard5.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
       } else if (isEpubValid) {
         tag = 'Sukces (Publikacja Gotowa)';
         title = 'Publikacja EPUB 3 jest gotowa do czytania!';
-        desc = `Plik ${data.epubInfo?.filename || 'ksiazka.epub'} (${data.epubInfo?.size || ''}) został pomyślnie zwalidowany i zoptymalizowany.`;
+        desc = `Plik ${data.epubInfo?.filename || 'ksiazka.epub'} (${data.epubInfo?.size || ''}) został wygenerowany z bieżącego Markdowna.`;
         cta = 'Kopiuj do Windows Pobrane';
         actionHandler = () => copyToWindowsDownloads();
         if (stepCard5) stepCard5.classList.add('ring-2', 'ring-emerald-400');
@@ -2600,10 +2600,10 @@ import '../styles/global.css';
       activeCtaHandler = actionHandler;
 
       if (stepperGlobalStatus) {
-        stepperGlobalStatus.textContent = isEpubValid 
+        stepperGlobalStatus.textContent = isEpubValid && isCleaned && hasReport && anomaliesCount === 0
           ? '✓ E-book gotowy' 
           : mdExists 
-            ? (hasReport ? (anomaliesCount === 0 ? '✓ Treść czysta' : `Wykryto ${anomaliesCount} wad`) : 'Krok 1 ukończony (MD gotowy)') 
+            ? (hasReport ? (anomaliesCount === 0 ? '✓ Brak wykrytych anomalii' : `Wykryto ${anomaliesCount} wad`) : 'Krok 1 ukończony (MD gotowy)')
             : (pdfExists ? 'Krok 1: Gotowy do ekstrakcji' : 'Oczekiwanie na plik PDF');
       }
     }

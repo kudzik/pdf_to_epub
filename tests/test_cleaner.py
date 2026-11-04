@@ -114,3 +114,13 @@ def test_clean_markdown_file_roundtrip(tmp_path: Path):
     assert "1/2 cup" in content
     assert content.count("## POLISH HERITAGE COOKERY") == 1
 
+
+
+def test_scan_noise_preserves_short_words_and_paragraph_boundaries():
+    text = "Add vitamin B and vitamin D to the dish.\n\nMix dry herbs with salt."
+    assert remove_scan_noise(text) == text
+
+
+def test_cleaner_does_not_invent_missing_prose():
+    text = "sam e ne t e sae e ices aed s see es"
+    assert "same sweeteners that were" not in clean_markdown_text(text)

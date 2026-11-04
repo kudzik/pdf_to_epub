@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
 import { probeOllama, getWindowsHostIp } from '../../utils/ollama';
@@ -50,6 +51,8 @@ export const GET: APIRoute = async ({ url }) => {
   if (fs.existsSync(mdPath)) {
     const stat = fs.statSync(mdPath);
     const content = fs.readFileSync(mdPath, 'utf-8');
+    const markdownHash = createHash('sha256').update(content).digest('hex');
+    if (report && report.markdown_sha256 !== markdownHash) report = null;
     if (report?.anomalies) {
       const paragraphs = content.split('\n\n');
       report.anomalies = report.anomalies.filter((a: any) => Number.isInteger(a.paragraph_index) && a.paragraph_index >= 0 && a.paragraph_index < paragraphs.length).map((a: any) => ({ ...a, raw_paragraph: paragraphs[a.paragraph_index].trim() }));
@@ -61,6 +64,9 @@ export const GET: APIRoute = async ({ url }) => {
       filename: `${baseName}.md`,
     };
   }
+
+  const epubCurrent = fs.existsSync(epubPath) && fs.existsSync(mdPath)
+    && fs.statSync(epubPath).mtimeMs >= fs.statSync(mdPath).mtimeMs;
 
   // Sprawdzenie postępu ekstrakcji
   const progressPath = path.join(rootDir, 'output', `extract_progress_${baseName}.json`);
@@ -78,7 +84,8 @@ export const GET: APIRoute = async ({ url }) => {
     try {
       const data = JSON.parse(fs.readFileSync(cleanStatusPath, 'utf-8'));
       cleanInfo = {
-        cleaned: Boolean(data.cleaned),
+        cleaned: fs.existsSync(mdPath) && Boolean(data.cleaned)
+          && fs.statSync(mdPath).mtimeMs <= Date.parse(data.timestamp),
         timestamp: data.timestamp || '',
       };
     } catch (e) {}
@@ -92,7 +99,7 @@ export const GET: APIRoute = async ({ url }) => {
     repairVersion: 'source-ocr-v1',
     book: baseName,
     pdfInfo,
-    epubInfo,
+    epubInfo: { ...epubInfo, current: epubCurrent },
     mdInfo,
     cleanInfo,
     report,

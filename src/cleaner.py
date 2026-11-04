@@ -246,7 +246,6 @@ def restore_polish_and_ocr_artifacts(text: str) -> str:
     text = re.sub(r"\boot ont S os\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\bsures sr i s se tesd\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*or doe cae ct ccrs\b", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\bsam e ne t e sae e ices aed s see es\b", "same sweeteners that were", text, flags=re.IGNORECASE)
 
     # --- 7. Usuwanie szumu skanera (kwadraciki i artefakty graficzne) ---
     text = re.sub(r"[■▲◄►▪]", "", text)
@@ -283,34 +282,6 @@ def remove_scan_noise(text: str) -> str:
     Usuwa linie będące artefaktami skanera (losowe znaczki, plamki, puste linie)
     oraz poszarpane ciągi literowe z marginesów.
     """
-    invalid_single = set("bdefhjkmnpqrtvxyzBDEFHJKMNPQRTVXYZ")
-    culinary_abbrs = {
-        "tsp", "tbsp", "tbs", "oz", "lb", "lbs", "pkg", "min", "mins", "hr", "hrs",
-        "pt", "qt", "st", "nd", "rd", "th", "deg", "sec", "g", "kg", "ml", "cup", "cups"
-    }
-    vowels = set("aeiouyAEIOUYąćęóĄĆĘÓ")
-
-    def is_junk(tok: str) -> bool:
-        clean = re.sub(r"[^\w]", "", tok)
-        if not clean or clean.isdigit():
-            return False
-        if len(clean) == 1 and clean in invalid_single:
-            return True
-        if len(clean) >= 3 and not any(c in vowels for c in clean) and clean.lower() not in culinary_abbrs:
-            return True
-        return False
-
-    def filter_cluster(match):
-        cluster = match.group(0)
-        tokens = [t for t in re.split(r"[,\s]+", cluster) if t]
-        junk_count = sum(1 for t in tokens if is_junk(t))
-        # Wymagaj co najmniej 2 uszkodzonych tokenów w klastrze, by uznać go za szum skanera
-        if junk_count >= 2:
-            return ""
-        return cluster
-
-    text = re.sub(r"\b[a-zA-Z]{1,5}(?:[,\s]+[a-zA-Z]{1,5}){2,}\b", filter_cluster, text)
-
     lines = text.splitlines()
     cleaned_lines = []
 
