@@ -106,17 +106,30 @@ def test_purge_only_epub_command(tmp_path: Path):
 
 
 def test_purge_all_command(tmp_path: Path):
-    """Weryfikuje czyszczenie wszystkich plików roboczych."""
+    """Weryfikuje czyszczenie wszystkich plików roboczych i artefaktów (benchmarks, rag, history, snapshots)."""
     md_dir = tmp_path / "markdown"
     epub_dir = tmp_path / "epub"
     assets_dir = md_dir / "assets"
+    bench_dir = tmp_path / "benchmarks"
+    rag_dir = tmp_path / "rag"
+    history_dir = tmp_path / "history"
+    snap_dir = tmp_path / "snapshots" / "snap1"
+
     assets_dir.mkdir(parents=True)
     epub_dir.mkdir(parents=True)
+    bench_dir.mkdir(parents=True)
+    rag_dir.mkdir(parents=True)
+    history_dir.mkdir(parents=True)
+    snap_dir.mkdir(parents=True)
 
     (md_dir / "book1.md").write_text("content", encoding="utf-8")
     (assets_dir / "img1.png").write_text("png", encoding="utf-8")
     (epub_dir / "book1.epub").write_text("epub", encoding="utf-8")
     (tmp_path / "audit_report.json").write_text("{}", encoding="utf-8")
+    (bench_dir / "report.json").write_text("{}", encoding="utf-8")
+    (rag_dir / "chunks.jsonl").write_text("{}", encoding="utf-8")
+    (history_dir / "hist.json").write_text("{}", encoding="utf-8")
+    (snap_dir / "manifest.json").write_text("{}", encoding="utf-8")
 
     result = runner.invoke(
         app,
@@ -129,6 +142,10 @@ def test_purge_all_command(tmp_path: Path):
     assert not (assets_dir / "img1.png").exists()
     assert not (epub_dir / "book1.epub").exists()
     assert not (tmp_path / "audit_report.json").exists()
+    assert not (bench_dir / "report.json").exists()
+    assert not (rag_dir / "chunks.jsonl").exists()
+    assert not (history_dir / "hist.json").exists()
+    assert not (snap_dir / "manifest.json").exists()
 
 
 def test_purge_temp_only_keeps_md_and_epub(tmp_path: Path):
