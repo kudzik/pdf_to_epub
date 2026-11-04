@@ -1329,6 +1329,139 @@ def candidate_list_cmd(
     console.print(table)
 
 
+@app.command(name="benchmark-evaluate")
+def benchmark_evaluate_cmd(
+    candidate_dir: Annotated[
+        Path,
+        typer.Option("--candidate-dir", "-c", help="Katalog przebiegu kandydata (np. output/candidates/<run_id>)."),
+    ],
+    fixtures_dir: Annotated[
+        Path,
+        typer.Option("--fixtures-dir", help="Katalog zawierający wzorce ground truth."),
+    ] = Path("benchmarks/fixtures/ground_truth"),
+    output_file: Annotated[
+        Optional[Path],
+        typer.Option("--output-file", "-o", help="Opcjonalny plik wyjściowy JSON na raport ewaluacji."),
+    ] = None,
+):
+    """Oblicza CER, WER, wierność miar i pominięcia dla kandydata względem wzorców ze skanów."""
+    from src.benchmark import evaluate_candidate_run
+
+    manifest_file = candidate_dir / "manifest.json"
+    if not manifest_file.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Brak pliku manifestu w {manifest_file}")
+        raise typer.Exit(code=1)
+
+    console.print(f"[cyan]Ewaluacja jakości kandydata {candidate_dir.name} względem wzorców...[/cyan]")
+    report = evaluate_candidate_run(manifest_file, fixtures_dir=fixtures_dir)
+
+    table = Table(title=f"Raport jakości OCR: {report.run_id} ({report.engine_mode})")
+    table.add_column("PDF", justify="right", style="cyan")
+    table.add_column("Druk", justify="right", style="dim")
+    table.add_column("CER", justify="right", style="yellow")
+    table.add_column("WER", justify="right", style="magenta")
+    table.add_column("Ilości (Zgodne/Wszystkie)", justify="right", style="green")
+    table.add_column("Pominięcia", justify="right", style="red")
+    table.add_column("Powtórzenia", justify="right", style="red")
+
+    for pr in report.page_reports:
+        table.add_row(
+            str(pr.page_no),
+            pr.printed_page or "-",
+            f"{pr.cer*100:.2f}%",
+            f"{pr.wer*100:.2f}%",
+            f"{pr.exact_quantities}/{pr.total_quantities}",
+            str(len(pr.omissions)),
+            str(len(pr.repetitions)),
+        )
+
+    console.print(table)
+    console.print(
+        f"[bold]Podsumowanie:[/bold] Średni CER = [bold yellow]{report.mean_cer*100:.2f}%[/bold yellow], "
+        f"Średni WER = [bold magenta]{report.mean_wer*100:.2f}%[/bold magenta], "
+        f"Najgorszy WER = [red]{report.worst_page_wer*100:.2f}%[/red] (strona {report.worst_page_no})"
+    )
+    console.print(
+        f"  • Dokładność miar i temperatur: [bold green]{report.quantity_accuracy_pct:.1f}%[/bold green] "
+        f"({report.exact_critical_quantities}/{report.total_critical_quantities} bezbłędnych)"
+    )
+    if report.corrupted_critical_quantities > 0:
+        console.print(f"  • [bold red]Zniekształcone ilości/jednostki:[/bold red] {report.corrupted_critical_quantities}")
+    if report.total_omissions > 0:
+        console.print(f"  • [bold red]Wykryte pominięcia bloków/zdań:[/bold red] {report.total_omissions}")
+
+    if output_file:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        console.print(f"[bold green]✓ Zapisano raport jakości:[/bold green] {output_file}")
+
+
+@app.command(name="benchmark-compare")
+def benchmark_compare_cmd(
+    candidate_a: Annotated[
+        Path,
+        typer.Option("--candidate-a", "-a", help="Katalog pierwszego wariantu (np. native)."),
+    ],
+    candidate_b: Annotated[
+        Path,
+        typer.Option("--candidate-b", "-b", help="Katalog drugiego wariantu (np. full_page)."),
+    ],
+    fixtures_dir: Annotated[
+        Path,
+        typer.Option("--fixtures-dir", help="Katalog zawierający wzorce ground truth."),
+    ] = Path("benchmarks/fixtures/ground_truth"),
+):
+    """Porównuje dwa warianty ekstrakcji (np. native vs full_page) na tych samych stronach."""
+    from src.benchmark import evaluate_candidate_run
+
+    rep_a = evaluate_candidate_run(candidate_a / "manifest.json", fixtures_dir=fixtures_dir)
+    rep_b = evaluate_candidate_run(candidate_b / "manifest.json", fixtures_dir=fixtures_dir)
+
+    common_pages = sorted(set(rep_a.pages_evaluated).intersection(set(rep_b.pages_evaluated)))
+    if not common_pages:
+        console.print("[bold red]Błąd:[/bold red] Brak wspólnych stron do porównania.")
+        raise typer.Exit(code=1)
+
+    table = Table(title=f"Porównanie wariantów: {rep_a.run_id} vs {rep_b.run_id}")
+    table.add_column("Metryka", style="cyan")
+    table.add_column(f"{rep_a.engine_mode} (A)", justify="right", style="white")
+    table.add_column(f"{rep_b.engine_mode} (B)", justify="right", style="white")
+    table.add_column("Różnica / Zwycięzca", justify="center", style="green")
+
+    table.add_row(
+        "Średni CER",
+        f"{rep_a.mean_cer*100:.2f}%",
+        f"{rep_b.mean_cer*100:.2f}%",
+        f"{rep_b.mean_cer - rep_a.mean_cer:+.2f}%",
+    )
+    table.add_row(
+        "Średni WER",
+        f"{rep_a.mean_wer*100:.2f}%",
+        f"{rep_b.mean_wer*100:.2f}%",
+        f"{rep_b.mean_wer - rep_a.mean_wer:+.2f}%",
+    )
+    table.add_row(
+        "Zgodność miar i temperatur",
+        f"{rep_a.quantity_accuracy_pct:.1f}%",
+        f"{rep_b.quantity_accuracy_pct:.1f}%",
+        f"{rep_b.quantity_accuracy_pct - rep_a.quantity_accuracy_pct:+.1f}%",
+    )
+    table.add_row(
+        "Błędy krytyczne (Zniekształcenia)",
+        str(rep_a.corrupted_critical_quantities),
+        str(rep_b.corrupted_critical_quantities),
+        f"{rep_b.corrupted_critical_quantities - rep_a.corrupted_critical_quantities:+d}",
+    )
+    table.add_row(
+        "Pominięcia zdań",
+        str(rep_a.total_omissions),
+        str(rep_b.total_omissions),
+        f"{rep_b.total_omissions - rep_a.total_omissions:+d}",
+    )
+
+    console.print(table)
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
