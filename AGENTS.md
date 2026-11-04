@@ -132,6 +132,17 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Szybki test na wybranym zakresie z mniejszą partią:
   uv run python -m src.pipeline full-candidate-convert --pages 1-100 --batch-size 25
   ```
+- **Porównanie, publikacja i rollback kandydata (Gate G4 / R18):**
+  ```bash
+  # Porównanie logiczne kandydata z bieżącą produkcją:
+  uv run python -m src.pipeline candidate-diff --candidate output/candidates/cand_full_914_frozen/ksiazka.md
+  # Atomowa publikacja kandydata do produkcji z weryfikacją assetów i snapshotem:
+  uv run python -m src.pipeline candidate-publish --candidate output/candidates/cand_full_914_frozen/ksiazka.md
+  # Symulacja publikacji (dry run):
+  uv run python -m src.pipeline candidate-publish --dry-run
+  # Bezpieczny rollback i przywrócenie stanu produkcyjnego z .pre_r18_bak:
+  uv run python -m src.pipeline candidate-rollback
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

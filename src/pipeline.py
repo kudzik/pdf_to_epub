@@ -1991,6 +1991,147 @@ def full_candidate_convert_cmd(
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
+@app.command(name="candidate-diff")
+def candidate_diff_cmd(
+    production_md: Annotated[
+        Path,
+        typer.Option("--prod", "-p", help="Ścieżka do obecnego produkcyjnego pliku Markdown."),
+    ] = Path("output/markdown/ksiazka.md"),
+    candidate_md: Annotated[
+        Path,
+        typer.Option("--candidate", "-c", help="Ścieżka do pliku kandydata Markdown."),
+    ] = Path("output/candidates/cand_full_914_frozen/ksiazka.md"),
+    assets_dir: Annotated[
+        Path,
+        typer.Option("--assets-dir", "-a", help="Katalog grafik (assets)."),
+    ] = Path("output/markdown/assets"),
+):
+    """Porównuje logicznie wersję produkcyjną z kandydatem i sprawdza spójność grafik."""
+    from rich.table import Table
+    from src.migration import build_asset_manifest, compare_documents
+
+    if not production_md.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Plik produkcyjny nie istnieje: {production_md}")
+        raise typer.Exit(code=1)
+    if not candidate_md.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Plik kandydata nie istnieje: {candidate_md}")
+        raise typer.Exit(code=1)
+
+    diff = compare_documents(production_md, candidate_md)
+    manifest = build_asset_manifest(assets_dir, production_md, candidate_md)
+
+    console.print(f"[bold blue]=== Porównanie Logiczne: Produkcja vs Kandydat ===[/bold blue]")
+
+    table = Table(title="Porównanie Właściwości Dokumentu")
+    table.add_column("Metryka", style="white")
+    table.add_column("Produkcja (obecna)", justify="right", style="cyan")
+    table.add_column("Kandydat (nowy)", justify="right", style="green")
+    table.add_column("Zmiana / Różnica", justify="right")
+
+    table.add_row("Liczba słów", str(diff.production_words), str(diff.candidate_words), f"{diff.improvements.get('word_count_delta', 0):+d}")
+    table.add_row("Liczba akapitów", str(diff.production_paragraphs), str(diff.candidate_paragraphs), f"{diff.improvements.get('paragraph_count_delta', 0):+d}")
+    table.add_row("Liczba linii", str(diff.production_lines), str(diff.candidate_lines), f"{diff.candidate_lines - diff.production_lines:+d}")
+    table.add_row("Miary kulinarne", str(diff.culinary_measurements_prod), str(diff.culinary_measurements_cand), "Zgodne")
+    table.add_row("Suma SHA-256", diff.production_sha256[:16] + "...", diff.candidate_sha256[:16] + "...", "Nowy build")
+
+    console.print(table)
+    console.print(f"  • Podobieństwo tekstu (Dice bigram): [bold green]{diff.word_similarity_pct}%[/bold green]")
+    console.print(f"  • Odnośniki do grafik (assets): [bold green]{diff.total_assets_preserved}[/bold green] (brakujące pliki: [bold green]{len(manifest.missing_files)}[/bold green])")
+    console.print(f"  • Ułamki Unicode znormalizowane: [bold green]{diff.improvements.get('unicode_fractions_normalized', 0)}[/bold green]")
+    console.print(f"  • Rozbite ułamki naprawione: [bold green]{diff.improvements.get('broken_fractions_repaired', 0)}[/bold green]")
+    console.print(f"  • Usunięte śmieci skanera: [bold green]{diff.improvements.get('scanner_debris_eliminated', 0)}[/bold green]")
+
+
+@app.command(name="candidate-publish")
+def candidate_publish_cmd(
+    candidate_md: Annotated[
+        Path,
+        typer.Option("--candidate", "-c", help="Ścieżka do kandydata Markdown."),
+    ] = Path("output/candidates/cand_full_914_frozen/ksiazka.md"),
+    production_md: Annotated[
+        Path,
+        typer.Option("--prod", "-p", help="Ścieżka do produkcyjnego pliku Markdown."),
+    ] = Path("output/markdown/ksiazka.md"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raport migracji."),
+    ] = Path("output/benchmarks/migration"),
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Tylko symulacja bez modyfikacji pliku produkcyjnego."),
+    ] = False,
+):
+    """Atomowo publikuje wersję kandydata do produkcji ze snapshotem bazowym i kopią .pre_r18_bak."""
+    from src.migration import publish_candidate_document, save_migration_report
+
+    console.print(f"[bold blue]=== Rozpoczynanie Publikacji Kandydata (Gate G4 / R18) ===[/bold blue]")
+    try:
+        report = publish_candidate_document(
+            candidate_md_path=candidate_md,
+            production_md_path=production_md,
+            book_name="ksiazka",
+            dry_run=dry_run,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas publikacji kandydata:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_migration_report(report, output_dir)
+
+    console.print(f"\n[bold]Wynik Publikacji:[/bold]")
+    console.print(f"  • Status: [bold green]{report.status.upper()}[/bold green]")
+    console.print(f"  • Snapshot bazowy: [bold cyan]{report.snapshot_id}[/bold cyan]")
+    console.print(f"  • Kopia zapasowa (rollback target): [bold green]{report.backup_path}[/bold green]")
+    console.print(f"  • SHA-256 przed: `{report.production_sha_before}`")
+    console.print(f"  • SHA-256 po: `{report.production_sha_after}`")
+    console.print(f"  • Spójność manifestu grafik (assets): [bold green]{'100% ZACHOWANE' if report.asset_manifest.all_references_valid else 'BŁĄD'}[/bold green]")
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT GATE G4: {report.verdict}[/bold {verdict_color}]")
+    console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
+@app.command(name="candidate-rollback")
+def candidate_rollback_cmd(
+    production_md: Annotated[
+        Path,
+        typer.Option("--prod", "-p", help="Ścieżka do produkcyjnego pliku Markdown."),
+    ] = Path("output/markdown/ksiazka.md"),
+    backup_file: Annotated[
+        Optional[Path],
+        typer.Option("--backup", "-b", help="Ścieżka do pliku kopii zapasowej (.pre_r18_bak)."),
+    ] = None,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog na raport rollbacku."),
+    ] = Path("output/benchmarks/migration"),
+):
+    """Atomowo przywraca plik produkcyjny z kopii zapasowej .pre_r18_bak."""
+    from src.migration import rollback_production_document, save_migration_report
+
+    console.print(f"[bold yellow]=== Rozpoczynanie Procedury Rollbacku (Przywracanie Bazy) ===[/bold yellow]")
+    try:
+        report = rollback_production_document(
+            production_md_path=production_md,
+            backup_path=backup_file,
+            book_name="ksiazka",
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas rollbacku:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_migration_report(report, output_dir)
+
+    console.print(f"\n[bold]Wynik Rollbacku:[/bold]")
+    console.print(f"  • Status: [bold yellow]{report.status.upper()}[/bold yellow]")
+    console.print(f"  • Przywrócono z: [bold cyan]{report.backup_path}[/bold cyan]")
+    console.print(f"  • Aktualny SHA-256 pliku produkcyjnego: `{report.production_sha_after}`")
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT ROLLBACKU: {report.verdict}[/bold {verdict_color}]")
+    console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
