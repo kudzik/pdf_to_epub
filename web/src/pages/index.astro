@@ -139,56 +139,237 @@ import '../styles/global.css';
       </div>
     </div>
 
-    <!-- PIPELINE ACTION BAR (Z auto-tworzeniem Markdowna) -->
-    <div class="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400 mr-1">Akcje:</span>
-        <button id="btnRunExtract" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyekstrahuj PDF do czystego Markdowna">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          Ekstrahuj z PDF
-        </button>
-        <button id="btnRunClean" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Rekonstrukcja polskich znaków, ułamków i de-hyphenation">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-          Wyczyść Tekst
-        </button>
-        <button id="btnRunAudit" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-rose-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Sprawdź tekst pod kątem uszkodzeń OCR">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          Uruchom Audyt
-        </button>
-        <button id="btnRunBuild" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Kompiluj Markdown do EPUB 3">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-          Kompiluj EPUB
-        </button>
+    <!-- 1. HERO: REKOMENDOWANY KOLEJNY KROK (Next Best Action CTA) -->
+    <div id="nextActionHeroBanner" class="relative overflow-hidden bg-gradient-to-r from-emerald-950/40 via-zinc-900 to-cyan-950/30 border border-emerald-500/40 rounded-2xl p-4 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-start gap-3.5">
+        <div id="nextActionIconContainer" class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+          <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="space-y-0.5">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Zalecana kolejna akcja</span>
+            <span id="nextActionStepTag" class="text-xs text-zinc-400 font-mono">Krok 1 z 5</span>
+          </div>
+          <h2 id="nextActionTitle" class="text-base font-bold text-white tracking-tight">Krok 1: Wyekstrahuj PDF do Markdown</h2>
+          <p id="nextActionDescription" class="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+            Znaleziono plik PDF w katalogu input/. Kliknij, aby wygenerować źródłowy plik Markdown i wyodrębnić ilustracje.
+          </p>
+        </div>
       </div>
 
-      <!-- WSL & Windows Easy Copy & Cleanup Buttons -->
-      <div class="flex flex-wrap items-center gap-2 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
-        <button id="btnOpenWindowsExplorer" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Otwórz folder aplikacji/projektu w Eksploratorze Windows (explorer.exe)">
-          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-          Folder Aplikacji
-        </button>
-        <button id="btnCopyToWindows" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-indigo-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy EPUB bezpośrednio do folderu Pobrane w Windows">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
-          Pobrane w Windows
-        </button>
-        <button id="btnPurgeEpub" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/40 text-amber-300 hover:text-amber-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Usuń wyłącznie gotowy plik .epub dla tej książki">
-          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-          Usuń EPUB
-        </button>
-        <button id="btnPurgeCache" class="px-3 py-2 bg-zinc-800/80 hover:bg-zinc-700 text-teal-300 hover:text-teal-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyczyść pamięć podręczną i pliki tymczasowe (candidates, cache, .bak) zachowując gotowy Markdown i EPUB">
-          <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Wyczyść cache
-        </button>
-        <button id="btnPurgeWorkfiles" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyczyść pliki robocze lub zresetuj wszystko">
-          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          Wyczyść pliki
+      <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+        <button id="btnNextActionCta" class="w-full md:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
+          <span id="nextActionCtaText">Uruchom Zalecany Krok</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Status feedback banner -->
-    <div id="pipelineStatusBanner" class="hidden rounded-xl p-3 text-xs font-mono border transition-all">
-      <span id="pipelineStatusText"></span>
+    <!-- 2. WIZUALNY STEPPER PROCESU (Pipeline Workflow Stepper) -->
+    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between text-xs border-b border-zinc-800/80 pb-2.5">
+        <span class="font-bold text-zinc-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Etapy Publikacji E-booka
+        </span>
+        <span id="stepperGlobalStatus" class="font-mono text-zinc-400 text-[11px]">Ładowanie stanu książki...</span>
+      </div>
+
+      <!-- 5-kolumnowy grid etapów -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <!-- Step 1: Input PDF -->
+        <div id="stepCard1" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">1. Wejście</span>
+            <span id="stepBadge1" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">PDF</span>
+          </div>
+          <div class="my-2">
+            <div id="stepTitle1" class="text-xs font-bold text-zinc-200">Plik PDF</div>
+            <div id="stepSub1" class="text-[11px] text-zinc-400 font-mono truncate">Sprawdzanie...</div>
+          </div>
+          <div id="stepStatus1" class="text-[10px] text-zinc-400 flex items-center gap-1">
+            <span>● Status: --</span>
+          </div>
+        </div>
+
+        <!-- Step 2: Ekstrakcja MD -->
+        <div id="stepCard2" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">2. Ekstrakcja</span>
+            <span id="stepBadge2" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">MD</span>
+          </div>
+          <div class="my-2">
+            <div id="stepTitle2" class="text-xs font-bold text-zinc-200">Źródło Markdown</div>
+            <div id="stepSub2" class="text-[11px] text-zinc-400 font-mono truncate">Sprawdzanie...</div>
+          </div>
+          <div id="stepStatus2" class="text-[10px] text-zinc-400 flex items-center gap-1">
+            <span>● Status: --</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Czyszczenie tekstu -->
+        <div id="stepCard3" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">3. Formatowanie</span>
+            <span id="stepBadge3" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">CLEAN</span>
+          </div>
+          <div class="my-2">
+            <div id="stepTitle3" class="text-xs font-bold text-zinc-200">Czyszczenie tekstu</div>
+            <div id="stepSub3" class="text-[11px] text-zinc-400 font-mono truncate">Ułamki, polskie znaki</div>
+          </div>
+          <div id="stepStatus3" class="text-[10px] text-zinc-400 flex items-center gap-1">
+            <span>● Status: --</span>
+          </div>
+        </div>
+
+        <!-- Step 4: Audyt i Naprawa OCR -->
+        <div id="stepCard4" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">4. Jakość</span>
+            <span id="stepBadge4" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">AUDIT</span>
+          </div>
+          <div class="my-2">
+            <div id="stepTitle4" class="text-xs font-bold text-zinc-200">Audyt i Naprawa</div>
+            <div id="stepSub4" class="text-[11px] text-zinc-400 font-mono truncate">Weryfikacja wad</div>
+          </div>
+          <div id="stepStatus4" class="text-[10px] text-zinc-400 flex items-center gap-1">
+            <span>● Status: --</span>
+          </div>
+        </div>
+
+        <!-- Step 5: EPUB 3 -->
+        <div id="stepCard5" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">5. Publikacja</span>
+            <span id="stepBadge5" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">EPUB 3</span>
+          </div>
+          <div class="my-2">
+            <div id="stepTitle5" class="text-xs font-bold text-zinc-200">Kompilacja EPUB</div>
+            <div id="stepSub5" class="text-[11px] text-zinc-400 font-mono truncate">Sprawdzanie...</div>
+          </div>
+          <div id="stepStatus5" class="text-[10px] text-zinc-400 flex items-center gap-1">
+            <span>● Status: --</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ZREORGANIZOWANY PASEK AKCJI (Główne etapy + Narzędzia + Strefa Bezpieczeństwa) -->
+    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 space-y-4">
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <!-- Grupa 1: Główne etapy potoku -->
+        <div class="space-y-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            Główne Kroki Pipeline'u:
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnRunExtract" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-cyan-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 1: Wyekstrahuj PDF do czystego Markdowna">
+              <span class="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center text-[10px] font-bold">1</span>
+              <span>Ekstrahuj z PDF</span>
+            </button>
+            <button id="btnRunClean" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 2: Rekonstrukcja polskich znaków, ułamków i de-hyphenation">
+              <span class="w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center text-[10px] font-bold">2</span>
+              <span>Wyczyść Tekst</span>
+            </button>
+            <button id="btnRunAudit" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-rose-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 3: Sprawdź tekst pod kątem uszkodzeń OCR">
+              <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold">3</span>
+              <span>Uruchom Audyt</span>
+            </button>
+            <button id="btnRunBuild" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95" title="Krok 4: Kompiluj Markdown do EPUB 3 przez Pandoc">
+              <span class="w-4 h-4 rounded-full bg-white/20 text-white border border-white/40 flex items-center justify-center text-[10px] font-bold">4</span>
+              <span>Kompiluj EPUB</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grupa 2: Narzędzia Eksportu Windows / WSL -->
+        <div class="space-y-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            Eksport i Eksplorator:
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnCopyToWindows" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-indigo-300 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Kopiuj gotowy EPUB bezpośrednio do folderu Pobrane w Windows">
+              <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+              <span>Pobrane w Windows</span>
+            </button>
+            <button id="btnOpenWindowsExplorer" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Otwórz folder wyjściowy output w Eksploratorze Windows (explorer.exe)">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+              <span>Folder Aplikacji</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grupa 3: Zarządzanie Przestrzenią (Strefa Porządkowa) -->
+        <div class="space-y-1.5">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            Zarządzanie Przestrzenią:
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnPurgeCache" class="px-3 py-2 bg-zinc-800/80 hover:bg-zinc-700 text-teal-300 hover:text-teal-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Usuń pamięć podręczną i pliki robocze bez usuwania gotowego Markdowna i EPUB">
+              <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              <span>Wyczyść cache</span>
+            </button>
+            <button id="btnPurgeEpub" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/40 text-amber-300 hover:text-amber-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Usuń wyłącznie gotowy plik .epub">
+              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <span>Usuń EPUB</span>
+            </button>
+            <button id="btnPurgeWorkfiles" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-xl text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Usuń wszystkie pliki robocze książki">
+              <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              <span>Wyczyść pliki</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. LIVE EXECUTION CONSOLE & ACTIVITY FEED (Centrum Postępu i Logów) -->
+    <div id="liveProgressCard" class="hidden bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-xl space-y-3 transition-all" role="status" aria-live="polite">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
+        <div class="flex items-center gap-2.5">
+          <div id="liveProgressSpinner" class="w-5 h-5 text-emerald-400 animate-spin">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+          </div>
+          <div>
+            <h4 id="liveProgressTitle" class="text-xs font-bold text-white font-mono">Trwa wykonywanie zadania...</h4>
+            <p id="liveProgressSubtitle" class="text-[11px] text-zinc-400">Proces CLI działa w środowisku WSL...</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-xs font-mono bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 text-emerald-300 font-bold">
+            <span id="liveProgressTimer">00:00 s</span>
+          </div>
+          <button id="btnToggleTerminalOutput" class="text-xs text-zinc-400 hover:text-zinc-200 underline flex items-center gap-1 font-mono">
+            <span>Konsola CLI</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Animated Progress Bar -->
+      <div class="w-full bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-800">
+        <div id="liveProgressBar" class="bg-gradient-to-r from-emerald-500 via-cyan-500 to-emerald-400 h-2 rounded-full w-full animate-pulse"></div>
+      </div>
+
+      <!-- Expandable Terminal Drawer -->
+      <div id="liveTerminalDrawer" class="hidden mt-2 pt-2 border-t border-zinc-800/80">
+        <div class="flex items-center justify-between text-[11px] font-mono text-zinc-500 mb-1">
+          <span>WYJŚCIE PROCESU (STDOUT / STDERR)</span>
+          <button onclick="copyToClipboard(document.getElementById('liveConsoleOutput').textContent, 'Skopiowano logi konsoli!')" class="text-zinc-400 hover:text-white">Kopiuj logi</button>
+        </div>
+        <pre id="liveConsoleOutput" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-[11px] font-mono text-zinc-300 max-h-48 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">Oczekiwanie na wyjście polecenia...</pre>
+      </div>
+
+      <!-- Session Activity History Feed -->
+      <div id="sessionActivityContainer" class="pt-2 border-t border-zinc-800/80">
+        <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold block mb-1">Ostatnia aktywność w tej sesji:</span>
+        <div id="sessionActivityList" class="space-y-1 text-[11px] font-mono text-zinc-400 max-h-24 overflow-y-auto">
+          <div class="text-zinc-500 italic">Brak wcześniejszych operacji w tej sesji.</div>
+        </div>
+      </div>
     </div>
 
     <!-- AUTOPILOT CONTROL CARD (Sequential batch fixing) -->
@@ -559,6 +740,62 @@ import '../styles/global.css';
     const btnPurgeCache = document.getElementById('btnPurgeCache');
     const btnPurgeWorkfiles = document.getElementById('btnPurgeWorkfiles');
 
+    // Hero, Stepper & Live Console elements
+    const nextActionHeroBanner = document.getElementById('nextActionHeroBanner');
+    const nextActionTitle = document.getElementById('nextActionTitle');
+    const nextActionDescription = document.getElementById('nextActionDescription');
+    const nextActionStepTag = document.getElementById('nextActionStepTag');
+    const btnNextActionCta = document.getElementById('btnNextActionCta');
+    const nextActionCtaText = document.getElementById('nextActionCtaText');
+    const stepperGlobalStatus = document.getElementById('stepperGlobalStatus');
+
+    const stepCard1 = document.getElementById('stepCard1');
+    const stepCard2 = document.getElementById('stepCard2');
+    const stepCard3 = document.getElementById('stepCard3');
+    const stepCard4 = document.getElementById('stepCard4');
+    const stepCard5 = document.getElementById('stepCard5');
+
+    const stepBadge1 = document.getElementById('stepBadge1');
+    const stepBadge2 = document.getElementById('stepBadge2');
+    const stepBadge3 = document.getElementById('stepBadge3');
+    const stepBadge4 = document.getElementById('stepBadge4');
+    const stepBadge5 = document.getElementById('stepBadge5');
+
+    const stepTitle1 = document.getElementById('stepTitle1');
+    const stepTitle2 = document.getElementById('stepTitle2');
+    const stepTitle3 = document.getElementById('stepTitle3');
+    const stepTitle4 = document.getElementById('stepTitle4');
+    const stepTitle5 = document.getElementById('stepTitle5');
+
+    const stepSub1 = document.getElementById('stepSub1');
+    const stepSub2 = document.getElementById('stepSub2');
+    const stepSub3 = document.getElementById('stepSub3');
+    const stepSub4 = document.getElementById('stepSub4');
+    const stepSub5 = document.getElementById('stepSub5');
+
+    const stepStatus1 = document.getElementById('stepStatus1');
+    const stepStatus2 = document.getElementById('stepStatus2');
+    const stepStatus3 = document.getElementById('stepStatus3');
+    const stepStatus4 = document.getElementById('stepStatus4');
+    const stepStatus5 = document.getElementById('stepStatus5');
+
+    const liveProgressCard = document.getElementById('liveProgressCard');
+    const liveProgressTitle = document.getElementById('liveProgressTitle');
+    const liveProgressSubtitle = document.getElementById('liveProgressSubtitle');
+    const liveProgressTimer = document.getElementById('liveProgressTimer');
+    const btnToggleTerminalOutput = document.getElementById('btnToggleTerminalOutput');
+    const liveTerminalDrawer = document.getElementById('liveTerminalDrawer');
+    const liveConsoleOutput = document.getElementById('liveConsoleOutput');
+    const sessionActivityList = document.getElementById('sessionActivityList');
+
+    // Global state for interaction lock and stepper
+    let isSystemBusy = false;
+    let systemBusyTimer = null;
+    let systemBusySeconds = 0;
+    let activeCtaHandler = null;
+    let sessionActivity = [];
+    let globalStatusData = null;
+
     // System powiadomień Toast (Zastępuje natywne browser alert)
     function showToast(message, type = 'info', duration = 3500) {
       const container = document.getElementById('toastContainer');
@@ -720,6 +957,7 @@ import '../styles/global.css';
       try {
         const res = await fetch(`/api/status?book=${encodeURIComponent(currentBook)}`);
         const data = await res.json();
+        globalStatusData = data;
 
         // 1. Wskaźnik Ollama i selektor modeli
         globalOllama = data.ollama || { available: false, models: [] };
@@ -812,6 +1050,7 @@ import '../styles/global.css';
             </div>
           `;
         }
+        updateWorkflowStepper(data);
       } catch (e) {
         console.error('Błąd odświeżania statusu:', e);
       }
@@ -1864,14 +2103,306 @@ import '../styles/global.css';
       openOllamaModal();
     }
 
-    // Wywołanie akcji w CLI (extract, clean, audit, build)
+    // ----------------------------------------------------
+    // SYSTEM INTERACTION LOCK & CONCURRENCY CONTROLLER
+    // ----------------------------------------------------
+    function setSystemBusy(busy, actionKey = '', customLabel = '') {
+      isSystemBusy = busy;
+      const allActionButtons = [
+        btnRunExtract, btnRunClean, btnRunAudit, btnRunBuild,
+        btnCopyToWindows, btnOpenWindowsExplorer,
+        btnPurgeEpub, btnPurgeCache, btnPurgeWorkfiles,
+        btnStartOllamaAutopilot, btnHeuristicBatch, btnNextActionCta,
+        bookSelector
+      ];
+
+      if (busy) {
+        allActionButtons.forEach(btn => {
+          if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            btn.setAttribute('aria-busy', 'true');
+          }
+        });
+
+        systemBusySeconds = 0;
+        if (liveProgressCard) {
+          liveProgressCard.classList.remove('hidden');
+          liveProgressTitle.textContent = customLabel || `Trwa: ${actionKey}...`;
+          liveProgressSubtitle.textContent = 'Proces CLI w toku w środowisku WSL... Przyciski są zablokowane na czas przetwarzania.';
+          liveProgressTimer.textContent = '00:00 s';
+        }
+
+        if (systemBusyTimer) clearInterval(systemBusyTimer);
+        systemBusyTimer = setInterval(() => {
+          systemBusySeconds++;
+          const mins = String(Math.floor(systemBusySeconds / 60)).padStart(2, '0');
+          const secs = String(systemBusySeconds % 60).padStart(2, '0');
+          if (liveProgressTimer) liveProgressTimer.textContent = `${mins}:${secs} s`;
+        }, 1000);
+      } else {
+        if (systemBusyTimer) {
+          clearInterval(systemBusyTimer);
+          systemBusyTimer = null;
+        }
+
+        allActionButtons.forEach(btn => {
+          if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            btn.removeAttribute('aria-busy');
+          }
+        });
+      }
+    }
+
+    // ----------------------------------------------------
+    // SESSION ACTIVITY LOGGING
+    // ----------------------------------------------------
+    function logSessionActivity(actionName, success, durationMs, details = '') {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const durStr = durationMs ? `${(durationMs / 1000).toFixed(1)}s` : `${systemBusySeconds}s`;
+      sessionActivity.unshift({
+        time: timeStr,
+        action: actionName,
+        success,
+        durStr,
+        details
+      });
+      if (sessionActivity.length > 6) sessionActivity.pop();
+
+      renderSessionActivity();
+    }
+
+    function renderSessionActivity() {
+      if (!sessionActivityList) return;
+      if (sessionActivity.length === 0) {
+        sessionActivityList.innerHTML = '<div class="text-zinc-500 italic">Brak wcześniejszych operacji w tej sesji.</div>';
+        return;
+      }
+
+      sessionActivityList.innerHTML = sessionActivity.map(item => {
+        const badge = item.success
+          ? `<span class="text-emerald-400 font-bold">✓ Sukces (${item.durStr})</span>`
+          : `<span class="text-rose-400 font-bold">✕ Błąd (${item.durStr})</span>`;
+        return `
+          <div class="flex items-center justify-between py-1 border-b border-zinc-800/60 last:border-b-0">
+            <div class="flex items-center gap-2 truncate">
+              <span class="text-zinc-500 font-mono text-[10px]">${item.time}</span>
+              <span class="text-zinc-200 font-medium">${escapeHtml(item.action)}</span>
+              ${item.details ? `<span class="text-zinc-500 text-[10px] truncate max-w-xs">(${escapeHtml(item.details)})</span>` : ''}
+            </div>
+            <div>${badge}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ----------------------------------------------------
+    // PIPELINE STEPPER & NEXT BEST ACTION CALCULATOR
+    // ----------------------------------------------------
+    function updateWorkflowStepper(data) {
+      if (!data) return;
+      const currentBook = bookSelector.value || 'ksiazka';
+      const pdfExists = !!data.pdfInfo?.exists;
+      const mdExists = !!data.mdInfo?.exists;
+      const mdLines = data.mdInfo?.lines || 0;
+      const hasReport = !!data.report;
+      const anomaliesCount = (data.report && Array.isArray(data.report.anomalies)) ? data.report.anomalies.length : 0;
+      const epubExists = !!data.epubInfo?.exists;
+
+      // Usunięcie podświetleń z kart
+      [stepCard1, stepCard2, stepCard3, stepCard4, stepCard5].forEach(c => {
+        if (c) c.classList.remove('ring-2', 'ring-emerald-400', 'ring-cyan-400', 'ring-amber-400', 'animate-pulse');
+      });
+
+      // Krok 1: Wejście PDF
+      if (stepTitle1) stepTitle1.textContent = data.pdfInfo?.filename || `${currentBook}.pdf`;
+      if (stepSub1) stepSub1.textContent = pdfExists ? (data.pdfInfo?.size || 'Gotowy') : 'Brak w input/';
+      if (stepStatus1) {
+        stepStatus1.innerHTML = pdfExists 
+          ? '<span class="text-emerald-400 font-medium">✓ Dostępny w input/</span>' 
+          : '<span class="text-rose-400 font-medium">✕ Brak pliku</span>';
+      }
+      if (stepBadge1) {
+        stepBadge1.className = pdfExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+      }
+
+      // Krok 2: Ekstrakcja Markdown
+      if (stepTitle2) stepTitle2.textContent = data.mdInfo?.filename || `${currentBook}.md`;
+      if (stepSub2) stepSub2.textContent = mdExists ? `${mdLines.toLocaleString()} linii (${data.mdInfo.size})` : 'Wymaga ekstrakcji';
+      if (stepStatus2) {
+        stepStatus2.innerHTML = mdExists 
+          ? '<span class="text-emerald-400 font-medium">✓ Wyekstrahowano</span>' 
+          : '<span class="text-zinc-500">Oczekuje na Krok 1</span>';
+      }
+      if (stepBadge2) {
+        stepBadge2.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+      }
+
+      // Krok 3: Czyszczenie tekstu
+      if (stepSub3) stepSub3.textContent = mdExists ? 'De-hyphen, ułamki' : 'Wymaga Markdowna';
+      if (stepStatus3) {
+        stepStatus3.innerHTML = mdExists 
+          ? '<span class="text-cyan-400 font-medium">✓ Gotowy do użycia</span>' 
+          : '<span class="text-zinc-500">Oczekuje na Krok 2</span>';
+      }
+      if (stepBadge3) {
+        stepBadge3.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-cyan-500/20 text-cyan-300' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+      }
+
+      // Krok 4: Audyt i Naprawa OCR
+      if (stepSub4) {
+        stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? '0 wad (Czysty!)' : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
+      }
+      if (stepStatus4) {
+        if (hasReport) {
+          stepStatus4.innerHTML = anomaliesCount === 0 
+            ? '<span class="text-emerald-400 font-medium">✓ Zweryfikowany</span>' 
+            : '<span class="text-amber-400 font-medium">⚠ Wymaga naprawy</span>';
+        } else {
+          stepStatus4.innerHTML = mdExists 
+            ? '<span class="text-zinc-400">Do uruchomienia</span>' 
+            : '<span class="text-zinc-500">Oczekuje</span>';
+        }
+      }
+      if (stepBadge4) {
+        if (hasReport) {
+          stepBadge4.className = anomaliesCount === 0 
+            ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300' 
+            : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-rose-500/20 text-rose-300 font-bold';
+          stepBadge4.textContent = anomaliesCount === 0 ? '✓ CZYSTY' : `${anomaliesCount} WAD`;
+        } else {
+          stepBadge4.className = 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+          stepBadge4.textContent = 'AUDIT';
+        }
+      }
+
+      // Krok 5: Publikacja EPUB 3
+      if (stepTitle5) stepTitle5.textContent = data.epubInfo?.filename || `${currentBook}.epub`;
+      if (stepSub5) stepSub5.textContent = epubExists ? `${data.epubInfo?.size} (${data.epubInfo?.mtime || 'gotowy'})` : 'Wymaga kompilacji';
+      if (stepStatus5) {
+        stepStatus5.innerHTML = epubExists 
+          ? '<span class="text-emerald-400 font-medium">✓ Gotowy do czytania</span>' 
+          : '<span class="text-zinc-500">Oczekuje na Krok 4</span>';
+      }
+      if (stepBadge5) {
+        stepBadge5.className = epubExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+        stepBadge5.textContent = epubExists ? '✓ EPUB' : 'EPUB 3';
+      }
+
+      // Wyznaczenie Rekomendowanego Następnego Kroku (Hero Banner CTA):
+      let tag = 'Krok 1 z 5';
+      let title = '';
+      let desc = '';
+      let cta = '';
+      let actionHandler = null;
+
+      if (!pdfExists && !mdExists) {
+        tag = 'Przygotowanie';
+        title = 'Umieść plik PDF w katalogu input/';
+        desc = `Nie znaleziono pliku ${currentBook}.pdf w katalogu input/. Umieść plik PDF, aby rozpocząć proces publikacji.`;
+        cta = 'Otwórz Folder Aplikacji';
+        actionHandler = () => openWindowsExplorer('input');
+        if (stepCard1) stepCard1.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+      } else if (pdfExists && !mdExists) {
+        tag = 'Krok 1 z 5 (Zalecany)';
+        title = 'Krok 1: Wyekstrahuj PDF do czystego Markdowna';
+        desc = `Znaleziono plik ${data.pdfInfo?.filename || 'PDF'} (${data.pdfInfo?.size || ''}). Odczytaj strukturę i układ kolumn do pliku Markdown.`;
+        cta = 'Ekstrahuj z PDF';
+        actionHandler = () => triggerAction('extract');
+        if (stepCard2) stepCard2.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
+      } else if (mdExists && !hasReport) {
+        tag = 'Krok 2 z 5 (Zalecany)';
+        title = 'Krok 2: Uruchom Audyt jakościowy OCR';
+        desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Sprawdź jakość tekstu, anomalie OCR i polskie znaki diakrytyczne.`;
+        cta = 'Uruchom Audyt';
+        actionHandler = () => triggerAction('audit');
+        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
+      } else if (mdExists && hasReport && anomaliesCount > 0) {
+        tag = 'Krok 3 z 5 (Zalecany)';
+        title = `Krok 3: Napraw wykryte wady (${anomaliesCount} usterek)`;
+        desc = `Wykryto ${anomaliesCount} anomalii OCR. Uruchom Autopilota AI (akceleracja GPU RTX 4080 Super) lub Szybką Rekonstrukcję, aby nanieść poprawki.`;
+        cta = 'Uruchom Autopilot Naprawczy';
+        actionHandler = () => startOllamaAutopilot();
+        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+      } else if (mdExists && (!epubExists || (hasReport && anomaliesCount === 0))) {
+        tag = 'Krok 4 z 5 (Zalecany)';
+        title = 'Krok 4: Skompiluj gotowy e-book EPUB 3';
+        desc = 'Tekst jest zweryfikowany i gotowy do kompilacji za pomocą Pandoc ze stylami CSS.';
+        cta = 'Kompiluj EPUB 3';
+        actionHandler = () => triggerAction('build');
+        if (stepCard5) stepCard5.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
+      } else if (epubExists) {
+        tag = 'Sukces (Publikacja Gotowa)';
+        title = 'Publikacja EPUB 3 jest gotowa do czytania!';
+        desc = `Plik ${data.epubInfo?.filename || 'ksiazka.epub'} (${data.epubInfo?.size || ''}) został pomyślnie zwalidowany i zoptymalizowany.`;
+        cta = 'Kopiuj do Windows Pobrane';
+        actionHandler = () => copyToWindowsDownloads();
+        if (stepCard5) stepCard5.classList.add('ring-2', 'ring-emerald-400');
+      }
+
+      if (nextActionStepTag) nextActionStepTag.textContent = tag;
+      if (nextActionTitle) nextActionTitle.textContent = title;
+      if (nextActionDescription) nextActionDescription.textContent = desc;
+      if (nextActionCtaText) nextActionCtaText.textContent = cta;
+      activeCtaHandler = actionHandler;
+
+      if (stepperGlobalStatus) {
+        stepperGlobalStatus.textContent = epubExists 
+          ? '✓ E-book gotowy' 
+          : mdExists 
+            ? (hasReport ? (anomaliesCount === 0 ? '✓ Treść czysta' : `Wykryto ${anomaliesCount} wad`) : 'MD wyekstrahowany') 
+            : (pdfExists ? 'PDF gotowy do ekstrakcji' : 'Oczekiwanie na plik PDF');
+      }
+    }
+
+    // Wywołanie akcji w CLI (extract, clean, audit, build) z ochroną przed współbieżnością i guardrailami
     async function triggerAction(actionName) {
-      if (activeRepairController) {
-        showStatus('Trwa naprawa akapitu. Zaczekaj lub zatrzymaj Autopilota.', 'info');
+      if (isSystemBusy) {
+        showToast('Inna operacja jest w toku. Zaczekaj na jej zakończenie.', 'warning');
         return false;
       }
+      if (activeRepairController) {
+        showToast('Trwa naprawa akapitu. Zaczekaj lub zatrzymaj Autopilota.', 'info');
+        return false;
+      }
+
       const currentBook = bookSelector.value || 'ksiazka';
-      showStatus(`Wykonywanie akcji: ${actionName} dla książki "${currentBook}"...`, 'info');
+
+      // Guardrail: Ostrzeżenie przed nadpisaniem istniejącego pliku Markdown
+      if (actionName === 'extract' && globalStatusData?.mdInfo?.exists && globalStatusData.mdInfo.lines > 10) {
+        showConfirmModal({
+          title: 'Ostrzeżenie przed nadpisaniem Markdowna',
+          message: `Plik "${currentBook}.md" (${globalStatusData.mdInfo.lines.toLocaleString()} linii) już istnieje i może zawierać naniesione poprawki.\n\nPonowna ekstrakcja z PDF całkowicie nadpisze ten plik surową zawartością z OCR.\n\nCzy na pewno chcesz wygenerować Markdown od nowa?`,
+          confirmText: 'Nadpisz i wyekstrahuj',
+          danger: true,
+          onConfirm: async () => {
+            await executeAction(actionName, currentBook);
+          }
+        });
+        return false;
+      }
+
+      return await executeAction(actionName, currentBook);
+    }
+
+    async function executeAction(actionName, currentBook) {
+      const actionLabels = {
+        extract: 'Ekstrakcja układu i tekstu z PDF',
+        clean: 'Czyszczenie de-hyphenation i ułamków',
+        audit: 'Audyt jakościowy OCR i detekcja wad',
+        build: 'Kompilacja e-booka EPUB 3 przez Pandoc',
+        purge: 'Czyszczenie plików roboczych',
+        'purge-epub': 'Usuwanie pliku EPUB',
+        'purge-all': 'Pełne czyszczenie wyjściowe',
+        'purge-temp': 'Czyszczenie pamięci podręcznej i śmieci'
+      };
+
+      const label = actionLabels[actionName] || actionName;
+      setSystemBusy(true, actionName, label);
+      showStatus(`Wykonywanie: ${label}...`, 'info');
 
       try {
         const res = await fetch('/api/action', {
@@ -1880,18 +2411,35 @@ import '../styles/global.css';
           body: JSON.stringify({ action: actionName, book: currentBook })
         });
         const data = await res.json();
+        const durationMs = data.durationMs || (systemBusySeconds * 1000);
+
+        if (data.stdout || data.stderr) {
+          if (liveConsoleOutput) {
+            liveConsoleOutput.textContent = [data.stdout, data.stderr].filter(Boolean).join('\n') || 'Brak wyjścia konsoli.';
+          }
+        }
+
         if (data.success) {
-          showStatus(`✓ Akcja "${actionName}" ukończona pomyślnie.`, 'success');
+          const timeSec = (durationMs / 1000).toFixed(1);
+          showToast(`✓ ${label} — zakończono sukcesem! (${timeSec}s)`, 'success');
+          showStatus(`✓ Akcja "${label}" ukończona pomyślnie (${timeSec}s).`, 'success');
+          logSessionActivity(label, true, durationMs, `${currentBook}`);
           await fetchStatus();
           await loadBooks();
           return true;
         } else {
-          showStatus(`Błąd akcji "${actionName}": ${data.error}`, 'error');
+          showToast(`Błąd: ${data.error}`, 'error');
+          showStatus(`Błąd akcji "${label}": ${data.error}`, 'error');
+          logSessionActivity(label, false, durationMs, data.error);
           return false;
         }
       } catch (err) {
+        showToast(`Błąd sieci: ${err.message}`, 'error');
         showStatus(`Błąd komunikacji: ${err.message}`, 'error');
+        logSessionActivity(label, false, 0, err.message);
         return false;
+      } finally {
+        setSystemBusy(false);
       }
     }
 
@@ -1933,6 +2481,16 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
       anomalySearch.addEventListener('input', (e) => {
         searchQuery = e.target.value;
         renderAnomalies();
+      });
+
+      btnNextActionCta?.addEventListener('click', () => {
+        if (activeCtaHandler) activeCtaHandler();
+      });
+
+      btnToggleTerminalOutput?.addEventListener('click', () => {
+        if (liveTerminalDrawer) {
+          liveTerminalDrawer.classList.toggle('hidden');
+        }
       });
 
       btnRunExtract.addEventListener('click', () => triggerAction('extract'));
