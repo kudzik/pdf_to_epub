@@ -8,6 +8,7 @@ from src.history import (
     append_history_record,
     compute_paragraph_sha256,
 )
+from src.block_validator import validate_block_repair
 from src.write_control import (
     AssetIntegrityError,
     InvalidPatchError,
@@ -88,11 +89,33 @@ def patch_paragraph(
     create_backup: bool = True,
     owner: str = "cli:patch",
     timeout_seconds: float = 5.0,
+    validate_invariants: bool = True,
 ) -> bool:
     """
     Bezpiecznie i atomowo podmienia treść konkretnego akapitu na podstawie jego indeksu.
-    Stosuje blokadę plikową, kontrolę wersji SHA-256 oraz ochronę linków do grafik.
+    Stosuje blokadę plikową, kontrolę wersji SHA-256, ochronę grafik oraz walidację niezmienników (R13).
     """
+    if expected_sha256:
+        current_content = markdown_path.read_text(encoding="utf-8")
+        current_sha = compute_file_sha256(markdown_path)
+        if expected_sha256.lower() != current_sha.lower():
+            raise VersionConflictError(
+                f"Konflikt wersji dokumentu: oczekiwano SHA-256 {expected_sha256[:12]}..., "
+                f"lecz aktualna suma pliku to {current_sha[:12]}... Odśwież dane przed zapisem."
+            )
+
+    if validate_invariants:
+        content = markdown_path.read_text(encoding="utf-8")
+        paras = content.split("\n\n")
+        if paragraph_index < len(paras):
+            orig_text = expected_original if expected_original is not None else paras[paragraph_index].strip()
+            val_res = validate_block_repair(orig_text, replacement_text)
+            if not val_res.is_valid:
+                reasons = "; ".join(v.message for v in val_res.violations)
+                raise InvalidPatchError(
+                    f"Odrzucono poprawkę dla akapitu #{paragraph_index} ze względu na naruszenie niezmienników: {reasons}"
+                )
+
     res = write_patches_atomic(
         markdown_path=markdown_path,
         patches=[
@@ -133,13 +156,22 @@ def patch_batch_from_file(
     create_backup: bool = True,
     owner: str = "cli:patch-batch",
     timeout_seconds: float = 5.0,
+    validate_invariants: bool = True,
 ) -> int:
     """
     Wczytuje plik JSON z poprawkami { "numer_akapitu": "nowy_tekst" } lub listą obiektów
-    i aplikuje wszystkie poprawki w jednym atomowym przejściu pod blokadą zapisu.
+    i aplikuje wszystkie poprawki w jednym atomowym przejściu pod blokadą zapisu po walidacji niezmienników (R13).
     """
     if not fixes_file.exists():
         raise FileNotFoundError(f"Plik poprawek {fixes_file} nie istnieje.")
+
+    if expected_sha256:
+        current_sha = compute_file_sha256(markdown_path)
+        if expected_sha256.lower() != current_sha.lower():
+            raise VersionConflictError(
+                f"Konflikt wersji dokumentu: oczekiwano SHA-256 {expected_sha256[:12]}..., "
+                f"lecz aktualna suma pliku to {current_sha[:12]}... Odśwież dane przed zapisem."
+            )
 
     fixes_data = json.loads(fixes_file.read_text(encoding="utf-8"))
     patches: list[PatchRequest] = []
@@ -172,6 +204,19 @@ def patch_batch_from_file(
                 raise ValueError("Element listy poprawek musi zawierać klucze 'index' i 'text'.")
     else:
         raise ValueError("Plik poprawek musi być obiektem JSON lub listą poprawek.")
+
+    if validate_invariants:
+        content = markdown_path.read_text(encoding="utf-8")
+        paras = content.split("\n\n")
+        for p in patches:
+            if p.index < len(paras):
+                orig_text = p.original if p.original is not None else paras[p.index].strip()
+                val_res = validate_block_repair(orig_text, p.text)
+                if not val_res.is_valid:
+                    reasons = "; ".join(v.message for v in val_res.violations)
+                    raise InvalidPatchError(
+                        f"Odrzucono paczkę poprawek: naruszenie niezmienników w akapicie #{p.index}: {reasons}"
+                    )
 
     res = write_patches_atomic(
         markdown_path=markdown_path,
