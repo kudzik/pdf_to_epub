@@ -18,6 +18,7 @@ export const POST: APIRoute = async ({ request }) => {
       pages,
       ocrMode,
       ocrEngine = 'rapidocr',
+      stream = false,
     } = await request.json();
     const rootDir = getProjectRootDir();
     
@@ -157,7 +158,81 @@ export const POST: APIRoute = async ({ request }) => {
 
     const startTime = Date.now();
 
-    // Wykonanie procesu z rejestracją w runningJobs i obsługą anulowania
+    // Tryb strumieniowania wyjścia CLI w czasie rzeczywistym (NDJSON)
+    if (stream === true) {
+      const responseStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          const send = (obj: any) => {
+            try {
+              controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+            } catch {}
+          };
+
+          const child = exec(command, {
+            cwd: rootDir,
+            timeout: 600_000,
+            maxBuffer: 16 * 1024 * 1024,
+            env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+          });
+
+          if (child.pid) {
+            runningJobs.set(bookStem, {
+              pid: child.pid,
+              child,
+              startTime,
+              action,
+            });
+          }
+
+          let stdoutBuf = '';
+          let stderrBuf = '';
+
+          child.stdout?.on('data', (chunk) => {
+            const text = chunk.toString();
+            stdoutBuf += text;
+            send({ type: 'stdout', text });
+          });
+
+          child.stderr?.on('data', (chunk) => {
+            const text = chunk.toString();
+            stderrBuf += text;
+            send({ type: 'stderr', text });
+          });
+
+          child.on('close', (code) => {
+            runningJobs.delete(bookStem);
+            const durationMs = Date.now() - startTime;
+            send({
+              type: 'done',
+              success: code === 0,
+              code,
+              durationMs,
+              stdout: stdoutBuf,
+              stderr: stderrBuf,
+              error: code === 0 ? null : (stderrBuf.trim() || `Proces zakończony z kodem błędu ${code}`)
+            });
+            try { controller.close(); } catch {}
+          });
+
+          child.on('error', (err) => {
+            runningJobs.delete(bookStem);
+            send({ type: 'error', error: err.message });
+            try { controller.close(); } catch {}
+          });
+        }
+      });
+
+      return new Response(responseStream, {
+        headers: {
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      });
+    }
+
+    // Wykonanie procesu z rejestracją w runningJobs i obsługą anulowania (fallback JSON)
     const execResult = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
       const child = exec(command, {
         cwd: rootDir,

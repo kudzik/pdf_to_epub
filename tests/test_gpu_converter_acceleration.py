@@ -19,3 +19,4 @@ def test_gpu_converter_acceleration_auto_detected():
     else:
         # Fallback dla maszyn bez GPU
         assert pdf_opts.do_ocr is True
+

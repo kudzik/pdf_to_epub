@@ -56,3 +56,4 @@ def test_purge_temp_only_removes_progress_files(tmp_path: Path):
     purge_cmd(temp_only=True, output_dir=out_dir)
 
     assert not prog.exists(), "Plik postępu powinien zostać usunięty w trybie temp-only!"
+

@@ -382,7 +382,7 @@ import '../styles/global.css';
           <span>WYJŚCIE PROCESU (STDOUT / STDERR)</span>
           <button onclick="copyToClipboard(document.getElementById('liveConsoleOutput').textContent, 'Skopiowano logi konsoli!')" class="text-zinc-400 hover:text-white">Kopiuj logi</button>
         </div>
-        <pre id="liveConsoleOutput" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-[11px] font-mono text-zinc-300 max-h-48 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">Oczekiwanie na wyjście polecenia...</pre>
+        <pre id="liveConsoleOutput" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-[11px] font-mono text-zinc-300 max-h-48 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">[Gotowy] Terminal procesów CLI jest aktywny. Uruchom dowolną operację powyżej (Ekstrahuj, Wyczyść, Audyt, EPUB), aby zobaczyć strumień logów na żywo.</pre>
       </div>
 
       <!-- Session Activity History Feed -->
@@ -963,11 +963,11 @@ import '../styles/global.css';
       if (modal) modal.classList.add('hidden');
     }
 
-    // Inicjalizacja: pobranie listy książek i statusu
+    // Inicjalizacja: natychmiastowe podpięcie słuchaczy zdarzeń, następnie pobranie listy książek i statusu
     async function init() {
+      setupEventListeners();
       await loadBooks();
       await fetchStatus();
-      setupEventListeners();
     }
 
     async function loadBooks() {
@@ -2696,6 +2696,13 @@ import '../styles/global.css';
       setSystemBusy(true, actionName, label);
       showStatus(`Wykonywanie: ${label}...`, 'info');
 
+      if (liveTerminalDrawer) {
+        liveTerminalDrawer.classList.remove('hidden');
+      }
+      if (liveConsoleOutput) {
+        liveConsoleOutput.textContent = `[${new Date().toLocaleTimeString()}] ▶ Uruchamianie: ${label}...\n`;
+      }
+
       let bodyData = { action: actionName, book: currentBook };
       let progressTimer = null;
 
@@ -2739,25 +2746,71 @@ import '../styles/global.css';
         }, 1200);
       }
 
+      let actionSuccess = false;
+      let actionError = null;
+      let durationMs = 0;
+
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData)
+          body: JSON.stringify({ ...bodyData, stream: true })
         });
-        const data = await res.json();
-        const durationMs = data.durationMs || (systemBusySeconds * 1000);
 
-        if (data.stdout || data.stderr) {
-          if (liveConsoleOutput) {
-            liveConsoleOutput.textContent = [data.stdout, data.stderr].filter(Boolean).join('\n') || 'Brak wyjścia konsoli.';
+        const contentType = res.headers.get('content-type') || '';
+
+        if (contentType.includes('application/x-ndjson') && res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const event = JSON.parse(line);
+                if (event.type === 'stdout' || event.type === 'stderr') {
+                  if (liveConsoleOutput) {
+                    liveConsoleOutput.textContent += event.text;
+                    liveConsoleOutput.scrollTop = liveConsoleOutput.scrollHeight;
+                  }
+                  const match = event.text.match(/strona\s+(\d+)\s+\(ukończono\s+(\d+)\/(\d+)\s+-\s+([\d\.]+)%\)/i);
+                  if (match) {
+                    const [, curr, comp, total, pct] = match;
+                    if (liveProgressTitle) liveProgressTitle.textContent = `Ekstrakcja: strona ${curr}/${total} (${pct}%)`;
+                    if (liveProgressBar) liveProgressBar.style.width = `${pct}%`;
+                  }
+                } else if (event.type === 'done') {
+                  actionSuccess = event.success;
+                  actionError = event.error;
+                  durationMs = event.durationMs;
+                } else if (event.type === 'error') {
+                  actionSuccess = false;
+                  actionError = event.error;
+                }
+              } catch (parseErr) {}
+            }
+          }
+        } else {
+          const data = await res.json();
+          actionSuccess = data.success;
+          actionError = data.error;
+          durationMs = data.durationMs || (systemBusySeconds * 1000);
+          if (data.stdout || data.stderr) {
+            if (liveConsoleOutput) {
+              liveConsoleOutput.textContent += [data.stdout, data.stderr].filter(Boolean).join('\n') || '';
+              liveConsoleOutput.scrollTop = liveConsoleOutput.scrollHeight;
+            }
           }
         }
 
-        let actionSuccess = false;
-
-        if (data.success) {
-          actionSuccess = true;
+        if (actionSuccess) {
           const timeSec = (durationMs / 1000).toFixed(1);
           showToast(`✓ ${label} — zakończono sukcesem! (${timeSec}s)`, 'success');
           showStatus(`✓ Akcja "${label}" ukończona pomyślnie (${timeSec}s).`, 'success');
@@ -2766,9 +2819,10 @@ import '../styles/global.css';
           await loadBooks();
           return true;
         } else {
-          showToast(`Błąd: ${data.error}`, 'error');
-          showStatus(`Błąd akcji "${label}": ${data.error}`, 'error');
-          logSessionActivity(label, false, durationMs, data.error);
+          const errText = actionError || 'Wystąpił błąd podczas wykonywania zadania.';
+          showToast(`Błąd: ${errText}`, 'error');
+          showStatus(`Błąd akcji "${label}": ${errText}`, 'error');
+          logSessionActivity(label, false, durationMs, errText);
           return false;
         }
       } catch (err) {

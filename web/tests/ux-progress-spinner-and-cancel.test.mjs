@@ -35,3 +35,22 @@ test('action.ts: supports action=cancel and deletes stale progress before extrac
   assert.ok(content.includes('SIGTERM'), 'Must terminate process cleanly with SIGTERM');
   assert.ok(content.includes('extract_progress_'), 'Must clear extract_progress before new extraction');
 });
+
+test('action.ts & index.astro: supports real-time terminal NDJSON streaming and immediate event listener binding', () => {
+  const actionPath = path.join(rootDir, 'web', 'src', 'pages', 'api', 'action.ts');
+  const indexPath = path.join(rootDir, 'web', 'src', 'pages', 'index.astro');
+
+  const actionContent = fs.readFileSync(actionPath, 'utf-8');
+  const indexContent = fs.readFileSync(indexPath, 'utf-8');
+
+  // action.ts NDJSON streaming
+  assert.ok(actionContent.includes('application/x-ndjson'), 'action.ts must support application/x-ndjson streaming');
+  assert.ok(actionContent.includes('ReadableStream'), 'action.ts must use ReadableStream for real-time output');
+  assert.ok(actionContent.includes("child.stdout?.on('data'"), 'action.ts must stream stdout chunks');
+
+  // index.astro streaming reader & immediate init
+  assert.ok(indexContent.includes('application/x-ndjson'), 'index.astro must detect ndjson content-type');
+  assert.ok(indexContent.includes('res.body.getReader()'), 'index.astro must read stream using ReadableStream reader');
+  assert.ok(indexContent.includes('setupEventListeners();'), 'index.astro must call setupEventListeners immediately on init');
+});
+
