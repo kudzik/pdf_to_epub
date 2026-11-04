@@ -392,6 +392,8 @@ def inspect_anomaly_cmd(
         raise typer.Exit(code=1)
 
     console.print(f"\n[bold cyan]=== Anomalia Akapitu #{index} (Severity: {data['severity'].upper()}) ===[/bold cyan]")
+    if data.get("is_stale"):
+        console.print("[bold yellow]⚠ Ostrzeżenie:[/bold yellow] [yellow]Raport audytu jest nieaktualny (plik Markdown uległ zmianie od czasu wygenerowania raportu). Zalecane: uv run python -m src.pipeline audit[/yellow]")
     console.print(f"[yellow]Wykryte błędy:[/yellow] {', '.join(data['sample_tokens'])}")
     console.print(f"[yellow]Kategorie:[/yellow] {', '.join(data['categories'])}")
     if data["context_before"]:
@@ -405,14 +407,22 @@ def inspect_anomaly_cmd(
 def patch_cmd(
     index: Annotated[int, typer.Argument(help="Indeks akapitu do podmiany.")],
     text: Annotated[str, typer.Option("--text", "-t", help="Zrekonstruowany, poprawny tekst akapitu.")],
+    expected_orig: Annotated[Optional[str], typer.Option("--expected-orig", help="Oczekiwana oryginalna treść akapitu (ochrona przed konfliktem).")] = None,
+    expected_sha: Annotated[Optional[str], typer.Option("--expected-sha", help="Oczekiwana suma SHA-256 pliku Markdown.")] = None,
     input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m")] = None,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
-    """Podmienia wskazany uszkodzony akapit na zrekonstruowany tekst (tworząc kopię .bak)."""
+    """Podmienia wskazany uszkodzony akapit na zrekonstruowany tekst (tworząc kopię .bak i weryfikując wersję)."""
     input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     try:
-        patch_paragraph(input_md, index, text)
+        patch_paragraph(
+            markdown_path=input_md,
+            paragraph_index=index,
+            replacement_text=text,
+            expected_original=expected_orig,
+            expected_sha256=expected_sha,
+        )
         console.print(f"[bold green]✓ Pomyślnie podmieniono akapit #{index} w {input_md.name} (utworzono {input_md.name}.bak)[/bold green]")
     except Exception as e:
         console.print(f"[bold red]Błąd:[/bold red] {e}")
@@ -422,14 +432,15 @@ def patch_cmd(
 @app.command(name="patch-batch")
 def patch_batch_cmd(
     fixes_file: Annotated[Path, typer.Option("--file", "-f", help="Ścieżka do pliku JSON ze słownikiem poprawek.")],
+    expected_sha: Annotated[Optional[str], typer.Option("--expected-sha", help="Oczekiwana suma SHA-256 pliku Markdown.")] = None,
     input_md: Annotated[Optional[Path], typer.Option("--input-md", "-m")] = None,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
-    """Aplikuje paczkę poprawek z pliku JSON na pliku Markdown (tworząc kopię .bak)."""
+    """Aplikuje paczkę poprawek z pliku JSON na pliku Markdown (tworząc kopię .bak i weryfikując wersję)."""
     input_md = ensure_markdown_exists(input_md=input_md, output_dir=output_dir)
 
     try:
-        count = patch_batch_from_file(input_md, fixes_file)
+        count = patch_batch_from_file(input_md, fixes_file, expected_sha256=expected_sha)
         console.print(f"[bold green]✓ Pomyślnie zaaplikowano {count} poprawek do {input_md.name} (utworzono {input_md.name}.bak)[/bold green]")
     except Exception as e:
         console.print(f"[bold red]Błąd:[/bold red] {e}")

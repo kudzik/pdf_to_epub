@@ -3,10 +3,20 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from src.write_control import (
+    AssetIntegrityError,
+    InvalidPatchError,
+    LockTimeoutError,
+    PatchRequest,
+    VersionConflictError,
+    compute_file_sha256,
+    write_patches_atomic,
+)
+
 
 def backup_markdown(markdown_path: Path) -> Path:
     """Tworzy kopię zapasową pliku Markdown przed wprowadzeniem zmian."""
-    backup_path = markdown_path.with_suffix(markdown_path.suffix + ".bak")
+    backup_path = markdown_path.with_name(f"{markdown_path.name}.bak")
     if not backup_path.exists():
         shutil.copy2(markdown_path, backup_path)
     return backup_path
@@ -19,10 +29,13 @@ def get_anomaly_details(
 ) -> dict:
     """
     Zwraca szczegółowe informacje o anomalii wraz z kontekstem
-    (poprzedzający i następujący akapit), aby ułatwić Agentowi AI rekonstrukcję.
+    (poprzedzający i następujący akapit) oraz informacją o aktualności raportu.
     """
     if not report_path.exists():
         raise FileNotFoundError(f"Raport {report_path} nie istnieje. Uruchom najpierw: uv run python -m src.pipeline audit")
+
+    if not markdown_path.exists():
+        raise FileNotFoundError(f"Plik Markdown {markdown_path} nie istnieje.")
 
     report_data = json.loads(report_path.read_text(encoding="utf-8"))
     anomalies = {a["paragraph_index"]: a for a in report_data.get("anomalies", [])}
@@ -30,7 +43,6 @@ def get_anomaly_details(
     if paragraph_index not in anomalies:
         raise ValueError(f"Nie znaleziono anomalii dla akapitu o indeksie {paragraph_index}.")
 
-    anomaly = anomalies[paragraph_index]
     content = markdown_path.read_text(encoding="utf-8")
     paragraphs = content.split("\n\n")
 
@@ -41,6 +53,12 @@ def get_anomaly_details(
     before = paragraphs[paragraph_index - 1].strip() if paragraph_index > 0 else ""
     after = paragraphs[paragraph_index + 1].strip() if paragraph_index + 1 < len(paragraphs) else ""
 
+    # Sprawdzenie aktualności względem SHA-256 Markdowna
+    current_sha = compute_file_sha256(markdown_path)
+    report_sha = report_data.get("markdown_sha256")
+    is_stale = bool(report_sha and report_sha.lower() != current_sha.lower())
+
+    anomaly = anomalies[paragraph_index]
     return {
         "paragraph_index": paragraph_index,
         "severity": anomaly.get("severity", "medium"),
@@ -50,6 +68,9 @@ def get_anomaly_details(
         "raw_paragraph": raw_text,
         "context_before": before,
         "context_after": after,
+        "markdown_sha256": current_sha,
+        "report_sha256": report_sha,
+        "is_stale": is_stale,
     }
 
 
@@ -57,60 +78,86 @@ def patch_paragraph(
     markdown_path: Path,
     paragraph_index: int,
     replacement_text: str,
+    expected_original: Optional[str] = None,
+    expected_sha256: Optional[str] = None,
     create_backup: bool = True,
+    owner: str = "cli:patch",
+    timeout_seconds: float = 5.0,
 ) -> bool:
     """
-    Bezpiecznie podmienia treść konkretnego akapitu na podstawie jego indeksu.
-    Automatycznie wykonuje kopię zapasową .bak.
+    Bezpiecznie i atomowo podmienia treść konkretnego akapitu na podstawie jego indeksu.
+    Stosuje blokadę plikową, kontrolę wersji SHA-256 oraz ochronę linków do grafik.
     """
-    if not markdown_path.exists():
-        raise FileNotFoundError(f"Plik {markdown_path} nie istnieje.")
-
-    if create_backup:
-        backup_markdown(markdown_path)
-
-    content = markdown_path.read_text(encoding="utf-8")
-    paragraphs = content.split("\n\n")
-
-    if paragraph_index < 0 or paragraph_index >= len(paragraphs):
-        raise IndexError(f"Indeks {paragraph_index} poza zakresem (0..{len(paragraphs)-1}).")
-
-    paragraphs[paragraph_index] = replacement_text.strip()
-    new_content = "\n\n".join(paragraphs)
-    markdown_path.write_text(new_content, encoding="utf-8")
-    return True
+    res = write_patches_atomic(
+        markdown_path=markdown_path,
+        patches=[
+            PatchRequest(
+                index=paragraph_index,
+                text=replacement_text,
+                original=expected_original,
+            )
+        ],
+        expected_sha256=expected_sha256,
+        create_backup=create_backup,
+        owner=owner,
+        timeout_seconds=timeout_seconds,
+    )
+    return res.is_success
 
 
 def patch_batch_from_file(
     markdown_path: Path,
     fixes_file: Path,
+    expected_sha256: Optional[str] = None,
     create_backup: bool = True,
+    owner: str = "cli:patch-batch",
+    timeout_seconds: float = 5.0,
 ) -> int:
     """
-    Wczytuje plik JSON z poprawkami { "numer_akapitu": "nowy_tekst" }
-    i aplikuje wszystkie poprawki w jednym bezpiecznym przejściu.
+    Wczytuje plik JSON z poprawkami { "numer_akapitu": "nowy_tekst" } lub listą obiektów
+    i aplikuje wszystkie poprawki w jednym atomowym przejściu pod blokadą zapisu.
     """
     if not fixes_file.exists():
         raise FileNotFoundError(f"Plik poprawek {fixes_file} nie istnieje.")
 
     fixes_data = json.loads(fixes_file.read_text(encoding="utf-8"))
-    if not isinstance(fixes_data, dict):
-        raise ValueError("Plik poprawek musi być obiektem JSON w formacie: { '51': 'Nowy tekst...' }.")
+    patches: list[PatchRequest] = []
 
-    if create_backup:
-        backup_markdown(markdown_path)
+    if isinstance(fixes_data, dict):
+        for idx_str, val in fixes_data.items():
+            if isinstance(val, dict):
+                patches.append(
+                    PatchRequest(
+                        index=int(idx_str),
+                        text=val.get("text", ""),
+                        original=val.get("original"),
+                    )
+                )
+            elif isinstance(val, str):
+                patches.append(PatchRequest(index=int(idx_str), text=val))
+            else:
+                raise ValueError(f"Nieobsługiwany format wartości dla klucza {idx_str}.")
+    elif isinstance(fixes_data, list):
+        for item in fixes_data:
+            if isinstance(item, dict) and "index" in item and "text" in item:
+                patches.append(
+                    PatchRequest(
+                        index=int(item["index"]),
+                        text=str(item["text"]),
+                        original=item.get("original"),
+                    )
+                )
+            else:
+                raise ValueError("Element listy poprawek musi zawierać klucze 'index' i 'text'.")
+    else:
+        raise ValueError("Plik poprawek musi być obiektem JSON lub listą poprawek.")
 
-    content = markdown_path.read_text(encoding="utf-8")
-    paragraphs = content.split("\n\n")
-
-    applied_count = 0
-    for idx_str, new_text in fixes_data.items():
-        idx = int(idx_str)
-        if 0 <= idx < len(paragraphs):
-            paragraphs[idx] = new_text.strip()
-            applied_count += 1
-
-    new_content = "\n\n".join(paragraphs)
-    markdown_path.write_text(new_content, encoding="utf-8")
-    return applied_count
-
+    res = write_patches_atomic(
+        markdown_path=markdown_path,
+        patches=patches,
+        expected_sha256=expected_sha256,
+        create_backup=create_backup,
+        owner=owner,
+        timeout_seconds=timeout_seconds,
+    )
+    return res.changed_count

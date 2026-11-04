@@ -1,7 +1,11 @@
+import os
 import re
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Optional
+
+from src.write_control import book_write_lock
 
 
 # Mapa popularnych ułamków typograficznych Unicode na ich reprezentację ASCII
@@ -347,14 +351,30 @@ def clean_markdown_file(
     """
     Wczytuje plik Markdown, czyści go i zapisuje do pliku wyjściowego
     (lub nadpisuje plik wejściowy, jeśli output_path nie został podany).
+    Wykorzystuje blokadę zapisu oraz atomowy zapis pliku tymczasowego.
     """
     if not input_path.exists():
         raise FileNotFoundError(f"Plik {input_path} nie istnieje.")
 
-    raw_text = input_path.read_text(encoding="utf-8")
-    cleaned_text = clean_markdown_text(raw_text)
-
     dest = output_path or input_path
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(cleaned_text, encoding="utf-8")
+
+    with book_write_lock(dest, owner="cli:clean"):
+        raw_text = input_path.read_text(encoding="utf-8")
+        cleaned_text = clean_markdown_text(raw_text)
+
+        temp_file = dest.with_name(f"{dest.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            with open(temp_file, "w", encoding="utf-8") as f:
+                f.write(cleaned_text)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_file, dest)
+        finally:
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except OSError:
+                    pass
+
     return dest

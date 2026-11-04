@@ -1,6 +1,8 @@
+import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -26,6 +28,8 @@ class AuditReport:
     overlong_headings_count: int
     missing_chapters: list[str] = field(default_factory=list)
     anomalies: list[AnomalyIssue] = field(default_factory=list)
+    markdown_sha256: str = ""
+    generated_at: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -174,6 +178,9 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
     med_count = sum(1 for a in anomalies if a.severity == "medium")
     low_count = sum(1 for a in anomalies if a.severity == "low")
 
+    content_sha256 = hashlib.sha256(markdown_content.encode("utf-8")).hexdigest()
+    gen_time = datetime.now(timezone.utc).isoformat()
+
     return AuditReport(
         total_paragraphs=len(paragraphs),
         total_anomalies=len(anomalies),
@@ -183,6 +190,8 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
         overlong_headings_count=overlong_headings_count,
         missing_chapters=missing_chapters,
         anomalies=anomalies,
+        markdown_sha256=content_sha256,
+        generated_at=gen_time,
     )
 
 
@@ -202,3 +211,41 @@ def audit_markdown_file(
         report_output_path.write_text(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
 
     return report
+
+
+def check_report_freshness(report_path: Path, markdown_path: Path) -> dict:
+    """Sprawdza, czy raport audytu odpowiada aktualnej wersji pliku Markdown na dysku."""
+    if not report_path.is_file():
+        return {"exists": False, "is_stale": True, "reason": "Brak pliku raportu"}
+    if not markdown_path.is_file():
+        return {"exists": True, "is_stale": True, "reason": "Brak pliku Markdown"}
+
+    try:
+        data = json.loads(report_path.read_text(encoding="utf-8"))
+        report_sha = data.get("markdown_sha256")
+        hasher = hashlib.sha256()
+        with markdown_path.open("rb") as f:
+            while chunk := f.read(65536):
+                hasher.update(chunk)
+        current_sha = hasher.hexdigest()
+
+        if not report_sha:
+            return {
+                "exists": True,
+                "is_stale": True,
+                "reason": "Raport nie zawiera sumy SHA-256 Markdowna (starszy format).",
+                "current_sha256": current_sha,
+            }
+
+        is_stale = (report_sha.lower() != current_sha.lower())
+        return {
+            "exists": True,
+            "is_stale": is_stale,
+            "report_sha256": report_sha,
+            "current_sha256": current_sha,
+            "generated_at": data.get("generated_at"),
+            "reason": "Raport jest nieaktualny (plik Markdown uległ zmianie)." if is_stale else "Raport aktualny",
+        }
+    except Exception as exc:
+        return {"exists": True, "is_stale": True, "reason": f"Błąd weryfikacji raportu: {exc}"}
+
