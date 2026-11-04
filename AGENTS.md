@@ -143,6 +143,15 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Bezpieczny rollback i przywrócenie stanu produkcyjnego z .pre_r18_bak:
   uv run python -m src.pipeline candidate-rollback
   ```
+- **Walidacja kontenera EPUB 3 i eksport bazy wiedzy RAG (Gate G5 / R19):**
+  ```bash
+  # Rygorystyczna walidacja standardu EPUB 3 (mimetype, container, opf, spine, nav, assets):
+  uv run python -m src.pipeline epub-validate --epub output/epub/ksiazka.epub
+  # Eksport bazy wiedzy pod RAG/LLM do formatów JSONL i JSON:
+  uv run python -m src.pipeline rag-export --input-md output/markdown/ksiazka.md
+  # Eksport bazy wiedzy RAG z generowaniem wektorów (embeddings) na karcie GPU (RTX 4080 SUPER):
+  uv run python -m src.pipeline rag-export --input-md output/markdown/ksiazka.md --embed --model nomic-embed-text
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

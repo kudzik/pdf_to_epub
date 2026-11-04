@@ -229,3 +229,4 @@ def test_save_migration_report(tmp_path: Path):
     assert "95.5%" in md_content
     assert "113" in md_content
     assert "snap_123" in md_content
+
