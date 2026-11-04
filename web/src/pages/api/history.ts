@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro'
 import fs from 'node:fs'
 import path from 'node:path'
 import { randomUUID, createHash } from 'node:crypto'
-import { getProjectRootDir } from '../../utils/paths'
+import { getProjectRootDir } from '../../utils/paths.ts'
 
 const computeSha = (text: string): string => {
   const clean = text.trim().replace(/\r\n/g, '\n')
@@ -111,7 +111,7 @@ export const POST: APIRoute = async ({ request }) => {
       timestamp: new Date().toISOString(),
       book_name: book,
       paragraph_index: index,
-      paragraph_sha256: computeSha(original || text),
+      paragraph_sha256: computeSha(text || original),
       document_sha256_before: docSha,
       source_engine: engine,
       original_text: original,
