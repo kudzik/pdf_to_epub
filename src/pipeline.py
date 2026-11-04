@@ -183,6 +183,7 @@ def extract_pdf(
         raise typer.Exit(code=1)
 
     lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+    app_logger.info(f"Rozpoczęcie ekstrakcji: {input_pdf.name} (pages={pages}, ocr={ocr}, engine={ocr_engine})")
 
     if ocr is None:
         eval_res = evaluate_text_layer_quality(str(input_pdf))
