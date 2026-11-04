@@ -64,5 +64,13 @@ test('Stepper Reset on Purge: verifies complete reset of stages and metrics', ()
   assert.ok(indexContent.includes('stepBadge3.textContent = mdExists ?'), 'Step 3 badge text must dynamically toggle');
   assert.ok(indexContent.includes('stepCard2.className = mdExists'), 'Step 2 card background must toggle on mdExists');
   assert.ok(indexContent.includes('stepCard5.className = isEpubValid'), 'Step 5 card background must toggle on isEpubValid');
+
+  // 5. Harmonized numbering: Conversion stages start with Krok 1 (Ekstrakcja), not Krok 2
+  assert.ok(indexContent.includes('>Źródło</span>'), 'StepCard1 must be labeled Źródło (prerequisite), not Krok 1');
+  assert.ok(indexContent.includes('>Krok 1</span>'), 'StepCard2 (Ekstrakcja) must be labeled Krok 1');
+  assert.ok(indexContent.includes('>Krok 2</span>'), 'StepCard3 (Czyszczenie) must be labeled Krok 2');
+  assert.ok(indexContent.includes('>Krok 3</span>'), 'StepCard4 (Audyt) must be labeled Krok 3');
+  assert.ok(indexContent.includes('>Krok 4</span>'), 'StepCard5 (Publikacja) must be labeled Krok 4');
+  assert.ok(indexContent.includes('Gotowy do ekstrakcji'), 'StepCard2 must display Gotowy do ekstrakcji when PDF is available');
 });
 
