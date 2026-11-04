@@ -31,11 +31,12 @@ export const POST: APIRoute = async ({ request }) => {
     } else if (action === 'build') {
       command = `uv run python -m src.pipeline build --book "${bookStem}"`;
     } else if (action === 'purge') {
-      command = `uv run python -m src.pipeline purge --book "${bookStem}"`;
+      const epubFlag = (keepEpub === true) ? '--keep-epub' : '--with-epub';
+      command = `uv run python -m src.pipeline purge --book "${bookStem}" ${epubFlag}`;
     } else if (action === 'purge-epub') {
       command = `uv run python -m src.pipeline purge --book "${bookStem}" --only-epub`;
     } else if (action === 'purge-all') {
-      command = `uv run python -m src.pipeline purge --all`;
+      command = `uv run python -m src.pipeline purge --all --with-epub`;
     } else if (action === 'purge-temp') {
       command = `uv run python -m src.pipeline purge --temp-only`;
     } else if (action === 'copy-windows') {

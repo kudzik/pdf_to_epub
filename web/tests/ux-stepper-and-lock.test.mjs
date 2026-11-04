@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../..');
 const indexAstroPath = path.join(rootDir, 'web/src/pages/index.astro');
+const actionTsPath = path.join(rootDir, 'web/src/pages/api/action.ts');
 
 test('UX Stepper and Interaction Lock: verifies comprehensive UI improvements', () => {
   const content = fs.readFileSync(indexAstroPath, 'utf8');
@@ -35,5 +36,33 @@ test('UX Stepper and Interaction Lock: verifies comprehensive UI improvements', 
   // 4. Overwrite Guardrail
   assert.ok(content.includes('Ostrzeżenie przed nadpisaniem Markdowna'), 'Must provide guardrail warning before overwriting existing Markdown');
   assert.ok(content.includes('function updateWorkflowStepper('), 'Must provide dynamic stepper update logic');
+});
+
+test('Stepper Reset on Purge: verifies complete reset of stages and metrics', () => {
+  const indexContent = fs.readFileSync(indexAstroPath, 'utf8');
+  const actionContent = fs.readFileSync(actionTsPath, 'utf8');
+
+  // 1. Action API passes --with-epub when purging so no stale EPUB prevents stepper reset
+  assert.ok(actionContent.includes("const epubFlag = (keepEpub === true) ? '--keep-epub' : '--with-epub';"), 'Action API must purge EPUB by default to ensure stage reset');
+  assert.ok(actionContent.includes("purge --all --with-epub"), 'purge-all must include --with-epub');
+
+  // 2. Purge handler resets client states and reloads books list
+  assert.ok(indexContent.includes('repairStates.clear()'), 'Must clear repairStates on purge');
+  assert.ok(indexContent.includes('saveStatuses.clear()'), 'Must clear saveStatuses on purge');
+  assert.ok(indexContent.includes('verifyStatuses.clear()'), 'Must clear verifyStatuses on purge');
+  assert.ok(indexContent.includes('await loadBooks()'), 'Must reload books after purge');
+
+  // 3. DOM metric counters reset to 0 in absence of audit report
+  assert.ok(indexContent.includes("statTotal.textContent = '0'"), 'Anomaly total must reset to 0 when report is cleared');
+  assert.ok(indexContent.includes("statHigh.textContent = 'High: 0'"), 'High severity badge must reset to 0');
+  assert.ok(indexContent.includes("statMed.textContent = 'Med: 0'"), 'Medium severity badge must reset to 0');
+  assert.ok(indexContent.includes("statLow.textContent = 'Low: 0'"), 'Low severity badge must reset to 0');
+
+  // 4. Stepper requires Markdown existence for EPUB completion invariant
+  assert.ok(indexContent.includes('const isEpubValid = epubExists && mdExists;'), 'EPUB step must only be marked complete if source MD exists');
+  assert.ok(indexContent.includes('stepBadge2.textContent = mdExists ?'), 'Step 2 badge text must dynamically toggle between MD and completed');
+  assert.ok(indexContent.includes('stepBadge3.textContent = mdExists ?'), 'Step 3 badge text must dynamically toggle');
+  assert.ok(indexContent.includes('stepCard2.className = mdExists'), 'Step 2 card background must toggle on mdExists');
+  assert.ok(indexContent.includes('stepCard5.className = isEpubValid'), 'Step 5 card background must toggle on isEpubValid');
 });
 
