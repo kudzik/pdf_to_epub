@@ -173,7 +173,11 @@ export const POST: APIRoute = async ({ request }) => {
             cwd: rootDir,
             timeout: 600_000,
             maxBuffer: 16 * 1024 * 1024,
-            env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+            env: {
+              ...process.env,
+              PYTHONUNBUFFERED: "1",
+              UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache")
+            }
           });
 
           if (child.pid) {
@@ -238,7 +242,11 @@ export const POST: APIRoute = async ({ request }) => {
         cwd: rootDir,
         timeout: 600_000,
         maxBuffer: 16 * 1024 * 1024,
-        env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: "1",
+          UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache")
+        }
       }, (error, stdout, stderr) => {
         runningJobs.delete(bookStem);
         if (error) {

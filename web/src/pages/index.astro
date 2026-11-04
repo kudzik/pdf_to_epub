@@ -25,6 +25,7 @@ import '../styles/global.css';
           <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
             PDF to EPUB Studio
             <span class="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">WSL/Windows</span>
+            <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 flex items-center gap-1.5" title="Strumieniowanie konsoli CLI w czasie rzeczywistym aktywne"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Live v2.1</span>
           </h1>
           <p class="text-xs text-zinc-400">Książki kucharskie &middot; OCR &middot; Markdown &middot; EPUB 3</p>
         </div>
@@ -838,6 +839,8 @@ import '../styles/global.css';
     const liveProgressTitle = document.getElementById('liveProgressTitle');
     const liveProgressSubtitle = document.getElementById('liveProgressSubtitle');
     const liveProgressTimer = document.getElementById('liveProgressTimer');
+    const liveProgressBar = document.getElementById('liveProgressBar');
+    const liveProgressSpinner = document.getElementById('liveProgressSpinner');
     const btnToggleTerminalOutput = document.getElementById('btnToggleTerminalOutput');
     const liveTerminalDrawer = document.getElementById('liveTerminalDrawer');
     const liveConsoleOutput = document.getElementById('liveConsoleOutput');
@@ -2777,7 +2780,8 @@ import '../styles/global.css';
                 const event = JSON.parse(line);
                 if (event.type === 'stdout' || event.type === 'stderr') {
                   if (liveConsoleOutput) {
-                    liveConsoleOutput.textContent += event.text;
+                    const cleanText = event.text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+                    liveConsoleOutput.textContent += cleanText;
                     liveConsoleOutput.scrollTop = liveConsoleOutput.scrollHeight;
                   }
                   const match = event.text.match(/strona\s+(\d+)\s+\(ukończono\s+(\d+)\/(\d+)\s+-\s+([\d\.]+)%\)/i);
@@ -2804,7 +2808,8 @@ import '../styles/global.css';
           durationMs = data.durationMs || (systemBusySeconds * 1000);
           if (data.stdout || data.stderr) {
             if (liveConsoleOutput) {
-              liveConsoleOutput.textContent += [data.stdout, data.stderr].filter(Boolean).join('\n') || '';
+              const fullText = [data.stdout, data.stderr].filter(Boolean).join('\n') || '';
+              liveConsoleOutput.textContent += fullText.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
               liveConsoleOutput.scrollTop = liveConsoleOutput.scrollHeight;
             }
           }
