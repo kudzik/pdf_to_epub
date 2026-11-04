@@ -120,6 +120,11 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Uruchomienie konwersji kandydata na 10 stronach holdout i weryfikacja kryteriów sekcji 8:
   uv run python -m src.pipeline gate-g2-evaluate
   ```
+- **Pilotażowa ewaluacja 50 nowych stron i weryfikacja Bramki Gate G3 (Gate G3 / R16):**
+  ```bash
+  # Uruchomienie pilota 50 stron zamrożonym stosem produkcyjnym, kontrola przejść i ekstrapolacja kosztu:
+  uv run python -m src.pipeline pilot-evaluate --pages 201-250
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub
