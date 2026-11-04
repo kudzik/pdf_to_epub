@@ -37,6 +37,7 @@ def test_ocr_engine_modes():
     assert OcrEngineMode.NATIVE.value == "native"
     assert OcrEngineMode.FULL_PAGE.value == "full_page"
     assert OcrEngineMode.LAYOUT_REGIONS.value == "layout_regions"
+    assert OcrEngineMode.RAPID_OCR.value == "rapidocr"
 
 
 def test_get_mode_converter_native():
@@ -50,6 +51,15 @@ def test_get_mode_converter_full_page():
     assert summary["mode"] == "full_page"
     assert summary["do_ocr"] is True
     assert summary["ocr_mode"] == "FULL_PAGE"
+
+
+def test_get_mode_converter_rapidocr():
+    converter, summary = get_mode_converter(OcrEngineMode.RAPID_OCR, ["pl", "en"])
+    assert summary["mode"] == "rapidocr"
+    assert summary["do_ocr"] is True
+    assert summary["ocr_engine"] == "RapidOCR"
+    assert summary["ocr_mode"] == "FULL_PAGE"
+    assert summary["rapid_lang"] == "pl"
 
 
 def test_candidate_run_conversion_native(tmp_path: Path):
@@ -74,6 +84,8 @@ def test_candidate_run_conversion_native(tmp_path: Path):
     assert manifest.total_blocks > 0
     assert manifest.is_production_truth is False
     assert manifest.candidate_markdown_sha256 is not None
+    assert manifest.duration_seconds is not None and manifest.duration_seconds >= 0.0
+    assert 25 in manifest.page_durations and manifest.page_durations[25] >= 0.0
 
     cand_dir = cand_base / "test_run_native_p25"
     manifest_file = cand_dir / "manifest.json"
@@ -90,3 +102,30 @@ def test_candidate_run_conversion_native(tmp_path: Path):
     # Verify candidate markdown file exists
     cand_md = cand_dir / f"{pdf_path.stem}.md"
     assert cand_md.exists()
+
+
+def test_candidate_run_conversion_non_contiguous(tmp_path: Path):
+    pdf_path = Path("input/ksiazka.pdf")
+    if not pdf_path.exists():
+        pytest.skip("Input PDF not available.")
+
+    cand_base = tmp_path / "candidates"
+    manifest = run_candidate_conversion(
+        pdf_path=pdf_path,
+        pages=[25, 40],
+        mode=OcrEngineMode.NATIVE,
+        languages=["pl", "en"],
+        output_base_dir=cand_base,
+        run_id="test_run_non_contiguous",
+    )
+
+    assert manifest.total_pages == 2
+    assert manifest.pages_converted == [25, 40]
+    assert 25 in manifest.page_durations
+    assert 40 in manifest.page_durations
+    assert manifest.duration_seconds is not None and manifest.duration_seconds > 0.0
+
+    cand_dir = cand_base / "test_run_non_contiguous"
+    assert (cand_dir / "pages" / "page_025_extracted.json").exists()
+    assert (cand_dir / "pages" / "page_040_extracted.json").exists()
+    assert (cand_dir / f"{pdf_path.stem}.md").exists()

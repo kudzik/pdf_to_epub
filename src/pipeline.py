@@ -1207,7 +1207,7 @@ def candidate_convert_cmd(
     ] = "25",
     mode: Annotated[
         str,
-        typer.Option("--mode", "-m", help="Jawny tryb OCR: 'native' (warstwa PDF), 'full_page' (EasyOCR cała strona), 'layout_regions'."),
+        typer.Option("--mode", "-m", help="Jawny tryb OCR: 'native' (warstwa PDF), 'full_page' (EasyOCR cała strona), 'layout_regions', 'rapidocr'."),
     ] = "native",
     languages: Annotated[
         str,
@@ -1460,6 +1460,117 @@ def benchmark_compare_cmd(
     )
 
     console.print(table)
+
+
+@app.command(name="benchmark-ocr")
+def benchmark_ocr_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (domyślnie 'ksiazka')."),
+    ] = "ksiazka",
+    pages: Annotated[
+        str,
+        typer.Option("--pages", "-p", help="Zakres stron (np. '25-26'), lista '25,40,54,58,125,142' lub 'gt' (wszystkie strony ze zweryfikowanym wzorcem)."),
+    ] = "gt",
+    modes: Annotated[
+        str,
+        typer.Option("--modes", "-m", help="Silniki OCR do porównania rozdzielone przecinkami (np. 'native,full_page,rapidocr')."),
+    ] = "native,full_page,rapidocr",
+    fixtures_dir: Annotated[
+        Path,
+        typer.Option("--fixtures-dir", help="Katalog zawierający wzorce ground truth."),
+    ] = Path("benchmarks/fixtures/ground_truth"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Katalog wyjściowy dla raportów benchmarku."),
+    ] = Path("output/benchmarks"),
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run-id", help="Identyfikator przebiegu porównawczego."),
+    ] = None,
+):
+    """Przeprowadza zbiorczy benchmark porównawczy silników OCR (Native, EasyOCR, RapidOCR) względem Ground Truth."""
+    from src.ocr_modes import OcrEngineMode
+    from src.benchmark import run_multi_engine_benchmark
+    from src.ground_truth import load_all_ground_truths
+    from src.benchmark_manifest import load_test_pages_manifest
+
+    pdf_path = Path(f"input/{book}.pdf")
+    if not pdf_path.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono pliku PDF: {pdf_path}")
+        raise typer.Exit(code=1)
+
+    parsed_pages: list[int] = []
+    if pages.strip().lower() == "gt":
+        gts = load_all_ground_truths(fixtures_dir)
+        parsed_pages = sorted(gts.keys())
+    elif pages.strip().lower() == "dev":
+        manifest = load_test_pages_manifest()
+        parsed_pages = [e.pdf_page for e in manifest.dev_pages]
+    elif "-" in pages:
+        parts = [int(x.strip()) for x in pages.split("-")]
+        if len(parts) == 2:
+            parsed_pages = list(range(parts[0], parts[1] + 1))
+        else:
+            raise typer.BadParameter(f"Nieprawidłowy zakres stron: {pages}")
+    else:
+        parsed_pages = [int(x.strip()) for x in pages.split(",") if x.strip()]
+
+    engine_modes: list[OcrEngineMode] = []
+    for m in modes.split(","):
+        clean_m = m.strip().lower()
+        if not clean_m:
+            continue
+        try:
+            engine_modes.append(OcrEngineMode(clean_m))
+        except ValueError:
+            console.print(f"[bold red]Błąd:[/bold red] Nieznany tryb OCR '{clean_m}'. Dostępne: {[e.value for e in OcrEngineMode]}")
+            raise typer.Exit(code=1)
+
+    console.print(f"[bold cyan]Rozpoczynanie benchmarku OCR:[/bold cyan] {len(engine_modes)} trybów na {len(parsed_pages)} stronach ({parsed_pages})...")
+
+    report, json_path, md_path = run_multi_engine_benchmark(
+        pdf_path=pdf_path,
+        pages=parsed_pages,
+        modes=engine_modes,
+        benchmarks_dir=output_dir,
+        fixtures_dir=fixtures_dir,
+        benchmark_id=run_id,
+    )
+
+    table = Table(title=f"Wyniki Benchmarku OCR — {report.benchmark_id}")
+    table.add_column("Silnik OCR", style="cyan")
+    table.add_column("Średni CER", justify="right", style="white")
+    table.add_column("Średni WER", justify="right", style="white")
+    table.add_column("Najgorszy WER (str)", justify="right", style="magenta")
+    table.add_column("Zgodność miar", justify="right", style="green")
+    table.add_column("Błędy miar", justify="right", style="red")
+    table.add_column("Pominięcia", justify="right", style="yellow")
+    table.add_column("p50 / p95 (s)", justify="right", style="dim")
+    table.add_column("Gate G2?", justify="center")
+
+    for row in report.summary_table:
+        p50_p95 = f"{row['p50_s']}s / {row['p95_s']}s" if row['p50_s'] is not None else "N/A"
+        gate_status = "[bold green]PASS[/bold green]" if row["passes_gate_g2"] else "[bold red]FAIL[/bold red]"
+        table.add_row(
+            row["engine"],
+            f"{row['mean_cer']*100:.2f}%",
+            f"{row['mean_wer']*100:.2f}%",
+            f"{row['worst_page_wer']*100:.2f}% (str. {row['worst_page_no']})",
+            f"{row['quantity_accuracy_pct']:.1f}%",
+            str(row["corrupted_quantities"]),
+            str(row["omissions"]),
+            p50_p95,
+            gate_status,
+        )
+
+    console.print(table)
+    console.print(f"[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+    if report.best_overall_engine:
+        console.print(f"[bold blue]Najlepsza jakość:[/bold blue] [cyan]{report.best_overall_engine}[/cyan]")
+    if report.fastest_engine:
+        console.print(f"[bold blue]Najwyższa prędkość:[/bold blue] [cyan]{report.fastest_engine}[/cyan]")
 
 
 @app.command(name="open-windows")

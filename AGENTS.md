@@ -89,19 +89,21 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Przetworzenie wybranej strony przez adapter, zapis sidecara JSON i wycinków bloków (crops):
   uv run python -m src.pipeline extract-page-adapter --page 25 --crop-blocks
   ```
-- **Jawne tryby OCR i izolowany eksport kandydata (Gate G1 / R07):**
+- **Jawne tryby OCR i izolowany eksport kandydata (Gate G1 / R07, Gate G2 / R09):**
   ```bash
-  # Wykonanie konwersji kandydata (tryby: native, full_page, layout_regions) do output/candidates/<run_id>/:
-  uv run python -m src.pipeline candidate-convert --pages 25-26 --mode full_page
+  # Wykonanie konwersji kandydata (tryby: native, full_page, layout_regions, rapidocr) do output/candidates/<run_id>/:
+  uv run python -m src.pipeline candidate-convert --pages 25-26 --mode rapidocr
   # Lista zarejestrowanych przebiegów kandydackich:
   uv run python -m src.pipeline candidate-list
   ```
-- **Pomiar jakości OCR, CER/WER i runner porównań (Gate G1 / R08):**
+- **Pomiar jakości OCR, CER/WER i runner porównań (Gate G1 / R08, Gate G2 / R09):**
   ```bash
   # Ewaluacja jakości kandydata względem wzorców (CER, WER, wierność miar i temperatur, pominięcia):
   uv run python -m src.pipeline benchmark-evaluate --candidate-dir output/candidates/<run_id>
   # Porównanie dwóch wariantów (np. native vs full_page):
   uv run python -m src.pipeline benchmark-compare --candidate-a output/candidates/<run1> --candidate-b output/candidates/<run2>
+  # Zbiorczy benchmark porównawczy wielu silników (native, full_page, rapidocr) na stronach GT lub dev:
+  uv run python -m src.pipeline benchmark-ocr --pages gt --modes native,full_page,rapidocr
   ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
