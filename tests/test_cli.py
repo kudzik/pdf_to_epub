@@ -26,7 +26,7 @@ def test_extract_invalid_pages_format(tmp_path: Path):
     """Weryfikuje walidację niepoprawnego formatu stron --pages."""
     dummy_pdf = tmp_path / "dummy.pdf"
     dummy_pdf.write_bytes(b"%PDF-1.4 dummy content")
-    result = runner.invoke(app, ["extract", "--input-pdf", str(dummy_pdf), "--pages", "invalid-range"])
+    result = runner.invoke(app, ["extract", "--input-pdf", str(dummy_pdf), "--pages", "invalid-range", "--output-dir", str(tmp_path)])
     assert result.exit_code == 1
     assert "Niepoprawny format stron" in result.stdout
 

@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
-import { exec } from 'child_process';
+import { exec, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import util from 'util';
 import { getProjectRootDir } from '../../utils/paths';
 
-const execPromise = util.promisify(exec);
+// Rejestr aktywnych procesów w tle (zapobieganie wyścigom i umożliwienie anulowania)
+const runningJobs = new Map<string, { pid: number; child: ChildProcess; startTime: number; action: string }>();
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -25,6 +25,45 @@ export const POST: APIRoute = async ({ request }) => {
     const rawName = book || file || 'ksiazka';
     const bookStem = path.basename(rawName).replace(/\.(pdf|md|epub)$/, '');
 
+    // Obsługa anulowania aktywnego zadania
+    if (action === 'cancel') {
+      const activeJob = runningJobs.get(bookStem);
+      if (activeJob) {
+        try {
+          // Wysłanie SIGTERM, a jeśli proces żyje po 1s, SIGKILL
+          process.kill(-activeJob.pid, 'SIGTERM');
+        } catch {
+          try {
+            activeJob.child.kill('SIGTERM');
+          } catch {}
+        }
+        runningJobs.delete(bookStem);
+
+        // Zapisanie statusu aborted do pliku postępu
+        const progressPath = path.join(rootDir, 'output', `extract_progress_${bookStem}.json`);
+        if (fs.existsSync(progressPath)) {
+          try {
+            fs.writeFileSync(progressPath, JSON.stringify({
+              status: 'aborted',
+              percent: 0,
+              message: 'Operacja przerwana przez użytkownika',
+              updated_at: new Date().toISOString(),
+            }, null, 2));
+          } catch {}
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Operacja "${activeJob.action}" dla ${bookStem} została przerwana.`
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Brak aktywnego zadania do przerwania dla ${bookStem}.`
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
     const mdPath = path.join(rootDir, 'output', 'markdown', `${bookStem}.md`);
     const epubPath = path.join(rootDir, 'output', 'epub', `${bookStem}.epub`);
     const pdfPath = path.join(rootDir, 'input', `${bookStem}.pdf`);
@@ -32,6 +71,20 @@ export const POST: APIRoute = async ({ request }) => {
     let command = '';
 
     if (action === 'extract') {
+      // Jeśli już trwa ekstrakcja tej samej książki, zasygnalizuj to
+      if (runningJobs.has(bookStem)) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Ekstrakcja dla "${bookStem}" jest już w toku. Użyj przycisku Anuluj, jeśli chcesz ją przerwać.`
+        }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Wyczyść stary plik postępu przed nowym uruchomieniem
+      const progressPath = path.join(rootDir, 'output', `extract_progress_${bookStem}.json`);
+      if (fs.existsSync(progressPath)) {
+        try { fs.unlinkSync(progressPath); } catch {}
+      }
+
       const pagesFlag = (pages && typeof pages === 'string' && pages.trim()) ? ` --pages "${pages.trim()}"` : '';
       let ocrFlag = '';
       if (ocrMode === 'native' || ocrMode === 'no-ocr') {
@@ -103,14 +156,35 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const startTime = Date.now();
-    const { stdout, stderr } = await execPromise(command, {
-      cwd: rootDir,
-      timeout: 600_000,
-      maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+
+    // Wykonanie procesu z rejestracją w runningJobs i obsługą anulowania
+    const execResult = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+      const child = exec(command, {
+        cwd: rootDir,
+        timeout: 600_000,
+        maxBuffer: 16 * 1024 * 1024,
+        env: { ...process.env, UV_CACHE_DIR: process.env.UV_CACHE_DIR || path.join(rootDir, ".uv-cache") }
+      }, (error, stdout, stderr) => {
+        runningJobs.delete(bookStem);
+        if (error) {
+          reject(error);
+        } else {
+          resolve({ stdout, stderr });
+        }
+      });
+
+      if (child.pid) {
+        runningJobs.set(bookStem, {
+          pid: child.pid,
+          child,
+          startTime,
+          action,
+        });
+      }
     });
+
     const durationMs = Date.now() - startTime;
-    return new Response(JSON.stringify({ success: true, stdout, stderr, durationMs }), {
+    return new Response(JSON.stringify({ success: true, stdout: execResult.stdout, stderr: execResult.stderr, durationMs }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: any) {

@@ -357,10 +357,13 @@ import '../styles/global.css';
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
           <div class="text-xs font-mono bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 text-emerald-300 font-bold">
             <span id="liveProgressTimer">00:00 s</span>
           </div>
+          <button id="btnCancelActiveJob" class="text-xs bg-rose-950/80 hover:bg-rose-900 border border-rose-600/50 text-rose-300 px-2.5 py-1 rounded-lg transition flex items-center gap-1 font-mono font-bold active:scale-95" title="Przerwij bieżącą operację w WSL">
+            <span>⏹ Anuluj</span>
+          </button>
           <button id="btnToggleTerminalOutput" class="text-xs text-zinc-400 hover:text-zinc-200 underline flex items-center gap-1 font-mono">
             <span>Konsola CLI</span>
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -2288,7 +2291,7 @@ import '../styles/global.css';
     // ----------------------------------------------------
     // SYSTEM INTERACTION LOCK & CONCURRENCY CONTROLLER
     // ----------------------------------------------------
-    function setSystemBusy(busy, actionKey = '', customLabel = '') {
+    function setSystemBusy(busy, actionKey = '', customLabel = '', outcome = null) {
       isSystemBusy = busy;
       const allActionButtons = [
         btnRunExtract, btnRunClean, btnRunAudit, btnRunBuild,
@@ -2299,6 +2302,9 @@ import '../styles/global.css';
         document.getElementById('extractRangeSelect'),
         document.getElementById('extractOcrEngine')
       ];
+
+      const spinnerEl = document.getElementById('liveProgressSpinner');
+      const progressBarEl = document.getElementById('liveProgressBar');
 
       if (busy) {
         allActionButtons.forEach(btn => {
@@ -2315,6 +2321,16 @@ import '../styles/global.css';
           liveProgressTitle.textContent = customLabel || `Trwa: ${actionKey}...`;
           liveProgressSubtitle.textContent = 'Proces CLI w toku w środowisku WSL... Przyciski są zablokowane na czas przetwarzania.';
           liveProgressTimer.textContent = '00:00 s';
+        }
+
+        if (spinnerEl) {
+          spinnerEl.classList.add('animate-spin');
+          spinnerEl.innerHTML = '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>';
+        }
+
+        if (progressBarEl) {
+          progressBarEl.style.width = '100%';
+          progressBarEl.classList.add('animate-pulse');
         }
 
         if (systemBusyTimer) clearInterval(systemBusyTimer);
@@ -2337,6 +2353,48 @@ import '../styles/global.css';
             btn.removeAttribute('aria-busy');
           }
         });
+
+        if (spinnerEl) {
+          spinnerEl.classList.remove('animate-spin');
+        }
+
+        if (outcome === 'success') {
+          if (spinnerEl) {
+            spinnerEl.innerHTML = '<svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>';
+          }
+          if (liveProgressTitle) {
+            liveProgressTitle.textContent = customLabel ? `✓ ${customLabel}` : '✓ Operacja zakończona sukcesem!';
+          }
+          if (liveProgressSubtitle) {
+            liveProgressSubtitle.textContent = 'Zadanie zostało pomyślnie zrealizowane w WSL. Wszystkie dane są aktualne.';
+          }
+          if (progressBarEl) {
+            progressBarEl.style.width = '100%';
+            progressBarEl.classList.remove('animate-pulse');
+          }
+          setTimeout(() => {
+            if (!isSystemBusy && liveProgressCard) {
+              liveProgressCard.classList.add('hidden');
+            }
+          }, 4000);
+        } else if (outcome === 'error') {
+          if (spinnerEl) {
+            spinnerEl.innerHTML = '<svg class="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>';
+          }
+          if (liveProgressTitle) {
+            liveProgressTitle.textContent = customLabel ? `✕ ${customLabel}` : '✕ Wystąpił błąd zadania';
+          }
+          if (liveProgressSubtitle) {
+            liveProgressSubtitle.textContent = 'Proces zakończony z błędem. Sprawdź szczegóły w konsoli CLI poniżej.';
+          }
+          if (progressBarEl) {
+            progressBarEl.classList.remove('animate-pulse');
+          }
+        } else {
+          if (liveProgressCard) {
+            liveProgressCard.classList.add('hidden');
+          }
+        }
       }
     }
 
@@ -2588,6 +2646,23 @@ import '../styles/global.css';
 
       const currentBook = bookSelector.value || 'ksiazka';
 
+      // Guardrail: Ostrzeżenie przed długim czasem przetwarzania pełnej książki (914 stron)
+      if (actionName === 'extract') {
+        const rangeSelect = document.getElementById('extractRangeSelect');
+        if (rangeSelect && rangeSelect.value === 'all') {
+          showConfirmModal({
+            title: 'Pełna ekstrakcja 914 stron z OCR',
+            message: `Wybrano przetwarzanie całej książki (wszystkie 914 stron) z silnikiem OCR.\n\nOperacja na 914 stronach zajmie około 20-30 minut w tle w WSL.\n\nCzy na pewno chcesz kontynuować pełny przebieg, czy wolisz szybki test (strony 1-25)?`,
+            confirmText: 'Kontynuuj pełne 914 stron',
+            danger: false,
+            onConfirm: async () => {
+              await executeAction(actionName, currentBook);
+            }
+          });
+          return false;
+        }
+      }
+
       // Guardrail: Ostrzeżenie przed nadpisaniem istniejącego pliku Markdown
       if (actionName === 'extract' && globalStatusData?.mdInfo?.exists && globalStatusData.mdInfo.lines > 10) {
         showConfirmModal({
@@ -2679,7 +2754,10 @@ import '../styles/global.css';
           }
         }
 
+        let actionSuccess = false;
+
         if (data.success) {
+          actionSuccess = true;
           const timeSec = (durationMs / 1000).toFixed(1);
           showToast(`✓ ${label} — zakończono sukcesem! (${timeSec}s)`, 'success');
           showStatus(`✓ Akcja "${label}" ukończona pomyślnie (${timeSec}s).`, 'success');
@@ -2700,7 +2778,25 @@ import '../styles/global.css';
         return false;
       } finally {
         if (progressTimer) clearInterval(progressTimer);
-        setSystemBusy(false);
+        setSystemBusy(false, actionName, label, actionSuccess ? 'success' : 'error');
+      }
+    }
+
+    async function cancelActiveJob() {
+      const currentBook = bookSelector.value || 'ksiazka';
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'cancel', book: currentBook })
+        });
+        const data = await res.json();
+        showToast(data.message || 'Przerwano operację.', 'info');
+        showStatus('Operacja została przerwana na żądanie użytkownika.', 'warning');
+        setSystemBusy(false, 'cancel', 'Operacja anulowana', 'error');
+        await fetchStatus();
+      } catch (err) {
+        showToast(`Błąd anulowania: ${err.message}`, 'error');
       }
     }
 
@@ -2753,6 +2849,8 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
           liveTerminalDrawer.classList.toggle('hidden');
         }
       });
+
+      document.getElementById('btnCancelActiveJob')?.addEventListener('click', cancelActiveJob);
 
       btnRunExtract.addEventListener('click', () => triggerAction('extract'));
       btnRunClean.addEventListener('click', () => triggerAction('clean'));

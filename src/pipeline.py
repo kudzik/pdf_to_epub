@@ -130,11 +130,24 @@ def has_text_layer(pdf_path: str, max_check_pages: int = 5) -> bool:
 
 
 def get_converter(do_ocr: bool, langs: list[str], engine: str = "easyocr") -> DocumentConverter:
-    """Inicjalizuje DocumentConverter z obsługą OCR (RapidOCR lub EasyOCR)."""
+    """Inicjalizuje DocumentConverter z obsługą OCR (RapidOCR lub EasyOCR) oraz akceleracji GPU (CUDA)."""
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_page_images = False
     pipeline_options.generate_picture_images = True
     pipeline_options.do_ocr = do_ocr
+
+    # Automatyczna detekcja akceleracji sprzętowej GPU (CUDA / RTX)
+    try:
+        import torch
+        if torch.cuda.is_available():
+            from docling.datamodel.pipeline_options import AcceleratorDevice, AcceleratorOptions
+            pipeline_options.accelerator_options = AcceleratorOptions(
+                num_threads=8,
+                device=AcceleratorDevice.CUDA,
+            )
+    except Exception:
+        pass
+
     if do_ocr:
         if engine.lower() == "rapidocr":
             rapid_lang = "pl" if "pl" in langs else (langs[0] if langs else "latin")
@@ -793,6 +806,12 @@ def purge_cmd(
                     shutil.rmtree(s)
                     deleted_files += 1
 
+        # Usuń pliki postępu ekstrakcji
+        for p_file in output_dir.glob("extract_progress_*.json"):
+            if p_file.exists():
+                p_file.unlink()
+                deleted_files += 1
+
         console.print(f"[bold green]✓ Pomyślnie oczyszczono pamięć podręczną i pliki tymczasowe (usunięto {deleted_files} elementów). Gotowy Markdown i EPUB są nienaruszone![/bold green]")
         return
 
@@ -812,6 +831,7 @@ def purge_cmd(
         files_to_remove = [
             output_dir / f"audit_{stem}.json",
             output_dir / "audit_report.json",
+            output_dir / f"extract_progress_{stem}.json",
         ]
 
         if not keep_md:
@@ -934,6 +954,10 @@ def purge_cmd(
 
         for rep in output_dir.glob("audit*.json"):
             rep.unlink()
+            deleted_files += 1
+
+        for prog in output_dir.glob("extract_progress_*.json"):
+            prog.unlink()
             deleted_files += 1
 
         scope = "wszystkie pliki wyjściowe łącznie z EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
