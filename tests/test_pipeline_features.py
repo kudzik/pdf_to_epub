@@ -131,6 +131,47 @@ def test_purge_all_command(tmp_path: Path):
     assert not (tmp_path / "audit_report.json").exists()
 
 
+def test_purge_temp_only_keeps_md_and_epub(tmp_path: Path):
+    """Weryfikuje, że --temp-only usuwa candidates, cache i kopie .bak zachowując pliki .md i .epub."""
+    md_dir = tmp_path / "markdown"
+    epub_dir = tmp_path / "epub"
+    cand_dir = tmp_path / "candidates" / "run1"
+    cache_dir = tmp_path / "cache" / "images"
+
+    md_dir.mkdir(parents=True)
+    epub_dir.mkdir(parents=True)
+    cand_dir.mkdir(parents=True)
+    cache_dir.mkdir(parents=True)
+
+    md_file = md_dir / "ksiazka.md"
+    bak_file = md_dir / "ksiazka.md.bak"
+    epub_file = epub_dir / "ksiazka.epub"
+    cand_file = cand_dir / "cand.txt"
+    cache_file = cache_dir / "crop.png"
+
+    md_file.write_text("markdown", encoding="utf-8")
+    bak_file.write_text("backup", encoding="utf-8")
+    epub_file.write_text("epub", encoding="utf-8")
+    cand_file.write_text("candidate", encoding="utf-8")
+    cache_file.write_text("cached", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["purge", "--temp-only", "--output-dir", str(tmp_path)],
+    )
+    assert result.exit_code == 0
+    assert "Pomyślnie oczyszczono pamięć podręczną" in result.stdout
+
+    # Markdown i EPUB zachowane
+    assert md_file.exists()
+    assert epub_file.exists()
+
+    # Śmieci usunięte
+    assert not bak_file.exists()
+    assert not cand_file.exists()
+    assert not cache_file.exists()
+
+
 def test_get_windows_downloads_dir_returns_path_or_none():
     """Weryfikuje, że detektor Windows Downloads zwraca poprawną ścieżkę lub None bez błędu."""
     dl = get_windows_downloads_dir()

@@ -585,6 +585,26 @@ def to_windows_path(linux_path: Path) -> str:
         return str(abs_path)
 
 
+def _clean_directory_contents(dir_path: Path, keep_gitkeep: bool = True) -> int:
+    """Usuwa zawartość wskazanego folderu, zachowując sam katalog oraz opcjonalnie .gitkeep."""
+    deleted_count = 0
+    if not dir_path.exists():
+        return 0
+    for item in dir_path.iterdir():
+        if keep_gitkeep and item.name == ".gitkeep":
+            continue
+        try:
+            if item.is_file() or item.is_symlink():
+                item.unlink()
+                deleted_count += 1
+            elif item.is_dir():
+                shutil.rmtree(item)
+                deleted_count += 1
+        except Exception:
+            pass
+    return deleted_count
+
+
 @app.command(name="purge")
 def purge_cmd(
     book: Annotated[
@@ -594,6 +614,14 @@ def purge_cmd(
     all: Annotated[
         bool,
         typer.Option("--all", "-a", help="Czy usunąć wszystkie wygenerowane pliki robocze ze wszystkich książek."),
+    ] = False,
+    temp_only: Annotated[
+        bool,
+        typer.Option("--temp-only", "--cache-only", help="Usuń wyłącznie tymczasowe śmieci robocze (candidates, cache, source_cache, scratch, kopie .bak), zachowując gotowy Markdown i EPUB."),
+    ] = False,
+    keep_md: Annotated[
+        bool,
+        typer.Option("--keep-md/--delete-md", help="Czy zachować plik produkcyjny Markdown i wyekstrahowane grafiki."),
     ] = False,
     only_epub: Annotated[
         bool,
@@ -610,11 +638,46 @@ def purge_cmd(
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
     """
-    Usuwa wygenerowane pliki robocze (.md, .bak, assets, raporty) po skończonej pracy.
-    Domyślnie zachowuje gotowy plik .epub (do usuwania EPUB służy flaga --only-epub lub dedykowany przycisk).
+    Usuwa wygenerowane pliki robocze (.md, .bak, assets, raporty, cache, candidates) po skończonej pracy.
+    Domyślnie zachowuje gotowy plik .epub.
+    Opcja --temp-only usuwa wyłącznie pamięć podręczną i pliki tymczasowe bez naruszania Markdowna i EPUB.
     """
     deleted_files = 0
 
+    # 1. Tryb usuwania wyłącznie plików tymczasowych (candidates, cache, source_cache, scratch, .bak)
+    if temp_only:
+        console.print("[cyan]Czyszczenie pamięci podręcznej i tymczasowych plików roboczych...[/cyan]")
+        deleted_files += _clean_directory_contents(output_dir / "candidates")
+        deleted_files += _clean_directory_contents(output_dir / "cache" / "images")
+        deleted_files += _clean_directory_contents(output_dir / "cache")
+        deleted_files += _clean_directory_contents(output_dir / "source_cache")
+        deleted_files += _clean_directory_contents(output_dir / "scratch")
+
+        # Usuń kopie zapasowe i pliki tymczasowe w markdown/
+        md_folder = output_dir / "markdown"
+        if md_folder.exists():
+            for bak in md_folder.glob("*.bak*"):
+                bak.unlink()
+                deleted_files += 1
+            for pre in md_folder.glob("*.pre_r18_bak*"):
+                pre.unlink()
+                deleted_files += 1
+            for tmp in md_folder.glob("*.tmp*"):
+                tmp.unlink()
+                deleted_files += 1
+
+        # Usuń tymczasowe migawki testowe z snapshots/
+        snap_folder = output_dir / "snapshots"
+        if snap_folder.exists():
+            for s in snap_folder.iterdir():
+                if s.is_dir() and s.name != "20261104_075036_ksiazka":
+                    shutil.rmtree(s)
+                    deleted_files += 1
+
+        console.print(f"[bold green]✓ Pomyślnie oczyszczono pamięć podręczną i pliki tymczasowe (usunięto {deleted_files} elementów). Gotowy Markdown i EPUB są nienaruszone![/bold green]")
+        return
+
+    # 2. Tryb dla konkretnej książki
     if book:
         stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
         epub_file = output_dir / "epub" / f"{stem}.epub"
@@ -628,11 +691,12 @@ def purge_cmd(
             return
 
         files_to_remove = [
-            output_dir / "markdown" / f"{stem}.md",
-            output_dir / "markdown" / f"{stem}.md.bak",
             output_dir / f"audit_{stem}.json",
             output_dir / "audit_report.json",
         ]
+
+        if not keep_md:
+            files_to_remove.append(output_dir / "markdown" / f"{stem}.md")
 
         if with_epub:
             files_to_remove.append(epub_file)
@@ -643,13 +707,23 @@ def purge_cmd(
                 console.print(f"[yellow]Usunięto:[/yellow] {f}")
                 deleted_files += 1
 
-        # Usunięcie wyekstrahowanych grafik w assets
-        assets_dir = output_dir / "markdown" / "assets"
-        if assets_dir.exists():
-            for img in assets_dir.iterdir():
-                if img.name != ".gitkeep" and img.is_file():
-                    img.unlink()
-                    deleted_files += 1
+        # Usunięcie kopii zapasowych dla danej książki
+        md_folder = output_dir / "markdown"
+        if md_folder.exists():
+            for pattern in [f"{stem}*.bak*", f"{stem}*.pre_r18_bak*", f"{stem}*.tmp*"]:
+                for b_file in md_folder.glob(pattern):
+                    if b_file.exists():
+                        b_file.unlink()
+                        deleted_files += 1
+
+        # Usunięcie wyekstrahowanych grafik w assets (jeśli nie zachowujemy MD)
+        if not keep_md:
+            assets_dir = output_dir / "markdown" / "assets"
+            if assets_dir.exists():
+                for img in assets_dir.iterdir():
+                    if img.name != ".gitkeep" and img.is_file():
+                        img.unlink()
+                        deleted_files += 1
 
         # Usunięcie ewentualnego zagnieżdżonego legacy katalogu output/markdown/output
         nested_output = output_dir / "markdown" / "output"
@@ -657,10 +731,26 @@ def purge_cmd(
             shutil.rmtree(nested_output)
             deleted_files += 1
 
+        # Usunięcie śmieci w cache i candidates
+        deleted_files += _clean_directory_contents(output_dir / "candidates")
+        deleted_files += _clean_directory_contents(output_dir / "cache" / "images")
+        deleted_files += _clean_directory_contents(output_dir / "cache")
+        deleted_files += _clean_directory_contents(output_dir / "source_cache")
+        deleted_files += _clean_directory_contents(output_dir / "scratch")
+
+        # Usunięcie zbędnych snapshotów testowych
+        snap_folder = output_dir / "snapshots"
+        if snap_folder.exists():
+            for s in snap_folder.iterdir():
+                if s.is_dir() and s.name != "20261104_075036_ksiazka":
+                    shutil.rmtree(s)
+                    deleted_files += 1
+
         scope = "wszystkie pliki robocze oraz EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
-        console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} plików)[/bold green]")
+        console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} elementów)[/bold green]")
         return
 
+    # 3. Tryb dla wszystkich książek (--all)
     if all:
         if only_epub:
             epub_folder = output_dir / "epub"
@@ -672,22 +762,45 @@ def purge_cmd(
             return
 
         # Usuń pliki robocze z output/ zachowując strukturę i .gitkeep
-        for folder in [output_dir / "markdown" / "assets", output_dir / "markdown"]:
-            if folder.exists():
-                for item in folder.iterdir():
-                    if item.name == ".gitkeep":
-                        continue
-                    if item.is_file():
-                        item.unlink()
-                        deleted_files += 1
-                    elif item.is_dir() and item.name != "assets":
-                        shutil.rmtree(item)
-                        deleted_files += 1
+        if not keep_md:
+            for folder in [output_dir / "markdown" / "assets", output_dir / "markdown"]:
+                if folder.exists():
+                    for item in folder.iterdir():
+                        if item.name == ".gitkeep":
+                            continue
+                        if item.is_file():
+                            item.unlink()
+                            deleted_files += 1
+                        elif item.is_dir() and item.name != "assets":
+                            shutil.rmtree(item)
+                            deleted_files += 1
+        else:
+            md_folder = output_dir / "markdown"
+            if md_folder.exists():
+                for b_file in md_folder.glob("*.bak*"):
+                    b_file.unlink()
+                    deleted_files += 1
+                for b_file in md_folder.glob("*.tmp*"):
+                    b_file.unlink()
+                    deleted_files += 1
 
         nested_output = output_dir / "markdown" / "output"
         if nested_output.exists():
             shutil.rmtree(nested_output)
             deleted_files += 1
+
+        deleted_files += _clean_directory_contents(output_dir / "candidates")
+        deleted_files += _clean_directory_contents(output_dir / "cache" / "images")
+        deleted_files += _clean_directory_contents(output_dir / "cache")
+        deleted_files += _clean_directory_contents(output_dir / "source_cache")
+        deleted_files += _clean_directory_contents(output_dir / "scratch")
+
+        snap_folder = output_dir / "snapshots"
+        if snap_folder.exists():
+            for s in snap_folder.iterdir():
+                if s.is_dir() and s.name != "20261104_075036_ksiazka":
+                    shutil.rmtree(s)
+                    deleted_files += 1
 
         if with_epub:
             epub_folder = output_dir / "epub"
@@ -701,10 +814,10 @@ def purge_cmd(
             deleted_files += 1
 
         scope = "wszystkie pliki wyjściowe łącznie z EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
-        console.print(f"[bold green]✓ Pomyślnie wyczyszczono {scope} (usunięto {deleted_files} plików)[/bold green]")
+        console.print(f"[bold green]✓ Pomyślnie wyczyszczono {scope} (usunięto {deleted_files} elementów)[/bold green]")
         return
 
-    console.print("[yellow]Podaj --book <nazwa> lub --all, aby określić co usunąć.[/yellow]")
+    console.print("[yellow]Podaj --book <nazwa>, --all lub --temp-only, aby określić co usunąć.[/yellow]")
 
 
 @app.command(name="snapshot")
