@@ -54,5 +54,7 @@ test('action.ts & index.astro: supports real-time terminal NDJSON streaming and 
   assert.ok(indexContent.includes('res.body.getReader()'), 'index.astro must read stream using ReadableStream reader');
   assert.ok(indexContent.includes('setupEventListeners();'), 'index.astro must call setupEventListeners immediately on init');
   assert.ok(indexContent.includes('liveProgressBar'), 'index.astro must declare and update liveProgressBar');
+  assert.ok(indexContent.includes('activeAbortController'), 'index.astro must use AbortController for cancelable network requests');
+  assert.ok(indexContent.includes("executeAction('purge'"), 'purgeWorkingFiles must route through executeAction for streaming');
 });
 

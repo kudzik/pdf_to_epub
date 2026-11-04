@@ -851,6 +851,7 @@ import '../styles/global.css';
     let systemBusyTimer = null;
     let systemBusySeconds = 0;
     let activeCtaHandler = null;
+    let activeAbortController = null;
     let sessionActivity = [];
     let globalStatusData = null;
 
@@ -2185,59 +2186,21 @@ import '../styles/global.css';
         confirmText: 'Usuń plik EPUB',
         danger: true,
         onConfirm: async () => {
-          showStatus(`Usuwanie pliku ${currentBook}.epub...`, 'info');
-          try {
-            const res = await fetch('/api/action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'purge-epub', book: currentBook })
-            });
-            const data = await res.json();
-            if (data.success) {
-              showToast(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
-              showStatus(`✓ Usunięto plik ${currentBook}.epub.`, 'success');
-              await fetchStatus();
-              await loadBooks();
-            } else {
-              showToast(`Błąd: ${data.error}`, 'error');
-              showStatus(`Błąd: ${data.error}`, 'error');
-            }
-          } catch (err) {
-            showToast(`Błąd: ${err.message}`, 'error');
-            showStatus(`Błąd: ${err.message}`, 'error');
-          }
+          await executeAction('purge-epub', currentBook);
         }
       });
     }
 
     // Czyszczenie pamięci podręcznej i śmieci (zachowuje Markdown i EPUB)
     async function purgeCacheOnly() {
+      const currentBook = bookSelector.value || 'ksiazka';
       showConfirmModal({
         title: 'Wyczyść pamięć podręczną (Cache & Candidates)',
         message: 'Czy na pewno chcesz wyczyścić pamięć podręczną i pliki tymczasowe (katalogi candidates, cache, source_cache, scratch, kopie .bak)?\n\nGotowy plik Markdown (.md) oraz EPUB (.epub) pozostaną nienaruszone!',
         confirmText: 'Wyczyść cache',
         danger: false,
         onConfirm: async () => {
-          showStatus('Czyszczenie pamięci podręcznej i plików tymczasowych...', 'info');
-          try {
-            const res = await fetch('/api/action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'purge-temp' })
-            });
-            const data = await res.json();
-            if (data.success) {
-              showToast('✓ Pomyślnie oczyszczono pamięć podręczną i zwolniono miejsce na dysku!', 'success');
-              showStatus('✓ Oczyszczono pamięć podręczną (Markdown i EPUB zachowane).', 'success');
-              await fetchStatus();
-            } else {
-              showToast(`Błąd: ${data.error}`, 'error');
-              showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
-            }
-          } catch (err) {
-            showToast(`Błąd: ${err.message}`, 'error');
-            showStatus(`Błąd: ${err.message}`, 'error');
-          }
+          await executeAction('purge-temp', currentBook);
         }
       });
     }
@@ -2251,36 +2214,15 @@ import '../styles/global.css';
         confirmText: 'Wyczyść i zresetuj',
         danger: true,
         onConfirm: async () => {
-          setSystemBusy(true, 'purge', 'Czyszczenie plików i resetowanie etapów...');
-          showStatus('Czyszczenie plików i resetowanie etapów...', 'info');
-          try {
-            const res = await fetch('/api/action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'purge', book: currentBook, keepEpub: false })
-            });
-            const data = await res.json();
-            if (data.success) {
-              // Wyczyść stan lokalny
-              repairStates.clear();
-              saveStatuses.clear();
-              verifyStatuses.clear();
-              globalStatusData = null;
-              globalReport = null;
-
-              showToast(`✓ Wyczyszczono pliki dla "${currentBook}" i zresetowano etapy.`, 'success');
-              showStatus(`✓ Pomyślnie zresetowano proces dla "${currentBook}".`, 'success');
-              await loadBooks();
-              await fetchStatus();
-            } else {
-              showToast(`Błąd: ${data.error}`, 'error');
-              showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
-            }
-          } catch (err) {
-            showToast(`Błąd: ${err.message}`, 'error');
-            showStatus(`Błąd: ${err.message}`, 'error');
-          } finally {
-            setSystemBusy(false);
+          const success = await executeAction('purge', currentBook);
+          if (success) {
+            repairStates.clear();
+            saveStatuses.clear();
+            verifyStatuses.clear();
+            globalStatusData = null;
+            globalReport = null;
+            await loadBooks();
+            await fetchStatus();
           }
         }
       });
@@ -2753,11 +2695,17 @@ import '../styles/global.css';
       let actionError = null;
       let durationMs = 0;
 
+      if (activeAbortController) {
+        try { activeAbortController.abort(); } catch {}
+      }
+      activeAbortController = new AbortController();
+
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...bodyData, stream: true })
+          body: JSON.stringify({ ...bodyData, stream: true }),
+          signal: activeAbortController.signal
         });
 
         const contentType = res.headers.get('content-type') || '';
@@ -2831,11 +2779,16 @@ import '../styles/global.css';
           return false;
         }
       } catch (err) {
+        if (err.name === 'AbortError') {
+          showStatus(`Operacja "${label}" została przerwana.`, 'warning');
+          return false;
+        }
         showToast(`Błąd sieci: ${err.message}`, 'error');
         showStatus(`Błąd komunikacji: ${err.message}`, 'error');
         logSessionActivity(label, false, 0, err.message);
         return false;
       } finally {
+        activeAbortController = null;
         if (progressTimer) clearInterval(progressTimer);
         setSystemBusy(false, actionName, label, actionSuccess ? 'success' : 'error');
       }
@@ -2843,6 +2796,13 @@ import '../styles/global.css';
 
     async function cancelActiveJob() {
       const currentBook = bookSelector.value || 'ksiazka';
+      if (activeAbortController) {
+        try { activeAbortController.abort(); } catch {}
+        activeAbortController = null;
+      }
+      setSystemBusy(false, 'cancel', 'Operacja anulowana', 'error');
+      showToast('Przerwano operację.', 'info');
+      showStatus('Operacja została przerwana na żądanie użytkownika.', 'warning');
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
@@ -2850,9 +2810,6 @@ import '../styles/global.css';
           body: JSON.stringify({ action: 'cancel', book: currentBook })
         });
         const data = await res.json();
-        showToast(data.message || 'Przerwano operację.', 'info');
-        showStatus('Operacja została przerwana na żądanie użytkownika.', 'warning');
-        setSystemBusy(false, 'cancel', 'Operacja anulowana', 'error');
         await fetchStatus();
       } catch (err) {
         showToast(`Błąd anulowania: ${err.message}`, 'error');
