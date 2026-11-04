@@ -175,12 +175,12 @@ import '../styles/global.css';
         <span id="stepperGlobalStatus" class="font-mono text-zinc-400 text-[11px]">Ładowanie stanu książki...</span>
       </div>
 
-      <!-- 5-kolumnowy grid etapów -->
+      <!-- 5-kolumnowy grid etapów (4 Etapy Procesu + Źródło) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <!-- Step 1: Input PDF -->
+        <!-- Step 1: Input PDF (Źródło) -->
         <div id="stepCard1" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">1. Wejście</span>
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">Źródło</span>
             <span id="stepBadge1" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">PDF</span>
           </div>
           <div class="my-2">
@@ -192,14 +192,14 @@ import '../styles/global.css';
           </div>
         </div>
 
-        <!-- Step 2: Ekstrakcja MD -->
+        <!-- Step 2: Ekstrakcja MD (Krok 1) -->
         <div id="stepCard2" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">2. Ekstrakcja</span>
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">Krok 1</span>
             <span id="stepBadge2" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">MD</span>
           </div>
           <div class="my-2">
-            <div id="stepTitle2" class="text-xs font-bold text-zinc-200">Źródło Markdown</div>
+            <div id="stepTitle2" class="text-xs font-bold text-zinc-200">Ekstrakcja Markdown</div>
             <div id="stepSub2" class="text-[11px] text-zinc-400 font-mono truncate">Sprawdzanie...</div>
           </div>
           <div id="stepStatus2" class="text-[10px] text-zinc-400 flex items-center gap-1">
@@ -207,10 +207,10 @@ import '../styles/global.css';
           </div>
         </div>
 
-        <!-- Step 3: Czyszczenie tekstu -->
+        <!-- Step 3: Czyszczenie tekstu (Krok 2) -->
         <div id="stepCard3" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">3. Formatowanie</span>
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">Krok 2</span>
             <span id="stepBadge3" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">CLEAN</span>
           </div>
           <div class="my-2">
@@ -222,10 +222,10 @@ import '../styles/global.css';
           </div>
         </div>
 
-        <!-- Step 4: Audyt i Naprawa OCR -->
+        <!-- Step 4: Audyt i Naprawa OCR (Krok 3) -->
         <div id="stepCard4" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">4. Jakość</span>
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">Krok 3</span>
             <span id="stepBadge4" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">AUDIT</span>
           </div>
           <div class="my-2">
@@ -237,14 +237,14 @@ import '../styles/global.css';
           </div>
         </div>
 
-        <!-- Step 5: EPUB 3 -->
+        <!-- Step 5: EPUB 3 (Krok 4) -->
         <div id="stepCard5" class="bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">5. Publikacja</span>
+            <span class="text-[10px] font-mono font-bold uppercase text-zinc-400">Krok 4</span>
             <span id="stepBadge5" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">EPUB 3</span>
           </div>
           <div class="my-2">
-            <div id="stepTitle5" class="text-xs font-bold text-zinc-200">Kompilacja EPUB</div>
+            <div id="stepTitle5" class="text-xs font-bold text-zinc-200">Publikacja EPUB 3</div>
             <div id="stepSub5" class="text-[11px] text-zinc-400 font-mono truncate">Sprawdzanie...</div>
           </div>
           <div id="stepStatus5" class="text-[10px] text-zinc-400 flex items-center gap-1">
@@ -2087,6 +2087,7 @@ import '../styles/global.css';
         confirmText: 'Wyczyść i zresetuj',
         danger: true,
         onConfirm: async () => {
+          setSystemBusy(true, 'purge', 'Czyszczenie plików i resetowanie etapów...');
           showStatus('Czyszczenie plików i resetowanie etapów...', 'info');
           try {
             const res = await fetch('/api/action', {
@@ -2100,6 +2101,7 @@ import '../styles/global.css';
               repairStates.clear();
               saveStatuses.clear();
               verifyStatuses.clear();
+              globalStatusData = null;
               globalReport = null;
 
               showToast(`✓ Wyczyszczono pliki dla "${currentBook}" i zresetowano etapy.`, 'success');
@@ -2113,6 +2115,8 @@ import '../styles/global.css';
           } catch (err) {
             showToast(`Błąd: ${err.message}`, 'error');
             showStatus(`Błąd: ${err.message}`, 'error');
+          } finally {
+            setSystemBusy(false);
           }
         }
       });
@@ -2238,7 +2242,7 @@ import '../styles/global.css';
         if (c) c.classList.remove('ring-2', 'ring-emerald-400', 'ring-cyan-400', 'ring-amber-400', 'ring-rose-400', 'animate-pulse');
       });
 
-      // Krok 1: Wejście PDF
+      // Źródło: Wejście PDF
       if (stepCard1) {
         stepCard1.className = pdfExists 
           ? 'bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
@@ -2248,15 +2252,15 @@ import '../styles/global.css';
       if (stepSub1) stepSub1.textContent = pdfExists ? (data.pdfInfo?.size || 'Gotowy') : 'Brak w input/';
       if (stepStatus1) {
         stepStatus1.innerHTML = pdfExists 
-          ? '<span class="text-emerald-400 font-medium">✓ Dostępny w input/</span>' 
+          ? '<span class="text-emerald-400 font-medium">✓ Gotowy w input/</span>' 
           : '<span class="text-rose-400 font-medium">✕ Brak pliku</span>';
       }
       if (stepBadge1) {
         stepBadge1.className = pdfExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge1.textContent = pdfExists ? '✓ PDF' : 'PDF';
+        stepBadge1.textContent = pdfExists ? '✓ PDF' : 'BRAK';
       }
 
-      // Krok 2: Ekstrakcja Markdown
+      // Krok 1: Ekstrakcja Markdown
       if (stepCard2) {
         stepCard2.className = mdExists
           ? 'bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
@@ -2267,14 +2271,14 @@ import '../styles/global.css';
       if (stepStatus2) {
         stepStatus2.innerHTML = mdExists 
           ? '<span class="text-emerald-400 font-medium">✓ Wyekstrahowano</span>' 
-          : '<span class="text-zinc-500">Oczekuje na Krok 1</span>';
+          : (pdfExists ? '<span class="text-amber-400 font-medium">● Gotowy do ekstrakcji</span>' : '<span class="text-zinc-500">Oczekuje na PDF</span>');
       }
       if (stepBadge2) {
         stepBadge2.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge2.textContent = mdExists ? '✓ MD' : 'MD';
+        stepBadge2.textContent = mdExists ? '✓ MD' : 'DO ZROBIENIA';
       }
 
-      // Krok 3: Czyszczenie tekstu
+      // Krok 2: Czyszczenie tekstu
       if (stepCard3) {
         stepCard3.className = mdExists
           ? 'bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
@@ -2284,14 +2288,14 @@ import '../styles/global.css';
       if (stepStatus3) {
         stepStatus3.innerHTML = mdExists 
           ? '<span class="text-cyan-400 font-medium">✓ Gotowy do użycia</span>' 
-          : '<span class="text-zinc-500">Oczekuje na Krok 2</span>';
+          : '<span class="text-zinc-500">Oczekuje na Krok 1</span>';
       }
       if (stepBadge3) {
         stepBadge3.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-cyan-500/20 text-cyan-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge3.textContent = mdExists ? 'DOSTĘPNY' : 'CLEAN';
+        stepBadge3.textContent = mdExists ? 'DOSTĘPNY' : 'OCZEKUJE';
       }
 
-      // Krok 4: Audyt i Naprawa OCR
+      // Krok 3: Audyt i Naprawa OCR
       if (stepCard4) {
         if (hasReport) {
           stepCard4.className = anomaliesCount === 0
@@ -2312,7 +2316,7 @@ import '../styles/global.css';
         } else {
           stepStatus4.innerHTML = mdExists 
             ? '<span class="text-zinc-400">Do uruchomienia</span>' 
-            : '<span class="text-zinc-500">Oczekuje</span>';
+            : '<span class="text-zinc-500">Oczekuje na Krok 1</span>';
         }
       }
       if (stepBadge4) {
@@ -2327,7 +2331,7 @@ import '../styles/global.css';
         }
       }
 
-      // Krok 5: Publikacja EPUB 3
+      // Krok 4: Publikacja EPUB 3
       if (stepCard5) {
         stepCard5.className = isEpubValid
           ? 'bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
@@ -2338,7 +2342,7 @@ import '../styles/global.css';
       if (stepStatus5) {
         stepStatus5.innerHTML = isEpubValid 
           ? '<span class="text-emerald-400 font-medium">✓ Gotowy do czytania</span>' 
-          : '<span class="text-zinc-500">Oczekuje na Krok 4</span>';
+          : '<span class="text-zinc-500">Oczekuje na Krok 3</span>';
       }
       if (stepBadge5) {
         stepBadge5.className = isEpubValid ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
@@ -2346,7 +2350,7 @@ import '../styles/global.css';
       }
 
       // Wyznaczenie Rekomendowanego Następnego Kroku (Hero Banner CTA):
-      let tag = 'Krok 1 z 5';
+      let tag = 'Krok 1 z 4';
       let title = '';
       let desc = '';
       let cta = '';
@@ -2360,28 +2364,28 @@ import '../styles/global.css';
         actionHandler = () => openWindowsExplorer('input');
         if (stepCard1) stepCard1.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
       } else if (pdfExists && !mdExists) {
-        tag = 'Krok 1 z 5 (Rozpocznij tutaj)';
+        tag = 'Krok 1 z 4 (Rozpocznij tutaj)';
         title = 'Krok 1: Wyekstrahuj PDF do czystego Markdowna';
         desc = `Znaleziono plik ${data.pdfInfo?.filename || 'PDF'} (${data.pdfInfo?.size || ''}). Odczytaj strukturę i układ kolumn do pliku Markdown.`;
         cta = 'Ekstrahuj z PDF';
         actionHandler = () => triggerAction('extract');
         if (stepCard2) stepCard2.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
       } else if (mdExists && !hasReport) {
-        tag = 'Krok 2 z 5 (Zalecany)';
+        tag = 'Krok 2 z 4 (Zalecany)';
         title = 'Krok 2: Uruchom Audyt jakościowy OCR';
         desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Sprawdź jakość tekstu, anomalie OCR i polskie znaki diakrytyczne.`;
         cta = 'Uruchom Audyt';
         actionHandler = () => triggerAction('audit');
         if (stepCard4) stepCard4.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
       } else if (mdExists && hasReport && anomaliesCount > 0) {
-        tag = 'Krok 3 z 5 (Zalecany)';
+        tag = 'Krok 3 z 4 (Zalecany)';
         title = `Krok 3: Napraw wykryte wady (${anomaliesCount} usterek)`;
         desc = `Wykryto ${anomaliesCount} anomalii OCR. Uruchom Autopilota AI (akceleracja GPU RTX 4080 Super) lub Szybką Rekonstrukcję, aby nanieść poprawki.`;
         cta = 'Uruchom Autopilot Naprawczy';
         actionHandler = () => startOllamaAutopilot();
         if (stepCard4) stepCard4.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
       } else if (mdExists && (!isEpubValid || (hasReport && anomaliesCount === 0))) {
-        tag = 'Krok 4 z 5 (Zalecany)';
+        tag = 'Krok 4 z 4 (Zalecany)';
         title = 'Krok 4: Skompiluj gotowy e-book EPUB 3';
         desc = 'Tekst jest zweryfikowany i gotowy do kompilacji za pomocą Pandoc ze stylami CSS.';
         cta = 'Kompiluj EPUB 3';
@@ -2406,8 +2410,8 @@ import '../styles/global.css';
         stepperGlobalStatus.textContent = isEpubValid 
           ? '✓ E-book gotowy' 
           : mdExists 
-            ? (hasReport ? (anomaliesCount === 0 ? '✓ Treść czysta' : `Wykryto ${anomaliesCount} wad`) : 'MD wyekstrahowany') 
-            : (pdfExists ? 'PDF gotowy do ekstrakcji' : 'Oczekiwanie na plik PDF');
+            ? (hasReport ? (anomaliesCount === 0 ? '✓ Treść czysta' : `Wykryto ${anomaliesCount} wad`) : 'Krok 1 ukończony (MD gotowy)') 
+            : (pdfExists ? 'Krok 1: Gotowy do ekstrakcji' : 'Oczekiwanie na plik PDF');
       }
     }
 
