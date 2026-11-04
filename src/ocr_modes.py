@@ -161,6 +161,7 @@ def run_candidate_conversion(
     output_base_dir: Path = Path("output/candidates"),
     run_id: Optional[str] = None,
     apply_geometry: bool = False,
+    converter: Optional[DocumentConverter] = None,
 ) -> CandidateRunManifest:
     """Execute an isolated candidate conversion run across specified pages.
 
@@ -193,7 +194,10 @@ def run_candidate_conversion(
     t0_total = time.perf_counter()
     docling_ver = importlib.metadata.version("docling")
 
-    converter, pipeline_summary = get_mode_converter(mode, langs)
+    if converter is None:
+        converter, pipeline_summary = get_mode_converter(mode, langs)
+    else:
+        pipeline_summary = {"mode": mode.value, "languages": langs, "reused_converter": True}
     config = CandidateRunConfig(
         run_id=run_id,
         mode=mode,
