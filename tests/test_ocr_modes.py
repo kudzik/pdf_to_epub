@@ -129,3 +129,28 @@ def test_candidate_run_conversion_non_contiguous(tmp_path: Path):
     assert (cand_dir / "pages" / "page_025_extracted.json").exists()
     assert (cand_dir / "pages" / "page_040_extracted.json").exists()
     assert (cand_dir / f"{pdf_path.stem}.md").exists()
+
+
+def test_additional_engine_evaluation_d07():
+    """Verify architectural Decision D07:
+
+    PaddleOCR/PP-Structure is rejected in favor of RapidOCR ONNX + Geometry + VLM.
+    Ensure that RapidOCR is directly accessible without requiring full paddlepaddle,
+    and that OcrEngineMode supports all benchmarked engines.
+    """
+    import importlib.util
+
+    # paddleocr should not be a required dependency in pyproject.toml
+    # RapidOCR provides PP-OCRv4 models via onnxruntime without paddle dependencies
+    paddle_spec = importlib.util.find_spec("paddle")
+    assert paddle_spec is None, "PaddlePaddle runtime should not be installed; RapidOCR ONNX is used instead."
+
+    rapid_spec = importlib.util.find_spec("rapidocr_onnxruntime")
+    assert rapid_spec is not None, "RapidOCR ONNX must be available."
+
+    # Validate engine mode definitions
+    modes = [m.value for m in OcrEngineMode]
+    assert "rapidocr" in modes
+    assert "native" in modes
+    assert "full_page" in modes
+
