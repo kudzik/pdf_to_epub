@@ -71,6 +71,19 @@ export const GET: APIRoute = async ({ url }) => {
     } catch (e) {}
   }
 
+  // Sprawdzenie statusu czyszczenia Markdowna
+  const cleanStatusPath = path.join(rootDir, 'output', `clean_status_${baseName}.json`);
+  let cleanInfo = { cleaned: false, timestamp: '' };
+  if (fs.existsSync(cleanStatusPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(cleanStatusPath, 'utf-8'));
+      cleanInfo = {
+        cleaned: Boolean(data.cleaned),
+        timestamp: data.timestamp || '',
+      };
+    } catch (e) {}
+  }
+
   // Sprawdzenie dostępności lokalnego silnika Ollama (localhost oraz Windows Host IP)
   const ollama = await probeOllama();
   const windowsHostIp = getWindowsHostIp();
@@ -81,6 +94,7 @@ export const GET: APIRoute = async ({ url }) => {
     pdfInfo,
     epubInfo,
     mdInfo,
+    cleanInfo,
     report,
     extractProgress,
     ollama: {

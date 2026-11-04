@@ -122,3 +122,4 @@ run().catch(err => {
   console.error('❌ Błąd krytyczny audytu Playwright:', err);
   process.exit(1);
 });
+

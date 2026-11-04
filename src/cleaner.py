@@ -1,7 +1,9 @@
+import json
 import os
 import re
 import uuid
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -212,14 +214,41 @@ def restore_polish_and_ocr_artifacts(text: str) -> str:
 
     # Zamiana błędnego "tire" na "the"
     text = re.sub(
-        r"\btire\s+(American|more|traditional|other|best|same|first|above|season)\b",
+        r"\btire\s+(American|more|traditional|other|best|same|first|above|season|master)\b",
         r"the \1",
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(r"\b(on|in|of)\s+tire\b", r"\1 the", text, flags=re.IGNORECASE)
 
-    # --- 5. Usuwanie szumu skanera (kwadraciki i artefakty graficzne) ---
+    # --- 5. Poprawki zniekształceń polskich znaków diakrytycznych i waluty ---
+    text = re.sub(r"\bČ", "Ć", text)
+    text = re.sub(r"\bč", "ć", text)
+    text = re.sub(r"\bztotych\b", "złotych", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bztoty\b", "złoty", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bztotys\b", "złotych", text, flags=re.IGNORECASE)
+
+    # --- 6. Korekta częstych zniekształceń OCR w słowach angielskich i kulinarnych ---
+    text = re.sub(r"\blitte\b", "little", text)
+    text = re.sub(r"\bstrenghtens\b", "strengthens", text)
+    text = re.sub(r"\bhealthul\b", "healthful", text)
+    text = re.sub(r"\bregimnens\b", "regimens", text)
+    text = re.sub(r"\bItis\b", "It is", text)
+    text = re.sub(r"\bmagnesium pils\b", "magnesium pills", text, flags=re.IGNORECASE)
+    text = re.sub(r"\ba axy coating hat cts\b", "a waxy coating that acts", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bhat cts\b", "that acts", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bdiat\b", "that", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bdiis\b", "this", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bwidi\b", "with", text, flags=re.IGNORECASE)
+
+    # Znane zbitki szumu skanera ze starych wydań
+    text = re.sub(r"\boaos orn nn n ouns nin o srirn nsst, rs e ins dns\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\boot ont S os\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bsures sr i s se tesd\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*or doe cae ct ccrs\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bsam e ne t e sae e ices aed s see es\b", "same sweeteners that were", text, flags=re.IGNORECASE)
+
+    # --- 7. Usuwanie szumu skanera (kwadraciki i artefakty graficzne) ---
     text = re.sub(r"[■▲◄►▪]", "", text)
 
     return text
@@ -251,8 +280,37 @@ def normalize_culinary_terms(text: str) -> str:
 
 def remove_scan_noise(text: str) -> str:
     """
-    Usuwa linie będące artefaktami skanera (losowe znaczki, plamki, puste linie).
+    Usuwa linie będące artefaktami skanera (losowe znaczki, plamki, puste linie)
+    oraz poszarpane ciągi literowe z marginesów.
     """
+    invalid_single = set("bdefhjkmnpqrtvxyzBDEFHJKMNPQRTVXYZ")
+    culinary_abbrs = {
+        "tsp", "tbsp", "tbs", "oz", "lb", "lbs", "pkg", "min", "mins", "hr", "hrs",
+        "pt", "qt", "st", "nd", "rd", "th", "deg", "sec", "g", "kg", "ml", "cup", "cups"
+    }
+    vowels = set("aeiouyAEIOUYąćęóĄĆĘÓ")
+
+    def is_junk(tok: str) -> bool:
+        clean = re.sub(r"[^\w]", "", tok)
+        if not clean or clean.isdigit():
+            return False
+        if len(clean) == 1 and clean in invalid_single:
+            return True
+        if len(clean) >= 3 and not any(c in vowels for c in clean) and clean.lower() not in culinary_abbrs:
+            return True
+        return False
+
+    def filter_cluster(match):
+        cluster = match.group(0)
+        tokens = [t for t in re.split(r"[,\s]+", cluster) if t]
+        junk_count = sum(1 for t in tokens if is_junk(t))
+        # Wymagaj co najmniej 2 uszkodzonych tokenów w klastrze, by uznać go za szum skanera
+        if junk_count >= 2:
+            return ""
+        return cluster
+
+    text = re.sub(r"\b[a-zA-Z]{1,5}(?:[,\s]+[a-zA-Z]{1,5}){2,}\b", filter_cluster, text)
+
     lines = text.splitlines()
     cleaned_lines = []
 
@@ -370,6 +428,20 @@ def clean_markdown_file(
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(temp_file, dest)
+
+            # Zapisz marker wykonania czyszczenia
+            try:
+                status_file = dest.parent.parent / f"clean_status_{dest.stem}.json"
+                status_file.write_text(
+                    json.dumps({
+                        "cleaned": True,
+                        "book": dest.stem,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }, indent=2, ensure_ascii=False),
+                    encoding="utf-8"
+                )
+            except Exception:
+                pass
         finally:
             if temp_file.exists():
                 try:

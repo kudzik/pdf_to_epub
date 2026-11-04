@@ -216,7 +216,7 @@ import '../styles/global.css';
           </div>
           <div class="my-2">
             <div id="stepTitle3" class="text-xs font-bold text-zinc-200">Czyszczenie tekstu</div>
-            <div id="stepSub3" class="text-[11px] text-zinc-400 font-mono truncate">Ułamki, polskie znaki</div>
+            <div id="stepSub3" class="text-[11px] text-zinc-400 font-mono truncate">De-hyphen, ułamki, szum</div>
           </div>
           <div id="stepStatus3" class="text-[10px] text-zinc-400 flex items-center gap-1">
             <span>● Status: --</span>
@@ -230,7 +230,7 @@ import '../styles/global.css';
             <span id="stepBadge4" class="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">AUDIT</span>
           </div>
           <div class="my-2">
-            <div id="stepTitle4" class="text-xs font-bold text-zinc-200">Audyt i Naprawa</div>
+            <div id="stepTitle4" class="text-xs font-bold text-zinc-200">Audyt i Naprawa OCR</div>
             <div id="stepSub4" class="text-[11px] text-zinc-400 font-mono truncate">Weryfikacja wad</div>
           </div>
           <div id="stepStatus4" class="text-[10px] text-zinc-400 flex items-center gap-1">
@@ -262,7 +262,7 @@ import '../styles/global.css';
         <div class="space-y-1.5">
           <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-            Główne Kroki Pipeline'u:
+            Główne Kroki Pipeline'u (Kolejność 1 ➔ 5):
           </span>
           <div class="flex flex-wrap items-center gap-2">
             <!-- Rozszerzony Krok 1 z wyborem zakresu stron i silnika OCR -->
@@ -296,8 +296,12 @@ import '../styles/global.css';
               <span class="w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-[10px] font-bold">3</span>
               <span>Uruchom Audyt</span>
             </button>
-            <button id="btnRunBuild" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95" title="Krok 4: Kompiluj Markdown do EPUB 3 przez Pandoc">
-              <span class="w-4 h-4 rounded-full bg-white/20 text-white border border-white/40 flex items-center justify-center text-[10px] font-bold">4</span>
+            <button id="btnRunAutopilot" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 4: Uruchom Autopilota AI do automatycznej naprawy wad">
+              <span class="w-4 h-4 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center text-[10px] font-bold">4</span>
+              <span id="btnRunAutopilotText">Autopilot AI</span>
+            </button>
+            <button id="btnRunBuild" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95" title="Krok 5: Kompiluj Markdown do EPUB 3 przez Pandoc">
+              <span class="w-4 h-4 rounded-full bg-white/20 text-white border border-white/40 flex items-center justify-center text-[10px] font-bold">5</span>
               <span>Kompiluj EPUB</span>
             </button>
           </div>
@@ -791,6 +795,8 @@ import '../styles/global.css';
     const btnRunExtract = document.getElementById('btnRunExtract');
     const btnRunClean = document.getElementById('btnRunClean');
     const btnRunAudit = document.getElementById('btnRunAudit');
+    const btnRunAutopilot = document.getElementById('btnRunAutopilot');
+    const btnRunAutopilotText = document.getElementById('btnRunAutopilotText');
     const btnRunBuild = document.getElementById('btnRunBuild');
     const btnDownloadEpub = document.getElementById('btnDownloadEpub');
     const btnCopyToWindows = document.getElementById('btnCopyToWindows');
@@ -2242,7 +2248,7 @@ import '../styles/global.css';
     function setSystemBusy(busy, actionKey = '', customLabel = '', outcome = null) {
       isSystemBusy = busy;
       const allActionButtons = [
-        btnRunExtract, btnRunClean, btnRunAudit, btnRunBuild,
+        btnRunExtract, btnRunClean, btnRunAudit, btnRunAutopilot, btnRunBuild,
         btnCopyToWindows, btnOpenWindowsExplorer,
         btnPurgeEpub, btnPurgeCache, btnPurgeWorkfiles,
         btnStartOllamaAutopilot, btnHeuristicBatch, btnNextActionCta,
@@ -2402,6 +2408,7 @@ import '../styles/global.css';
       const anomaliesCount = (data.report && Array.isArray(data.report.anomalies)) ? data.report.anomalies.length : 0;
       const epubExists = !!data.epubInfo?.exists;
       const isEpubValid = epubExists && mdExists;
+      const isCleaned = Boolean(data.cleanInfo?.cleaned);
 
       // Usunięcie podświetleń z kart
       [stepCard1, stepCard2, stepCard3, stepCard4, stepCard5].forEach(c => {
@@ -2433,7 +2440,7 @@ import '../styles/global.css';
           : 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all';
       }
       if (stepTitle2) stepTitle2.textContent = data.mdInfo?.filename || `${currentBook}.md`;
-      if (stepSub2) stepSub2.textContent = mdExists ? `${mdLines.toLocaleString()} linii (${data.mdInfo.size})` : 'Wymaga ekstrakcji';
+      if (stepSub2) stepSub2.textContent = mdExists ? `${mdLines.toLocaleString()} linii (${data.mdInfo.size})` : (pdfExists ? 'Gotowy do ekstrakcji' : 'Wymaga ekstrakcji');
       if (stepStatus2) {
         stepStatus2.innerHTML = mdExists 
           ? '<span class="text-emerald-400 font-medium">✓ Wyekstrahowano</span>' 
@@ -2446,19 +2453,20 @@ import '../styles/global.css';
 
       // Krok 2: Czyszczenie tekstu
       if (stepCard3) {
-        stepCard3.className = mdExists
-          ? 'bg-cyan-950/20 border border-cyan-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
-          : 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all';
+        stepCard3.className = isCleaned
+          ? 'bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
+          : (mdExists ? 'bg-amber-950/20 border border-amber-500/40 rounded-xl p-3 flex flex-col justify-between transition-all' : 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all');
       }
-      if (stepSub3) stepSub3.textContent = mdExists ? 'De-hyphen, ułamki' : 'Wymaga Markdowna';
+      if (stepTitle3) stepTitle3.textContent = 'Czyszczenie tekstu';
+      if (stepSub3) stepSub3.textContent = isCleaned ? 'Tekst znormalizowany' : (mdExists ? 'De-hyphen, ułamki, szum' : 'Wymaga Markdowna');
       if (stepStatus3) {
-        stepStatus3.innerHTML = mdExists 
-          ? '<span class="text-cyan-400 font-medium">✓ Gotowy do użycia</span>' 
-          : '<span class="text-zinc-500">Oczekuje na Krok 1</span>';
+        stepStatus3.innerHTML = isCleaned
+          ? '<span class="text-emerald-400 font-medium">✓ Oczyszczony</span>'
+          : (mdExists ? '<span class="text-amber-400 font-medium">● Do uruchomienia</span>' : '<span class="text-zinc-500">Oczekuje na Krok 1</span>');
       }
       if (stepBadge3) {
-        stepBadge3.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-cyan-500/20 text-cyan-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge3.textContent = mdExists ? 'DOSTĘPNY' : 'OCZEKUJE';
+        stepBadge3.className = mdExists ? (isCleaned ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-amber-500/20 text-amber-300 font-bold') : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+        stepBadge3.textContent = mdExists ? (isCleaned ? '✓ CZYSTY' : 'DOSTĘPNY') : 'OCZEKUJE';
       }
 
       // Krok 3: Audyt i Naprawa OCR
@@ -2471,14 +2479,15 @@ import '../styles/global.css';
           stepCard4.className = 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all';
         }
       }
+      if (stepTitle4) stepTitle4.textContent = 'Audyt i Naprawa OCR';
       if (stepSub4) {
         stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? '0 wad (Czysty!)' : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
       }
       if (stepStatus4) {
         if (hasReport) {
           stepStatus4.innerHTML = anomaliesCount === 0 
-            ? '<span class="text-emerald-400 font-medium">✓ Zweryfikowany</span>' 
-            : '<span class="text-amber-400 font-medium">⚠ Wymaga naprawy</span>';
+            ? '<span class="text-emerald-400 font-medium">✓ Zweryfikowany (0 wad)</span>' 
+            : `<span class="text-amber-400 font-medium">⚠ ${anomaliesCount} wad do naprawy</span>`;
         } else {
           stepStatus4.innerHTML = mdExists 
             ? '<span class="text-zinc-400">Do uruchomienia</span>' 
@@ -2515,8 +2524,19 @@ import '../styles/global.css';
         stepBadge5.textContent = isEpubValid ? '✓ EPUB' : 'EPUB 3';
       }
 
+      // Aktualizacja przycisku Autopilota w głównym pasku akcji
+      if (btnRunAutopilot && btnRunAutopilotText) {
+        if (anomaliesCount > 0) {
+          btnRunAutopilotText.textContent = `Autopilot AI (${anomaliesCount})`;
+          btnRunAutopilot.className = 'px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-purple-900/30 active:scale-95';
+        } else {
+          btnRunAutopilotText.textContent = 'Autopilot AI';
+          btnRunAutopilot.className = 'px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-purple-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm';
+        }
+      }
+
       // Wyznaczenie Rekomendowanego Następnego Kroku (Hero Banner CTA):
-      let tag = 'Krok 1 z 4';
+      let tag = 'Krok 1 z 5';
       let title = '';
       let desc = '';
       let cta = '';
@@ -2528,31 +2548,38 @@ import '../styles/global.css';
         desc = `Nie znaleziono pliku ${currentBook}.pdf w katalogu input/. Umieść plik PDF, aby rozpocząć proces publikacji.`;
         cta = 'Otwórz Folder Aplikacji';
         actionHandler = () => openWindowsExplorer('input');
-        if (stepCard1) stepCard1.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+        if (stepCard1) stepCard1.classList.add('ring-2', 'ring-rose-400', 'animate-pulse');
       } else if (pdfExists && !mdExists) {
-        tag = 'Krok 1 z 4 (Rozpocznij tutaj)';
-        title = 'Krok 1: Wyekstrahuj PDF do czystego Markdowna';
+        tag = 'Krok 1 z 5 (Rozpocznij tutaj)';
+        title = 'Krok 1: Wyekstrahuj PDF do surowego Markdowna';
         desc = `Znaleziono plik ${data.pdfInfo?.filename || 'PDF'} (${data.pdfInfo?.size || ''}). Odczytaj strukturę i układ kolumn do pliku Markdown.`;
         cta = 'Ekstrahuj z PDF';
         actionHandler = () => triggerAction('extract');
-        if (stepCard2) stepCard2.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
-      } else if (mdExists && !hasReport) {
-        tag = 'Krok 2 z 4 (Zalecany)';
-        title = 'Krok 2: Uruchom Audyt jakościowy OCR';
-        desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Sprawdź jakość tekstu, anomalie OCR i polskie znaki diakrytyczne.`;
+        if (stepCard1) stepCard1.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
+      } else if (mdExists && !isCleaned) {
+        tag = 'Krok 2 z 5 (Zalecany)';
+        title = 'Krok 2: Wyczyść i znormalizuj tekst (Usuń krzaki)';
+        desc = `Plik Markdown istnieje (${mdLines.toLocaleString()} linii). Usuń rozbicia wyrazów (de-hyphenation), ułamki 1/2, szum skanera i zrekonstruuj polskie znaki.`;
+        cta = 'Wyczyść Tekst';
+        actionHandler = () => triggerAction('clean');
+        if (stepCard2) stepCard2.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+      } else if (mdExists && isCleaned && !hasReport) {
+        tag = 'Krok 3 z 5 (Zalecany)';
+        title = 'Krok 3: Uruchom Audyt jakościowy OCR';
+        desc = `Tekst został oczyszczony. Przeskanuj go pod kątem pozostałych anomalii OCR i uszkodzeń słów.`;
         cta = 'Uruchom Audyt';
         actionHandler = () => triggerAction('audit');
-        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
+        if (stepCard3) stepCard3.classList.add('ring-2', 'ring-cyan-400', 'animate-pulse');
       } else if (mdExists && hasReport && anomaliesCount > 0) {
-        tag = 'Krok 3 z 4 (Zalecany)';
-        title = `Krok 3: Napraw wykryte wady (${anomaliesCount} usterek)`;
+        tag = 'Krok 4 z 5 (Zalecany)';
+        title = `Krok 4: Uruchom Autopilot Naprawczy (${anomaliesCount} usterek)`;
         desc = `Wykryto ${anomaliesCount} anomalii OCR. Uruchom Autopilota AI (akceleracja GPU RTX 4080 Super) lub Szybką Rekonstrukcję, aby nanieść poprawki.`;
         cta = 'Uruchom Autopilot Naprawczy';
         actionHandler = () => startOllamaAutopilot();
-        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-amber-400', 'animate-pulse');
+        if (stepCard4) stepCard4.classList.add('ring-2', 'ring-purple-400', 'animate-pulse');
       } else if (mdExists && (!isEpubValid || (hasReport && anomaliesCount === 0))) {
-        tag = 'Krok 4 z 4 (Zalecany)';
-        title = 'Krok 4: Skompiluj gotowy e-book EPUB 3';
+        tag = 'Krok 5 z 5 (Zalecany)';
+        title = 'Krok 5: Skompiluj gotowy e-book EPUB 3';
         desc = 'Tekst jest zweryfikowany i gotowy do kompilacji za pomocą Pandoc ze stylami CSS.';
         cta = 'Kompiluj EPUB 3';
         actionHandler = () => triggerAction('build');
@@ -2879,6 +2906,14 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
       btnRunExtract.addEventListener('click', () => triggerAction('extract'));
       btnRunClean.addEventListener('click', () => triggerAction('clean'));
       btnRunAudit.addEventListener('click', () => triggerAction('audit'));
+      btnRunAutopilot?.addEventListener('click', () => {
+        const anomalies = globalReport?.anomalies || [];
+        if (anomalies.length === 0) {
+          showToast('Brak wad do naprawy w pliku audytu.', 'info');
+        } else {
+          startOllamaAutopilot();
+        }
+      });
       btnRunBuild.addEventListener('click', () => triggerAction('build'));
 
       btnCopyToWindows.addEventListener('click', copyToWindowsDownloads);

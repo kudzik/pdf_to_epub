@@ -811,8 +811,8 @@ def purge_cmd(
                     shutil.rmtree(s)
                     deleted_files += 1
 
-        # Usuń pliki postępu ekstrakcji
-        for p_file in output_dir.glob("extract_progress_*.json"):
+        # Usuń pliki postępu ekstrakcji i statusu czyszczenia
+        for p_file in list(output_dir.glob("extract_progress_*.json")) + list(output_dir.glob("clean_status_*.json")):
             if p_file.exists():
                 p_file.unlink()
                 deleted_files += 1
@@ -837,6 +837,7 @@ def purge_cmd(
             output_dir / f"audit_{stem}.json",
             output_dir / "audit_report.json",
             output_dir / f"extract_progress_{stem}.json",
+            output_dir / f"clean_status_{stem}.json",
         ]
 
         if not keep_md:
@@ -961,7 +962,7 @@ def purge_cmd(
             rep.unlink()
             deleted_files += 1
 
-        for prog in output_dir.glob("extract_progress_*.json"):
+        for prog in list(output_dir.glob("extract_progress_*.json")) + list(output_dir.glob("clean_status_*.json")):
             prog.unlink()
             deleted_files += 1
 

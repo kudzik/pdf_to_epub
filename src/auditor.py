@@ -35,33 +35,50 @@ class AuditReport:
         return asdict(self)
 
 
+VOWELS = set("aeiouyAEIOUYąćęóĄĆĘÓ")
+CULINARY_ABBRS = {
+    "tsp", "tbsp", "tbs", "oz", "lb", "lbs", "pkg", "min", "mins", "hr", "hrs",
+    "pt", "qt", "st", "nd", "rd", "th", "deg", "sec"
+}
+
+
 def detect_corrupted_tokens(text: str) -> list[str]:
-    """Wyszukuje tokeny z ewidentnymi uszkodzeniami OCR (daszki, stopnie, nawiasy wewnątrz słów)."""
+    """Wyszukuje tokeny z ewidentnymi uszkodzeniami OCR (daszki, stopnie, słowa bez samogłosek)."""
+    clean_text = re.sub(r"!\[.*?\]\(.*?\)", "", text)
     # Tokeny zawierające daszki w środku liter (np. "ha^been", "vegetables^o^brine")
-    tokens = re.findall(r"\b[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+(?:\^|°|<|>|~|`)[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ\^°<>~`]*\b", text)
+    tokens = re.findall(r"\b[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+(?:\^|°|<|>|~|`)[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ\^°<>~`]*\b", clean_text)
 
     # Tokeny z dziwnymi symbolami w ułamkach (np. "1/2-%", "'/2-I", "1/2-I")
-    fractions_garbage = re.findall(r"(?:'/\d+-\w+|\d+/\d+-\%|\d+/\d+-[a-zA-Z]+|\%\s*c\.)", text)
+    fractions_garbage = re.findall(r"(?:'/\d+-\w+|\d+/\d+-\%|\d+/\d+-[a-zA-Z]+|\%\s*c\.)", clean_text)
     tokens.extend(fractions_garbage)
 
     # Zbitki literowe z losowymi cyframi w środku słów (np. "cl1e", "wl1o", "th1e", "b0lled")
-    mixed_digits = re.findall(r"\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\d+[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\b", text)
+    mixed_digits = re.findall(r"\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\d+[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\b", clean_text)
     tokens.extend(mixed_digits)
+
+    # Słowa o długości >= 3 bez żadnej samogłoski (np. "nsst", "dns", "ccrs", "cts", "FlraS")
+    words = re.findall(r"\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\b", clean_text)
+    no_vowels = [w for w in words if len(w) >= 3 and not any(c in VOWELS for c in w) and w.lower() not in CULINARY_ABBRS]
+    tokens.extend(no_vowels)
 
     return list(set(tokens))
 
 
 def detect_ocr_substitutions(text: str) -> list[str]:
-    """Wykrywa charakterystyczne zamienniki OCR (np. 'die' zamiast 'the' w zdaniu angielskim)."""
-    # Wyszukujemy "die" w kontekście angielskim, np. "in die oven", "die meat", "die water"
+    """Wykrywa charakterystyczne zamienniki OCR (np. 'die'/'tire' zamiast 'the' w zdaniu angielskim)."""
+    clean_text = re.sub(r"!\[.*?\]\(.*?\)", "", text)
     substitutions = []
-    die_matches = re.findall(r"\b(?:in|on|of|with|to|cook|add|heat|stir|pour)\s+(die)\s+[a-z]+", text, re.IGNORECASE)
+    die_matches = re.findall(r"\b(?:in|on|of|with|to|cook|add|heat|stir|pour)\s+(die)\s+[a-z]+", clean_text, re.IGNORECASE)
     if die_matches:
         substitutions.extend(die_matches)
 
-    # Słowa typu "diis", "widi", "tiien", "tiiat"
-    for word in ["diis", "widi", "tiien", "tiiat", "diese"]:
-        if re.search(rf"\b{word}\b", text, re.IGNORECASE):
+    tire_matches = re.findall(r"\btire\s+(?:American|more|traditional|other|best|same|first|above|season|master)\b", clean_text, re.IGNORECASE)
+    if tire_matches:
+        substitutions.extend(tire_matches)
+
+    # Słowa typu "diis", "widi", "tiien", "tiiat", "litte", "strenghtens"
+    for word in ["diis", "widi", "tiien", "tiiat", "diese", "diat", "litte", "strenghtens", "healthul", "regimnens", "itis"]:
+        if re.search(rf"\b{word}\b", clean_text, re.IGNORECASE):
             substitutions.append(word)
 
     return list(set(substitutions))
@@ -136,8 +153,14 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
             categories.append("ocr_substitutions")
             score += len(ocr_substitutions) * 2.0
 
+        # 4. Wykrywanie poszarpanych ciągów literowych i szumów marginesowych
+        debris_runs = re.findall(r"\b(?:[a-zA-Z]{1,2}\s+){3,}[a-zA-Z]{1,2}\b", p_strip)
+        if debris_runs:
+            categories.append("scanner_debris_clusters")
+            score += len(debris_runs) * 2.5
+
         # Jeśli akapit ma błędy, zapisujemy go do raportu
-        all_issues = corrupted_tokens + ocr_substitutions
+        all_issues = corrupted_tokens + ocr_substitutions + debris_runs
         if score > 0:
             if score >= 6.0:
                 severity = "high"
