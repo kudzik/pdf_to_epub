@@ -89,12 +89,17 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Przetworzenie wybranej strony przez adapter, zapis sidecara JSON i wycinków bloków (crops):
   uv run python -m src.pipeline extract-page-adapter --page 25 --crop-blocks
   ```
-- **Jawne tryby OCR i izolowany eksport kandydata (Gate G1 / R07, Gate G2 / R09):**
+- **Jawne tryby OCR i izolowany eksport kandydata (Gate G1 / R07, Gate G2 / R09, Gate G2 / R10):**
   ```bash
-  # Wykonanie konwersji kandydata (tryby: native, full_page, layout_regions, rapidocr) do output/candidates/<run_id>/:
-  uv run python -m src.pipeline candidate-convert --pages 25-26 --mode rapidocr
+  # Wykonanie konwersji kandydata (tryby: native, full_page, layout_regions, rapidocr; opcja --geometry włącza separację 2 kolumn i prostowanie):
+  uv run python -m src.pipeline candidate-convert --pages 25-26 --mode rapidocr --geometry
   # Lista zarejestrowanych przebiegów kandydackich:
   uv run python -m src.pipeline candidate-list
+  ```
+- **Inspekcja geometrii, prostowania i układu kolumn (Gate G2 / R10):**
+  ```bash
+  # Analiza kąta nachylenia (skew), guttera pionowego i re-sekwencjonowania bloków:
+  uv run python -m src.pipeline geometry-inspect --page 58
   ```
 - **Pomiar jakości OCR, CER/WER i runner porównań (Gate G1 / R08, Gate G2 / R09):**
   ```bash
