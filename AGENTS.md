@@ -84,6 +84,11 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Podsumowanie liczby bloków, ilości/jednostek i tabel:
   uv run python -m src.pipeline ground-truth-summary
   ```
+- **Adapter ekstrakcji i rejestracja pochodzenia bloków (Gate G1 / R06):**
+  ```bash
+  # Przetworzenie wybranej strony przez adapter, zapis sidecara JSON i wycinków bloków (crops):
+  uv run python -m src.pipeline extract-page-adapter --page 25 --crop-blocks
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub
