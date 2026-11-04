@@ -96,6 +96,13 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Lista zarejestrowanych przebiegów kandydackich:
   uv run python -m src.pipeline candidate-list
   ```
+- **Pomiar jakości OCR, CER/WER i runner porównań (Gate G1 / R08):**
+  ```bash
+  # Ewaluacja jakości kandydata względem wzorców (CER, WER, wierność miar i temperatur, pominięcia):
+  uv run python -m src.pipeline benchmark-evaluate --candidate-dir output/candidates/<run_id>
+  # Porównanie dwóch wariantów (np. native vs full_page):
+  uv run python -m src.pipeline benchmark-compare --candidate-a output/candidates/<run1> --candidate-b output/candidates/<run2>
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub
