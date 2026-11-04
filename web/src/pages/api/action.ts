@@ -3,6 +3,7 @@ import { exec, type ChildProcess } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
+import { logger } from '../../lib/logger';
 
 // Rejestr aktywnych procesów w tle (zapobieganie wyścigom i umożliwienie anulowania)
 const runningJobs = new Map<string, { pid: number; child: ChildProcess; startTime: number; action: string }>();
@@ -25,6 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Ustalanie nazwy książki (stem)
     const rawName = book || file || 'ksiazka';
     const bookStem = path.basename(rawName).replace(/\.(pdf|md|epub)$/, '');
+    logger.info({ action, bookStem, stream }, 'Otrzymano żądanie wykonania akcji API');
 
     // Obsługa anulowania aktywnego zadania
     if (action === 'cancel') {
@@ -207,6 +209,7 @@ export const POST: APIRoute = async ({ request }) => {
           child.on('close', (code) => {
             runningJobs.delete(bookStem);
             const durationMs = Date.now() - startTime;
+            logger.info({ action, bookStem, code, durationMs }, 'Zakończono proces potomny (stream)');
             send({
               type: 'done',
               success: code === 0,
@@ -271,6 +274,7 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
+    logger.error({ error: error.message, stack: error.stack }, 'Nieobsługiwany błąd w akcji API');
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

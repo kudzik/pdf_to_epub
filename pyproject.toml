@@ -9,8 +9,10 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "docling[easyocr]>=2.146.0",
+    "loguru>=0.7.3",
     "rapidocr-onnxruntime>=1.4.4",
     "rich>=15.0.0",
+    "sentry-sdk>=2.20.0",
     "typer>=0.27.3",
 ]
 
@@ -23,6 +25,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.120.0",
     "pytest>=9.2.0",
 ]
 

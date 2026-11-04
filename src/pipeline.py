@@ -28,6 +28,10 @@ from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_fi
 from src.snapshot import SnapshotOptions, create_snapshot, verify_snapshot_integrity
 from src.history import load_history_ledger, verify_index_anchors
 from src.benchmark_manifest import load_test_pages_manifest, validate_manifest_consistency
+from src.logger import setup_logger, app_logger
+
+# Inicjalizacja strukturyzowanego logowania Loguru + Sentry
+setup_logger()
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3 z integracją WSL/Windows.",
