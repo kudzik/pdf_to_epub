@@ -56,6 +56,13 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   ```bash
   uv run python -m src.pipeline build --book ksiazka
   ```
+- **Tworzenie i weryfikacja snapshotu stanu książki i środowiska (Gate G0 / R01):**
+  ```bash
+  # Tworzy nowy snapshot (zapisuje manifest SHA-256 i kopie plików bazowych):
+  uv run python -m src.pipeline snapshot --book ksiazka
+  # Weryfikuje integralność istniejącego snapshotu:
+  uv run python -m src.pipeline snapshot --verify-dir output/snapshots/<snapshot_id>
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

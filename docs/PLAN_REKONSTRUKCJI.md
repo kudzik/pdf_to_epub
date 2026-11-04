@@ -2,7 +2,7 @@
 
 Stan rozpoznania: 2026-11-03. Status: **gotowy do realizacji**. Dokument jest planem, nie raportem potwierdzającym jakość nowej ekstrakcji. Podczas przygotowania planu nie wykonano nowej ekstrakcji produkcyjnej, nie zmieniono książki i nie pobrano nowych modeli.
 
-Punktem wejścia do realizacji jest checklista w sekcji 13. Aktualizujemy ją po każdym zakończonym zadaniu, podając dowód wykonania. Następne zadanie: **R01 — snapshot i inwentaryzacja bieżącego stanu**.
+Punktem wejścia do realizacji jest checklista w sekcji 13. Aktualizujemy ją po każdym zakończonym zadaniu, podając dowód wykonania. Następne zadanie: **R02 — wspólna kontrola zapisu**.
 
 ## 1. Decyzja architektoniczna
 
@@ -164,7 +164,7 @@ Warunek zakończenia projektu: wybrany, powtarzalny proces przechodzi odłożony
 Legenda: `[ ]` — do zrobienia, `[x]` — zakończone z dowodem. Sam działający kod ani zielone testy jednostkowe nie zamykają zadania wymagającego pomiaru na skanie. Zadania wykonuje agent implementujący; testy i przegląd obrazu są osobnymi czynnościami, nawet gdy wykonuje je ten sam agent. Nie zakładamy istnienia niezależnego zespołu testerów.
 
 - [x] R00 — rozpoznanie kodu i dokumentacji. Dowód: sekcje 2–12, sprawdzone opcje zainstalowanego Doclinga i zapisane przypadki wcześniejszych niepowodzeń. Nie oznacza to walidacji nowej ekstrakcji.
-- [ ] R01 — snapshot i inwentaryzacja. Zapisać manifest aktualnych plików, aktywnych zadań, wersji narzędzi, modelu i dostępności GPU; ustalić bieżący stan książki. Nie odtwarzać pliku z arbitralnej kopii `.bak`. Wynik: katalog snapshotu i manifest. Zależność: R00.
+- [x] R01 — snapshot i inwentaryzacja. Dowód: zaimplementowano moduł src/snapshot.py z walidacją Pydantic v2 oraz komendę CLI snapshot. Wygenerowano manifest baseline w output/snapshots/20261104_075036_ksiazka/manifest.json z sumami SHA-256 dla 119 plików (PDF, MD, BAK, metadata, css, audit, 113 assetów), zarejestrowano stan środowiska (Docling 2.146.0, Ollama qwen2.5:14b, CUDA info) oraz zweryfikowano spójność poleceniem weryfikacji i testami jednostkowymi w tests/test_snapshot.py.
 - [ ] R02 — wspólna kontrola zapisu. Dodać wersję treści, blokadę pojedynczego zapisującego dla API i CLI, kontrolę konfliktu oraz odtworzenie po przerwaniu. Wynik: test równoległych zmian i test awarii podczas publikacji. Zależność: R01.
 - [ ] R03 — raporty i historia związane z wersją. Utrwalać wejście, propozycję, powód decyzji, źródło i wersje plików. Stary raport lub karta nie może być podstawą zapisu. Wynik: historia dostępna po restarcie i test przesunięcia indeksów. Zależność: R02.
 - [ ] R04 — manifest stron testowych. Wybrać 20 stron rozwojowych i 10 odłożonych, zapisać sposób doboru oraz typy układów. Wynik: manifest bez nakładania się obu części. Zależność: R01.

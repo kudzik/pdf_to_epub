@@ -16,6 +16,7 @@ from docling_core.types.doc.base import ImageRefMode
 from src.cleaner import clean_markdown_file
 from src.auditor import audit_markdown_file
 from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
+from src.snapshot import SnapshotOptions, create_snapshot, verify_snapshot_integrity
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3 z integracją WSL/Windows.",
@@ -689,6 +690,68 @@ def purge_cmd(
         return
 
     console.print("[yellow]Podaj --book <nazwa> lub --all, aby określić co usunąć.[/yellow]")
+
+
+@app.command(name="snapshot")
+def snapshot_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki do inwentaryzacji (np. 'ksiazka')."),
+    ] = "ksiazka",
+    desc: Annotated[
+        str,
+        typer.Option("--desc", "-d", help="Opis celu snapshotu."),
+    ] = "Baseline snapshot przed operacjami na tekście lub ekstrakcją",
+    verify_dir: Annotated[
+        Optional[Path],
+        typer.Option("--verify-dir", help="Ścieżka do istniejącego katalogu snapshotu do weryfikacji sum SHA-256."),
+    ] = None,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog bazowy dla snapshotów."),
+    ] = Path("output/snapshots"),
+):
+    """
+    Tworzy lub weryfikuje punkt odniesienia (snapshot) stanu książki, środowiska i metadanych.
+    Zabezpiecza zaakceptowany Markdown, kopię .bak, metadane, CSS oraz rejestruje sumy SHA-256 assetów i PDF.
+    """
+    stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
+
+    if verify_dir:
+        res = verify_snapshot_integrity(verify_dir)
+        if res.get("is_valid"):
+            console.print(f"[bold green]✓ Snapshot {res.get('snapshot_id')} jest poprawny i spójny.[/bold green]")
+            console.print(f"  Sprawdzono plików: {res.get('files_checked')}")
+        else:
+            console.print(f"[bold red]✗ Błąd weryfikacji snapshotu:[/bold red] {res.get('error', 'Wykryto niezgodności')}")
+            for m in res.get("mismatches", []):
+                console.print(f"  - [red]{m.get('rel_path')}[/red]: {m.get('error')}")
+            raise typer.Exit(code=1)
+        return
+
+    options = SnapshotOptions(
+        book_name=stem,
+        description=desc,
+        output_dir=output_dir,
+    )
+    manifest = create_snapshot(options)
+    snapshot_path = output_dir / manifest.snapshot_id
+
+    console.print(f"[bold green]✓ Pomyślnie utworzono snapshot:[/bold green] [cyan]{manifest.snapshot_id}[/cyan]")
+    console.print(f"  Katalog: [dim]{snapshot_path}[/dim]")
+    if manifest.book_state.pdf_exists and manifest.book_state.pdf_sha256:
+        console.print(f"  PDF: [green]Dostępny[/green] (SHA-256: {manifest.book_state.pdf_sha256[:16]}...)")
+    else:
+        console.print("  PDF: [red]Brak[/red]")
+    console.print(f"  Markdown: {'[green]Dostępny[/green]' if manifest.book_state.markdown_exists else '[red]Brak[/red]'} ({manifest.book_state.markdown_lines} linii, {manifest.book_state.markdown_paragraphs} akapitów)")
+    console.print(f"  Assety: {manifest.book_state.assets_count} plików zarejestrowanych z SHA-256")
+    if manifest.book_state.audit_report_exists:
+        console.print(f"  Audyt: {manifest.book_state.total_anomalies} anomalii (w tym {manifest.book_state.high_severity_anomalies} high)")
+    console.print(f"  CUDA: {'[green]Dostępne[/green]' if manifest.environment.cuda_available else '[yellow]Niedostępne w WSL[/yellow]'}")
+    if manifest.environment.ollama_available:
+        console.print(f"  Ollama: [green]Online[/green] ({manifest.environment.ollama_endpoint}, modele: {', '.join(manifest.environment.ollama_models[:3])})")
+    else:
+        console.print("  Ollama: [yellow]Offline lub nieosiągalna[/yellow]")
 
 
 @app.command(name="open-windows")
