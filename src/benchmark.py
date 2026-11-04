@@ -12,6 +12,7 @@ Implements:
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from difflib import SequenceMatcher
 import re
 from pathlib import Path
@@ -26,7 +27,12 @@ from src.ground_truth import (
     load_page_ground_truth,
 )
 from src.extraction_adapter import ExtractedPage, load_extracted_page
-from src.ocr_modes import CandidateRunManifest, load_candidate_manifest
+from src.ocr_modes import (
+    CandidateRunManifest,
+    load_candidate_manifest,
+    OcrEngineMode,
+    run_candidate_conversion,
+)
 
 
 def normalize_text_for_metrics(text: str, casefold: bool = False) -> str:
@@ -412,6 +418,17 @@ def evaluate_page_quality(
     )
 
 
+def compute_percentiles(values: list[float]) -> tuple[float, float]:
+    """Compute p50 (median) and p95 from a list of floats."""
+    if not values:
+        return 0.0, 0.0
+    s = sorted(values)
+    n = len(s)
+    p50_idx = int(0.50 * (n - 1))
+    p95_idx = int(0.95 * (n - 1))
+    return round(s[p50_idx], 3), round(s[p95_idx], 3)
+
+
 class BenchmarkRunReport(BaseModel):
     """Aggregate quality evaluation across multiple pages for an extraction run."""
 
@@ -431,6 +448,9 @@ class BenchmarkRunReport(BaseModel):
     total_omissions: int
     total_repetitions: int
     critical_error_count: int
+    duration_seconds: Optional[float] = None
+    p50_page_duration_seconds: Optional[float] = None
+    p95_page_duration_seconds: Optional[float] = None
     page_reports: list[PageQualityReport] = Field(default_factory=list)
 
 
@@ -488,6 +508,14 @@ def evaluate_candidate_run(
     total_repetitions = sum(len(r.repetitions) for r in page_reports)
     critical_errors = sum(len(r.critical_violations) for r in page_reports)
 
+    # Compute p50 and p95 latency if available
+    durations = [
+        cand_manifest.page_durations[p]
+        for p in eval_pages
+        if p in cand_manifest.page_durations
+    ]
+    p50, p95 = compute_percentiles(durations) if durations else (None, None)
+
     return BenchmarkRunReport(
         run_id=cand_manifest.config.run_id,
         engine_mode=cand_manifest.config.mode.value,
@@ -504,5 +532,207 @@ def evaluate_candidate_run(
         total_omissions=total_omissions,
         total_repetitions=total_repetitions,
         critical_error_count=critical_errors,
+        duration_seconds=cand_manifest.duration_seconds,
+        p50_page_duration_seconds=p50,
+        p95_page_duration_seconds=p95,
         page_reports=page_reports,
     )
+
+
+class MultiEngineComparisonReport(BaseModel):
+    """Comparative evaluation across multiple OCR engines on identical pages."""
+
+    benchmark_id: str
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    pages_evaluated: list[int]
+    engine_reports: dict[str, BenchmarkRunReport] = Field(default_factory=dict)
+    summary_table: list[dict[str, Any]] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    best_overall_engine: Optional[str] = None
+    fastest_engine: Optional[str] = None
+
+
+def compare_candidate_manifests(
+    manifest_paths: list[Path],
+    fixtures_dir: Path = Path("benchmarks/fixtures/ground_truth"),
+    benchmark_id: Optional[str] = None,
+) -> MultiEngineComparisonReport:
+    """Compare multiple candidate conversion runs on the same pages."""
+    if not manifest_paths:
+        raise ValueError("manifest_paths list cannot be empty")
+
+    b_id = benchmark_id or f"bench_cmp_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+
+    engine_reports: dict[str, BenchmarkRunReport] = {}
+    pages_set: set[int] = set()
+
+    for m_path in manifest_paths:
+        report = evaluate_candidate_run(m_path, fixtures_dir=fixtures_dir)
+        engine_reports[report.engine_mode] = report
+        pages_set.update(report.pages_evaluated)
+
+    common_pages = sorted(pages_set)
+
+    summary_table: list[dict[str, Any]] = []
+    for mode_name, rep in engine_reports.items():
+        # Gate G1/G2 criteria evaluation:
+        # Mean CER <= 0.5% (0.005), Mean WER <= 1.0% (0.010), zero corrupted quantities, zero omissions
+        meets_cer = rep.mean_cer <= 0.005
+        meets_wer = rep.mean_wer <= 0.010
+        meets_worst = rep.worst_page_wer <= 0.020
+        meets_quantities = rep.corrupted_critical_quantities == 0
+        meets_omissions = rep.total_omissions == 0
+        passes_gate = (
+            meets_cer
+            and meets_wer
+            and meets_worst
+            and meets_quantities
+            and meets_omissions
+        )
+
+        summary_table.append({
+            "engine": mode_name,
+            "run_id": rep.run_id,
+            "mean_cer": rep.mean_cer,
+            "mean_wer": rep.mean_wer,
+            "worst_page_wer": rep.worst_page_wer,
+            "worst_page_no": rep.worst_page_no,
+            "quantity_accuracy_pct": rep.quantity_accuracy_pct,
+            "corrupted_quantities": rep.corrupted_critical_quantities,
+            "omissions": rep.total_omissions,
+            "repetitions": rep.total_repetitions,
+            "critical_errors": rep.critical_error_count,
+            "duration_s": rep.duration_seconds,
+            "p50_s": rep.p50_page_duration_seconds,
+            "p95_s": rep.p95_page_duration_seconds,
+            "passes_gate_g2": passes_gate,
+        })
+
+    # Find best accuracy and fastest engine
+    best_wer_rep = min(engine_reports.values(), key=lambda r: (r.corrupted_critical_quantities, r.mean_wer))
+    best_engine = best_wer_rep.engine_mode
+
+    timed_reports = [r for r in engine_reports.values() if r.duration_seconds is not None]
+    fastest_engine = min(timed_reports, key=lambda r: r.duration_seconds or 999999.0).engine_mode if timed_reports else None
+
+    recommendations: list[str] = []
+    # Analyze results
+    for mode_name, rep in engine_reports.items():
+        if rep.corrupted_critical_quantities > 0:
+            recommendations.append(
+                f"Silnik '{mode_name}' uszkadza krytyczne miary kulinarnych składników ({rep.corrupted_critical_quantities} błędów) - wymaga walidacji w R13."
+            )
+        if rep.total_omissions > 0:
+            recommendations.append(
+                f"Silnik '{mode_name}' pomija całe bloki/zdania ({rep.total_omissions} pominięć) - wymaga kontroli segmentacji i geometrii w R10."
+            )
+
+    if all(not row["passes_gate_g2"] for row in summary_table):
+        recommendations.append(
+            "Żaden silnik podstawowy nie spełnia jeszcze w 100% rygorystycznych progów Gate G2 "
+            "(WER <= 1.0%, brak uszkodzeń miar, brak pominięć). "
+            "Konieczne jest wdrożenie R10 (kolejność czytania i dewarping dla układów wielokolumnowych) "
+            "oraz R13 (reguły walidacji bloków)."
+        )
+
+    return MultiEngineComparisonReport(
+        benchmark_id=b_id,
+        pages_evaluated=common_pages,
+        engine_reports=engine_reports,
+        summary_table=summary_table,
+        recommendations=recommendations,
+        best_overall_engine=best_engine,
+        fastest_engine=fastest_engine,
+    )
+
+
+def format_comparison_markdown(report: MultiEngineComparisonReport) -> str:
+    """Format MultiEngineComparisonReport into a readable GitHub-flavored Markdown report."""
+    lines: list[str] = [
+        f"# Raport z Benchmarku OCR — {report.benchmark_id}",
+        "",
+        f"- **Data wykonania:** {report.created_at}",
+        f"- **Strony testowane (z Ground Truth):** {report.pages_evaluated}",
+        f"- **Najlepszy silnik (jakość tekstu/miar):** `{report.best_overall_engine}`",
+        f"- **Najszybszy silnik:** `{report.fastest_engine}`",
+        "",
+        "## Tabela porównawcza silników OCR",
+        "",
+        "| Silnik | Średni CER | Średni WER | Najgorszy WER | Dokładność miar | Błędy miar | Pominięcia | p50 / p95 (s) | Gate G2? |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+
+    for row in report.summary_table:
+        p50_p95 = f"{row['p50_s']}s / {row['p95_s']}s" if row['p50_s'] is not None else "N/A"
+        passes = "✅ ZALICZONE" if row["passes_gate_g2"] else "❌ DO POPRAWY"
+        lines.append(
+            f"| `{row['engine']}` | {row['mean_cer']*100:.2f}% | {row['mean_wer']*100:.2f}% | "
+            f"{row['worst_page_wer']*100:.2f}% (str. {row['worst_page_no']}) | {row['quantity_accuracy_pct']:.1f}% | "
+            f"{row['corrupted_quantities']} | {row['omissions']} | {p50_p95} | {passes} |"
+        )
+
+    lines.extend([
+        "",
+        "## Kluczowe wnioski i rekomendacje (R09 ➔ R10)",
+        "",
+    ])
+    for rec in report.recommendations:
+        lines.append(f"- {rec}")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def run_multi_engine_benchmark(
+    pdf_path: Path,
+    pages: list[int],
+    modes: Optional[list[OcrEngineMode]] = None,
+    languages: Optional[list[str]] = None,
+    benchmarks_dir: Path = Path("output/benchmarks"),
+    candidates_dir: Path = Path("output/candidates"),
+    fixtures_dir: Path = Path("benchmarks/fixtures/ground_truth"),
+    benchmark_id: Optional[str] = None,
+) -> tuple[MultiEngineComparisonReport, Path, Path]:
+    """Execute candidate runs for multiple engines, evaluate them, and export comparison artifacts."""
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_path}")
+
+    benchmarks_dir.mkdir(parents=True, exist_ok=True)
+    candidates_dir.mkdir(parents=True, exist_ok=True)
+
+    b_id = benchmark_id or f"bench_ocr_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+    target_modes = modes or [
+        OcrEngineMode.NATIVE,
+        OcrEngineMode.FULL_PAGE,
+        OcrEngineMode.RAPID_OCR,
+    ]
+    langs = languages or ["pl", "en"]
+
+    manifest_paths: list[Path] = []
+
+    for mode in target_modes:
+        run_id = f"{b_id}_{mode.value}"
+        manifest = run_candidate_conversion(
+            pdf_path=pdf_path,
+            pages=pages,
+            mode=mode,
+            languages=langs,
+            output_base_dir=candidates_dir,
+            run_id=run_id,
+        )
+        cand_dir = candidates_dir / run_id
+        manifest_paths.append(cand_dir / "manifest.json")
+
+    report = compare_candidate_manifests(
+        manifest_paths=manifest_paths,
+        fixtures_dir=fixtures_dir,
+        benchmark_id=b_id,
+    )
+
+    json_path = benchmarks_dir / f"{b_id}.json"
+    json_path.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
+
+    md_path = benchmarks_dir / f"{b_id}.md"
+    md_path.write_text(format_comparison_markdown(report), encoding="utf-8")
+
+    return report, json_path, md_path

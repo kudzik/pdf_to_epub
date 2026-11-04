@@ -12,6 +12,9 @@ from src.benchmark import (
     evaluate_critical_quantities,
     evaluate_page_quality,
     evaluate_candidate_run,
+    compute_percentiles,
+    compare_candidate_manifests,
+    format_comparison_markdown,
 )
 from src.ground_truth import (
     PageGroundTruth,
@@ -222,3 +225,93 @@ def test_evaluate_candidate_run_against_fixtures(tmp_path: Path):
     assert report.pages_evaluated == [58]
     assert report.exact_critical_quantities > 10
     assert report.quantity_accuracy_pct > 70.0
+
+
+def test_compute_percentiles():
+    assert compute_percentiles([]) == (0.0, 0.0)
+    assert compute_percentiles([10.0]) == (10.0, 10.0)
+    vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    p50, p95 = compute_percentiles(vals)
+    assert p50 == 5.0
+    assert p95 == 9.0
+
+
+def test_compare_candidate_manifests(tmp_path: Path):
+    cand_base = tmp_path / "candidates"
+    cand_base.mkdir(parents=True)
+
+    # Variant A (Native)
+    dir_a = cand_base / "cand_a"
+    dir_a.mkdir()
+    (dir_a / "ksiazka.md").write_text("POLISH MILD HERB PEPPER pieprz ziołowy łagodny", encoding="utf-8")
+    cfg_a = CandidateRunConfig(
+        run_id="cand_a",
+        mode=OcrEngineMode.NATIVE,
+        languages=["pl", "en"],
+        pages=[58],
+        source_pdf_path="input/ksiazka.pdf",
+        source_pdf_sha256="abc",
+        output_dir=str(dir_a),
+        docling_version="2.146.0",
+    )
+    man_a = CandidateRunManifest(
+        config=cfg_a,
+        pages_converted=[58],
+        total_pages=1,
+        total_blocks=5,
+        candidate_markdown_path="ksiazka.md",
+        candidate_markdown_sha256="123",
+        duration_seconds=2.5,
+        page_durations={58: 2.5},
+        is_production_truth=False,
+    )
+    man_a_path = dir_a / "manifest.json"
+    man_a_path.write_text(man_a.model_dump_json(indent=2), encoding="utf-8")
+
+    # Variant B (Full Page EasyOCR)
+    dir_b = cand_base / "cand_b"
+    dir_b.mkdir()
+    (dir_b / "ksiazka.md").write_text(
+        "POLISH MILD HERB PEPPER pieprz ziołowy łagodny\nFollowing the instructions above, crush or grind and sift together: 2 t. savory, 2 t. marjoram",
+        encoding="utf-8",
+    )
+    cfg_b = CandidateRunConfig(
+        run_id="cand_b",
+        mode=OcrEngineMode.FULL_PAGE,
+        languages=["pl", "en"],
+        pages=[58],
+        source_pdf_path="input/ksiazka.pdf",
+        source_pdf_sha256="abc",
+        output_dir=str(dir_b),
+        docling_version="2.146.0",
+    )
+    man_b = CandidateRunManifest(
+        config=cfg_b,
+        pages_converted=[58],
+        total_pages=1,
+        total_blocks=12,
+        candidate_markdown_path="ksiazka.md",
+        candidate_markdown_sha256="456",
+        duration_seconds=8.0,
+        page_durations={58: 8.0},
+        is_production_truth=False,
+    )
+    man_b_path = dir_b / "manifest.json"
+    man_b_path.write_text(man_b.model_dump_json(indent=2), encoding="utf-8")
+
+    comparison = compare_candidate_manifests(
+        manifest_paths=[man_a_path, man_b_path],
+        fixtures_dir=Path("benchmarks/fixtures/ground_truth"),
+    )
+
+    assert comparison.pages_evaluated == [58]
+    assert len(comparison.summary_table) == 2
+    assert "native" in comparison.engine_reports
+    assert "full_page" in comparison.engine_reports
+    assert comparison.fastest_engine == "native"
+    assert comparison.best_overall_engine in ("native", "full_page")
+
+    md = format_comparison_markdown(comparison)
+    assert "# Raport z Benchmarku OCR" in md
+    assert "`native`" in md
+    assert "`full_page`" in md
