@@ -1195,6 +1195,140 @@ def extract_page_adapter_cmd(
     console.print(table)
 
 
+@app.command(name="candidate-convert")
+def candidate_convert_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (domyślnie 'ksiazka')."),
+    ] = "ksiazka",
+    pages: Annotated[
+        str,
+        typer.Option("--pages", "-p", help="Zakres stron (np. '25-26') lub lista oddzielona przecinkami (np. '25,26,40')."),
+    ] = "25",
+    mode: Annotated[
+        str,
+        typer.Option("--mode", "-m", help="Jawny tryb OCR: 'native' (warstwa PDF), 'full_page' (EasyOCR cała strona), 'layout_regions'."),
+    ] = "native",
+    languages: Annotated[
+        str,
+        typer.Option("--languages", "-l", help="Języki dla OCR rozdzielone przecinkami (np. 'pl,en')."),
+    ] = "pl,en",
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run-id", help="Własny identyfikator przebiegu kandydackiego."),
+    ] = None,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Katalog bazowy dla kandydatów (domyślnie output/candidates)."),
+    ] = Path("output/candidates"),
+):
+    """Wykonuje izolowaną konwersję stron do katalogu kandydata z jawnym trybem OCR."""
+    from src.ocr_modes import OcrEngineMode, run_candidate_conversion
+
+    pdf_path = Path(f"input/{book}.pdf")
+    if not pdf_path.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono pliku PDF: {pdf_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        engine_mode = OcrEngineMode(mode.lower().strip())
+    except ValueError:
+        valid_modes = [m.value for m in OcrEngineMode]
+        console.print(f"[bold red]Błąd:[/bold red] Nieznany tryb OCR '{mode}'. Dostępne: {valid_modes}")
+        raise typer.Exit(code=1)
+
+    # Parse pages
+    parsed_pages: list[int] = []
+    try:
+        if "-" in pages:
+            parts = [int(x.strip()) for x in pages.split("-")]
+            if len(parts) == 2:
+                parsed_pages = list(range(parts[0], parts[1] + 1))
+            else:
+                raise ValueError
+        else:
+            parsed_pages = [int(x.strip()) for x in pages.split(",") if x.strip()]
+        if not parsed_pages:
+            raise ValueError
+    except ValueError:
+        console.print(f"[bold red]Błąd:[/bold red] Niepoprawny format stron: '{pages}'. Użyj np. '25-26' lub '25,40,58'.")
+        raise typer.Exit(code=1)
+
+    lang_list = [lang.strip() for lang in languages.split(",") if lang.strip()]
+
+    console.print(
+        f"[cyan]Uruchamianie konwersji kandydata: {len(parsed_pages)} stron, "
+        f"tryb=[bold]{engine_mode.value}[/bold], PDF={pdf_path.name}...[/cyan]"
+    )
+
+    manifest = run_candidate_conversion(
+        pdf_path=pdf_path,
+        pages=parsed_pages,
+        mode=engine_mode,
+        languages=lang_list,
+        output_base_dir=output_dir,
+        run_id=run_id,
+    )
+
+    console.print(f"\n[bold green]✓ Konwersja kandydata zakończona pomyślnie![/bold green]")
+    console.print(f"  • Run ID: [bold cyan]{manifest.config.run_id}[/bold cyan]")
+    console.print(f"  • Tryb: [bold]{manifest.config.mode.value}[/bold]")
+    console.print(f"  • Przetworzono stron: [bold]{manifest.total_pages}[/bold] ({manifest.pages_converted})")
+    console.print(f"  • Wyekstrahowano bloków ogółem: [bold]{manifest.total_blocks}[/bold]")
+    console.print(f"  • Plik kandydata Markdown: [green]{manifest.config.output_dir}/{manifest.candidate_markdown_path}[/green]")
+    console.print(f"  • SHA-256 Markdowna: [dim]{manifest.candidate_markdown_sha256}[/dim]")
+    console.print(f"  • Wersja produkcyjna chroniona: [bold green]is_production_truth = {manifest.is_production_truth}[/bold green]")
+
+
+@app.command(name="candidate-list")
+def candidate_list_cmd(
+    candidates_dir: Annotated[
+        Path,
+        typer.Option("--candidates-dir", help="Katalog kandydatów (domyślnie output/candidates)."),
+    ] = Path("output/candidates"),
+):
+    """Wyświetla listę zarejestrowanych przebiegów kandydackich."""
+    from src.ocr_modes import load_candidate_manifest
+
+    if not candidates_dir.exists():
+        console.print(f"[bold yellow]Brak katalogu kandydatów: {candidates_dir}[/bold yellow]")
+        return
+
+    manifests = []
+    for cand_folder in sorted(candidates_dir.iterdir()):
+        if cand_folder.is_dir():
+            m_file = cand_folder / "manifest.json"
+            if m_file.exists():
+                try:
+                    manifests.append(load_candidate_manifest(m_file))
+                except Exception:
+                    continue
+
+    if not manifests:
+        console.print(f"[bold yellow]Brak przebiegów kandydackich w {candidates_dir}[/bold yellow]")
+        return
+
+    table = Table(title="Przebiegi kandydackie książki (output/candidates/)")
+    table.add_column("Run ID", style="cyan")
+    table.add_column("Tryb", style="white")
+    table.add_column("Strony", style="yellow")
+    table.add_column("Bloki", justify="right", style="green")
+    table.add_column("Data utworzenia", style="dim")
+    table.add_column("SHA-256 MD", style="magenta")
+
+    for m in manifests:
+        table.add_row(
+            m.config.run_id,
+            m.config.mode.value,
+            str(m.pages_converted),
+            str(m.total_blocks),
+            m.config.created_at[:19].replace("T", " "),
+            m.candidate_markdown_sha256[:12] + "..." if m.candidate_markdown_sha256 else "-",
+        )
+
+    console.print(table)
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
