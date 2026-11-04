@@ -18,6 +18,7 @@ from src.auditor import audit_markdown_file
 from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
 from src.snapshot import SnapshotOptions, create_snapshot, verify_snapshot_integrity
 from src.history import load_history_ledger, verify_index_anchors
+from src.benchmark_manifest import load_test_pages_manifest, validate_manifest_consistency
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3 z integracją WSL/Windows.",
@@ -838,6 +839,68 @@ def history_cmd(
         )
 
     console.print(table)
+
+
+@app.command(name="test-manifest")
+def test_manifest_cmd(
+    manifest_path: Annotated[
+        Path,
+        typer.Option("--path", "-p", help="Ścieżka do pliku manifestu stron testowych."),
+    ] = Path("benchmarks/fixtures/test_pages_manifest.json"),
+    show_details: Annotated[
+        bool,
+        typer.Option("--details", "-d", help="Wyświetl szczegółową listę stron testowych."),
+    ] = False,
+):
+    """Wyświetla lub weryfikuje manifest stron testowych (20 stron dev + 10 stron holdout)."""
+    from rich.table import Table
+
+    try:
+        manifest = load_test_pages_manifest(manifest_path)
+    except Exception as e:
+        console.print(f"[bold red]Błąd wczytywania manifestu:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    validation = validate_manifest_consistency(manifest)
+    if validation["is_valid"]:
+        console.print(f"[bold green]✓ Manifest stron testowych jest poprawny i spójny:[/bold green] {manifest_path}")
+        console.print(f"  Strony rozwojowe (dev): {validation['dev_count']} (strojenie, w tym trudne przypadki)")
+        console.print(f"  Strony odłożone (holdout): {validation['holdout_count']} (ślepy test końcowy)")
+        console.print(f"  Łącznie stron testowych: {validation['total_test_pages']}")
+    else:
+        console.print("[bold red]✗ Błąd spójności manifestu stron testowych:[/bold red]")
+        for err in validation["errors"]:
+            console.print(f"  - [red]{err}[/red]")
+        raise typer.Exit(code=1)
+
+    if show_details:
+        table = Table(title="Manifest stron testowych (Dev & Holdout)")
+        table.add_column("Zbiór", style="bold cyan")
+        table.add_column("PDF", justify="right", style="bold")
+        table.add_column("Druk", justify="right", style="dim")
+        table.add_column("Rozdział", style="magenta")
+        table.add_column("Układ", style="white")
+        table.add_column("Główne wyzwania / Cechy", style="yellow")
+
+        for p in manifest.dev_pages:
+            table.add_row(
+                "[cyan]DEV[/cyan]",
+                str(p.pdf_page),
+                p.printed_page or "-",
+                p.chapter[:30],
+                p.layout_type.value,
+                ", ".join(p.key_challenges[:2]),
+            )
+        for p in manifest.holdout_pages:
+            table.add_row(
+                "[green]HOLDOUT[/green]",
+                str(p.pdf_page),
+                p.printed_page or "-",
+                p.chapter[:30],
+                p.layout_type.value,
+                ", ".join(p.key_challenges[:2]),
+            )
+        console.print(table)
 
 
 @app.command(name="open-windows")

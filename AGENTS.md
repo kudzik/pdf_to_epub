@@ -69,6 +69,12 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Szczegóły dla konkretnego akapitu:
   uv run python -m src.pipeline history --book ksiazka --index 51
   ```
+- **Weryfikacja manifestu stron testowych (Gate G1 / R04):**
+  ```bash
+  uv run python -m src.pipeline test-manifest
+  # Szczegółowa tabela stron dev i holdout:
+  uv run python -m src.pipeline test-manifest --details
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub
