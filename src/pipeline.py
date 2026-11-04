@@ -1807,6 +1807,112 @@ def gate_g2_evaluate_cmd(
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
+@app.command(name="pilot-evaluate")
+def pilot_evaluate_cmd(
+    input_pdf: Annotated[
+        Path,
+        typer.Option("--input-pdf", "-i", help="Ścieżka do bazowego pliku PDF."),
+    ] = Path("input/ksiazka.pdf"),
+    pages: Annotated[
+        str,
+        typer.Option("--pages", "-p", help="Zakres 50 stron do pilota (np. 201-250)."),
+    ] = "201-250",
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raporty pilota."),
+    ] = Path("output/benchmarks/pilot_50_pages"),
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run-id", "-r", help="Opcjonalny identyfikator przebiegu."),
+    ] = None,
+):
+    """Przeprowadza pilotażową konwersję 50 stron zamrożonym stosem produkcyjnym i ewaluuje Gate G3."""
+    from rich.table import Table
+    from src.pilot_evaluation import run_pilot_evaluation, save_pilot_report
+
+    # Parse page range
+    parsed_pages: list[int] = []
+    if "-" in pages:
+        parts = pages.split("-")
+        parsed_pages = list(range(int(parts[0]), int(parts[1]) + 1))
+    elif "," in pages:
+        parsed_pages = [int(p.strip()) for p in pages.split(",") if p.strip()]
+    else:
+        parsed_pages = [int(pages)]
+
+    console.print(f"[bold blue]=== Rozpoczynanie formalnego Pilota Gate G3 ({len(parsed_pages)} stron: {parsed_pages[0]}–{parsed_pages[-1]}) ===[/bold blue]")
+    try:
+        report = run_pilot_evaluation(
+            pdf_path=input_pdf,
+            pages=parsed_pages,
+            output_base_dir=Path("output/candidates"),
+            run_id=run_id,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas ewaluacji pilota 50 stron:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_pilot_report(report, output_dir)
+
+    table = Table(title=f"Wyniki Pilota 50 Stron — Gate G3 ({report.run_id})")
+    table.add_column("PDF", justify="right", style="cyan")
+    table.add_column("Kol.", justify="center")
+    table.add_column("Gutter", justify="center")
+    table.add_column("Kąt skew", justify="right", style="dim")
+    table.add_column("Bloki", justify="right")
+    table.add_column("Zaakceptowane", justify="right", style="green")
+    table.add_column("Akceptacja", justify="right", style="bold")
+    table.add_column("Czas (s)", justify="right", style="green")
+    table.add_column("Przeplatanie?", justify="center")
+
+    for ps in report.page_summaries[:15]:
+        skew_str = f"{ps.skew_angle_deg:+.1f}°" if ps.skew_angle_deg is not None else "0.0°"
+        gut_str = "[green]TAK[/green]" if ps.has_gutter else "NIE"
+        inter_str = "[bold red]TAK[/bold red]" if ps.interleaving_detected else "[bold green]NIE[/bold green]"
+        table.add_row(
+            str(ps.page_no),
+            str(ps.column_count),
+            gut_str,
+            skew_str,
+            str(ps.total_blocks),
+            str(ps.accepted_blocks),
+            f"{ps.acceptance_rate_percent}%",
+            f"{ps.duration_seconds:.2f}s",
+            inter_str,
+        )
+
+    console.print(table)
+    if len(report.page_summaries) > 15:
+        console.print(f"[dim]... oraz {len(report.page_summaries) - 15} pozostałych stron w pełnym raporcie.[/dim]")
+
+    crit_table = Table(title="Kryteria Akceptacji Bramki Gate G3 (Sekcja 14)")
+    crit_table.add_column("Kryterium", style="white")
+    crit_table.add_column("Status", justify="center")
+
+    for k, v in report.checklist.items():
+        status_str = "[bold green]PASS[/bold green]" if v else "[bold red]FAIL[/bold red]"
+        crit_table.add_row(k.replace("_", " ").capitalize(), status_str)
+
+    console.print(crit_table)
+    extrap = report.cost_extrapolation
+    console.print(f"\n[bold]Metryki jakościowe:[/bold]")
+    console.print(f"  • Wyekstrahowano bloków: [bold]{report.total_blocks}[/bold] (zaakceptowano: [bold green]{report.total_accepted_blocks}[/bold green], oflagowano: {report.total_flagged_blocks})")
+    console.print(f"  • Wskaźnik automatycznej akceptacji: [bold green]{report.overall_acceptance_rate_percent}%[/bold green]")
+    console.print(f"  • Przeplatanie kolumn: [bold green]{report.column_interleaving_cases} przypadków[/bold green]")
+    console.print(f"  • Uszkodzone przejścia stron: [bold green]{report.broken_transitions_count}[/bold green]")
+    console.print(f"\n[bold]Ekstrapolacja dla 914 stron:[/bold]")
+    console.print(f"  • Mediana (p50): [bold green]{extrap.p50_page_duration_s:.2f}s[/bold green], p95: [bold green]{extrap.p95_page_duration_s:.2f}s[/bold green]")
+    console.print(f"  • Szacowany czas pełnej książki (914 stron): [bold cyan]{extrap.estimated_total_minutes:.1f} min[/bold cyan] (~{extrap.estimated_hours_for_914_pages:.2f} h)")
+    console.print(f"  • Koszt zewnętrznych API: [bold green]${extrap.api_cost_usd:.2f} USD[/bold green] (100% lokalny RapidOCR ONNX)")
+    console.print(f"  • Zużycie pamięci: RAM {extrap.peak_ram_mb:.1f} MB, GPU VRAM {extrap.peak_gpu_vram_mb:.1f} MB")
+    console.print(f"  • Ochrona produkcji (output/markdown/ksiazka.md): [bold green]{'NIENARUSZONE' if report.production_preserved else 'NARUSZONE!'}[/bold green]")
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT BRAMKI GATE G3: {report.verdict}[/bold {verdict_color}]")
+    console.print(f"\n[bold yellow]Formalna Decyzja D10:[/bold yellow]\n  {report.decision_d10}")
+    console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
