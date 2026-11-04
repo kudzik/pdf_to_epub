@@ -2,7 +2,7 @@
 
 Stan rozpoznania: 2026-11-03. Status: **gotowy do realizacji**. Dokument jest planem, nie raportem potwierdzającym jakość nowej ekstrakcji. Podczas przygotowania planu nie wykonano nowej ekstrakcji produkcyjnej, nie zmieniono książki i nie pobrano nowych modeli.
 
-Punktem wejścia do realizacji jest checklista w sekcji 13. Aktualizujemy ją po każdym zakończonym zadaniu, podając dowód wykonania. Następne zadanie: **R02 — wspólna kontrola zapisu**.
+Punktem wejścia do realizacji jest checklista w sekcji 13. Aktualizujemy ją po każdym zakończonym zadaniu, podając dowód wykonania. Następne zadanie: **R03 — raporty i historia związane z wersją**.
 
 ## 1. Decyzja architektoniczna
 
@@ -165,7 +165,7 @@ Legenda: `[ ]` — do zrobienia, `[x]` — zakończone z dowodem. Sam działają
 
 - [x] R00 — rozpoznanie kodu i dokumentacji. Dowód: sekcje 2–12, sprawdzone opcje zainstalowanego Doclinga i zapisane przypadki wcześniejszych niepowodzeń. Nie oznacza to walidacji nowej ekstrakcji.
 - [x] R01 — snapshot i inwentaryzacja. Dowód: zaimplementowano moduł src/snapshot.py z walidacją Pydantic v2 oraz komendę CLI snapshot. Wygenerowano manifest baseline w output/snapshots/20261104_075036_ksiazka/manifest.json z sumami SHA-256 dla 119 plików (PDF, MD, BAK, metadata, css, audit, 113 assetów), zarejestrowano stan środowiska (Docling 2.146.0, Ollama qwen2.5:14b, CUDA info) oraz zweryfikowano spójność poleceniem weryfikacji i testami jednostkowymi w tests/test_snapshot.py.
-- [ ] R02 — wspólna kontrola zapisu. Dodać wersję treści, blokadę pojedynczego zapisującego dla API i CLI, kontrolę konfliktu oraz odtworzenie po przerwaniu. Wynik: test równoległych zmian i test awarii podczas publikacji. Zależność: R01.
+- [x] R02 — wspólna kontrola zapisu. Dowód: zaimplementowano moduł src/write_control.py z blokadą pojedynczego zapisującego (.lock z fcntl.flock), kontrolą expected_sha256, weryfikacją oryginalnego tekstu akapitu, ochroną grafik (AssetIntegrityError) i atomowym zapisem przez plik tymczasowy. Zaktualizowano web/src/utils/repair-store.ts oraz web/src/pages/api/patch.ts pod kątem blokad i wersji. Powiązano raport audytu z SHA-256 Markdowna (src/auditor.py) oraz zaimplementowano sprawdzanie świeżości raportu. Dodano testy jednostkowe w tests/test_write_control.py (wszystkie 63 testy pytest i 24 testy node przechodzą).
 - [ ] R03 — raporty i historia związane z wersją. Utrwalać wejście, propozycję, powód decyzji, źródło i wersje plików. Stary raport lub karta nie może być podstawą zapisu. Wynik: historia dostępna po restarcie i test przesunięcia indeksów. Zależność: R02.
 - [ ] R04 — manifest stron testowych. Wybrać 20 stron rozwojowych i 10 odłożonych, zapisać sposób doboru oraz typy układów. Wynik: manifest bez nakładania się obu części. Zależność: R01.
 - [ ] R05 — wzorce ze skanów. Przygotować transkrypcje, granice i kolejność bloków, tabele, figury oraz oznaczone ilości. Zapisać nierozstrzygnięte znaki. Wynik: sprawdzony zestaw odniesienia; żadna transkrypcja nie trafia do żądania modelu. Zależność: R04.
