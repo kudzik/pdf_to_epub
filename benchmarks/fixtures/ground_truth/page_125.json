@@ -1,0 +1,348 @@
+{
+  "page_no": 125,
+  "printed_page_no": 123,
+  "layout_type": "recipe_single_column",
+  "source_image_path": "benchmarks/fixtures/images/page_125.png",
+  "source_image_sha256": "bc669c32bbcbe3b9b222224b6c6c14a934ed9faccfee8ed7c4d0b046d0498ea3",
+  "blocks": [
+    {
+      "block_id": "p125_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "Cold Hors d'Oeuvres, Appetizers & Starter Courses 123",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_p01",
+      "reading_order": 2,
+      "block_type": "direction_step",
+      "text": "a little water so it doesn't brown. Add 2-3 washed, dried and sliced goose livers and simmer with onions under cover about 8 min. on low heat. Add 1 t. mead or sherry and saute 1 min. longer. Grind liver, onions and mushrooms 3 times. Stir in the mushroom liquid (3 T.) add 1/4 lb. (1 stick) unsalted room-temp. butter and mix well to get a creamy mixture. Season with salt, pepper, 1/4 t. freshly grated nutmeg and 1/2 t. ginger. Mound mixture on serving dish and decorate with lettuce leaves and radish roses. Note: This pate is much richer and more \"livery\" than those presented above. If you prefer a milder-flavored pate, grind together with the other ingredients 2-3 c. cooked, diced boneless chicken, turkey, veal or pork.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "2-3",
+          "unit": "items",
+          "ingredient_or_context": "goose livers",
+          "raw_token": "2-3 washed, dried and sliced goose livers",
+          "bbox": null
+        },
+        {
+          "value": "8",
+          "unit": "min.",
+          "ingredient_or_context": "simmer under cover",
+          "raw_token": "simmer with onions under cover about 8 min.",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "mead or sherry",
+          "raw_token": "1 t. mead or sherry",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "min.",
+          "ingredient_or_context": "saute duration",
+          "raw_token": "saute 1 min. longer",
+          "bbox": null
+        },
+        {
+          "value": "3",
+          "unit": "T.",
+          "ingredient_or_context": "mushroom liquid",
+          "raw_token": "mushroom liquid (3 T.)",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "lb.",
+          "ingredient_or_context": "unsalted room-temp. butter",
+          "raw_token": "1/4 lb. (1 stick) unsalted room-temp. butter",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "t.",
+          "ingredient_or_context": "freshly grated nutmeg",
+          "raw_token": "1/4 t. freshly grated nutmeg",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "ginger",
+          "raw_token": "1/2 t. ginger",
+          "bbox": null
+        },
+        {
+          "value": "2-3",
+          "unit": "c.",
+          "ingredient_or_context": "cooked diced chicken, turkey, veal or pork",
+          "raw_token": "2-3 c. cooked, diced boneless chicken",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_h01",
+      "reading_order": 3,
+      "block_type": "heading",
+      "text": "VEGETABLE ASPIC",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_sub01",
+      "reading_order": 4,
+      "block_type": "subheading",
+      "text": "galareta warzywna",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_p02",
+      "reading_order": 5,
+      "block_type": "direction_step",
+      "text": "In pot combine 2 1/2 c. water, 1/2 portion soup greens, 1 bay leaf, 1 clove, 5 peppercorns, 1 grain allspice, and 1/2 t. salt and cook 40-50 min. Meanwhile, soak 1 T. gelatin in 1/4 c. cold pre-boiled water. Strain the stock of which there should be 1 1/2 c. If there is less, make up difference with boiling water. Add gelatin mixture, heat aspic liquid without boiling and stir until gelatin is dissolved. Season with a pinch of citric acid crystals, a pinch of sugar and a pinch of pepper. For a more interesting color, add 1/2 t. caramel, 1/2 t. tomato paste or a pinch of saffron. Cool to room temp., chill slightly and use aspic to cover cold sliced meats, pate, roulades, ham roll-ups etc. Note: For more flavor add 1 crushed beef or chicken bouillon cube during cooking. This is the simplest aspic recipe we know and the results are passable, but the meat-based aspics below are much tastier.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "2 1/2",
+          "unit": "c.",
+          "ingredient_or_context": "water",
+          "raw_token": "2 1/2 c. water",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "portion",
+          "ingredient_or_context": "soup greens",
+          "raw_token": "1/2 portion soup greens",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "salt",
+          "raw_token": "1/2 t. salt",
+          "bbox": null
+        },
+        {
+          "value": "40-50",
+          "unit": "min.",
+          "ingredient_or_context": "cook duration",
+          "raw_token": "cook 40-50 min.",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "T.",
+          "ingredient_or_context": "gelatin",
+          "raw_token": "1 T. gelatin",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "cold pre-boiled water",
+          "raw_token": "1/4 c. cold pre-boiled water",
+          "bbox": null
+        },
+        {
+          "value": "1 1/2",
+          "unit": "c.",
+          "ingredient_or_context": "stock",
+          "raw_token": "1 1/2 c.",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "caramel",
+          "raw_token": "1/2 t. caramel",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "tomato paste",
+          "raw_token": "1/2 t. tomato paste",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_h02",
+      "reading_order": 6,
+      "block_type": "heading",
+      "text": "SOUP-BONE ASPIC",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_sub02",
+      "reading_order": 7,
+      "block_type": "subheading",
+      "text": "auszpik na kościach",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p125_p03",
+      "reading_order": 8,
+      "block_type": "direction_step",
+      "text": "Wash 1 lb. or so split soup bones. If you don't have a heavy meat axe, ask your butcher to split them. Place in pot with 6 1/2 c. water and cook covered 3 hrs. At start of cooking skim off scum until no more forms. Add 1 portion soup greens, 1 bay leaf, 6 peppercorns, 3 grains allspice and 1/2 t. salt; cook 1 hr. longer. Strain stock. There should be just under 2 c. If there is more, cook it down. Soak 1 1/2 t. gelatin in 5 T. cold water 10 min. Add to stock, stir to dissolve and add a pinch of citric acid crystals. Lightly beat 2 egg whites, add to stock, heat but do not boil, allow stock to become clear. Strain through linen napkin and season to taste with salt and pepper. To use, pour a little slightly chilled aspic onto serving platter no more than 1/8-1/4 inch deep and refrigerate until set. Top with slices of cold meat, pate, roulade, fried fish fillets, etc. and cover with remaining liquid. For a more colorful aspic, garnish meat or fish with hard-boiled egg slices, sliced cooked carrots, drained canned peas, zesty gherkins sliced into rounds, spiced fruits, etc. before covering with aspic liquid.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1",
+          "unit": "lb.",
+          "ingredient_or_context": "split soup bones",
+          "raw_token": "1 lb. or so split soup bones",
+          "bbox": null
+        },
+        {
+          "value": "6 1/2",
+          "unit": "c.",
+          "ingredient_or_context": "water",
+          "raw_token": "6 1/2 c. water",
+          "bbox": null
+        },
+        {
+          "value": "3",
+          "unit": "hrs.",
+          "ingredient_or_context": "cook covered",
+          "raw_token": "cook covered 3 hrs.",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "hr.",
+          "ingredient_or_context": "cook longer",
+          "raw_token": "cook 1 hr. longer",
+          "bbox": null
+        },
+        {
+          "value": "2",
+          "unit": "c.",
+          "ingredient_or_context": "stock",
+          "raw_token": "just under 2 c.",
+          "bbox": null
+        },
+        {
+          "value": "1 1/2",
+          "unit": "t.",
+          "ingredient_or_context": "gelatin",
+          "raw_token": "1 1/2 t. gelatin",
+          "bbox": null
+        },
+        {
+          "value": "5",
+          "unit": "T.",
+          "ingredient_or_context": "cold water",
+          "raw_token": "5 T. cold water",
+          "bbox": null
+        },
+        {
+          "value": "10",
+          "unit": "min.",
+          "ingredient_or_context": "soak gelatin",
+          "raw_token": "10 min.",
+          "bbox": null
+        },
+        {
+          "value": "2",
+          "unit": "items",
+          "ingredient_or_context": "egg whites",
+          "raw_token": "2 egg whites",
+          "bbox": null
+        },
+        {
+          "value": "1/8-1/4",
+          "unit": "inch",
+          "ingredient_or_context": "aspic depth",
+          "raw_token": "1/8-1/4 inch deep",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [
+    {
+      "table_id": "p125_t01",
+      "reading_order": 9,
+      "num_rows": 3,
+      "num_cols": 3,
+      "headers": [
+        "Aspic Type",
+        "Stock Volume",
+        "Gelatin Ratio"
+      ],
+      "cells": [
+        {
+          "row": 1,
+          "col": 1,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "Vegetable Aspic (galareta warzywna)"
+        },
+        {
+          "row": 1,
+          "col": 2,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "1 1/2 c. stock"
+        },
+        {
+          "row": 1,
+          "col": 3,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "1 T. gelatin"
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "Soup-Bone Aspic (auszpik na kościach)"
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "just under 2 c. stock"
+        },
+        {
+          "row": 2,
+          "col": 3,
+          "row_span": 1,
+          "col_span": 1,
+          "is_header": false,
+          "text": "1 1/2 t. gelatin"
+        }
+      ],
+      "bbox": null,
+      "caption": "Aspic and Gelatin Proportions Comparison"
+    }
+  ],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}
