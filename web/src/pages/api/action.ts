@@ -36,6 +36,8 @@ export const POST: APIRoute = async ({ request }) => {
       command = `uv run python -m src.pipeline purge --book "${bookStem}" --only-epub`;
     } else if (action === 'purge-all') {
       command = `uv run python -m src.pipeline purge --all`;
+    } else if (action === 'purge-temp') {
+      command = `uv run python -m src.pipeline purge --temp-only`;
     } else if (action === 'copy-windows') {
       // Skopiuj EPUB bezpośrednio do Windows Downloads
       if (!fs.existsSync(epubPath)) {

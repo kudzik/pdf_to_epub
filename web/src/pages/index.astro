@@ -175,6 +175,10 @@ import '../styles/global.css';
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           Usuń EPUB
         </button>
+        <button id="btnPurgeCache" class="px-3 py-2 bg-zinc-800/80 hover:bg-zinc-700 text-teal-300 hover:text-teal-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyczyść pamięć podręczną i pliki tymczasowe (candidates, cache, .bak) zachowując gotowy Markdown i EPUB">
+          <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Wyczyść cache
+        </button>
         <button id="btnPurgeWorkfiles" class="px-3 py-2 bg-zinc-800/80 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-zinc-700" title="Wyczyść pliki robocze lub zresetuj wszystko">
           <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           Wyczyść pliki
@@ -552,6 +556,7 @@ import '../styles/global.css';
     const btnCopyToWindows = document.getElementById('btnCopyToWindows');
     const btnOpenWindowsExplorer = document.getElementById('btnOpenWindowsExplorer');
     const btnPurgeEpub = document.getElementById('btnPurgeEpub');
+    const btnPurgeCache = document.getElementById('btnPurgeCache');
     const btnPurgeWorkfiles = document.getElementById('btnPurgeWorkfiles');
 
     // System powiadomień Toast (Zastępuje natywne browser alert)
@@ -1788,6 +1793,38 @@ import '../styles/global.css';
       });
     }
 
+    // Czyszczenie pamięci podręcznej i śmieci (zachowuje Markdown i EPUB)
+    async function purgeCacheOnly() {
+      showConfirmModal({
+        title: 'Wyczyść pamięć podręczną (Cache & Candidates)',
+        message: 'Czy na pewno chcesz wyczyścić pamięć podręczną i pliki tymczasowe (katalogi candidates, cache, source_cache, scratch, kopie .bak)?\n\nGotowy plik Markdown (.md) oraz EPUB (.epub) pozostaną nienaruszone!',
+        confirmText: 'Wyczyść cache',
+        danger: false,
+        onConfirm: async () => {
+          showStatus('Czyszczenie pamięci podręcznej i plików tymczasowych...', 'info');
+          try {
+            const res = await fetch('/api/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'purge-temp' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              showToast('✓ Pomyślnie oczyszczono pamięć podręczną i zwolniono miejsce na dysku!', 'success');
+              showStatus('✓ Oczyszczono pamięć podręczną (Markdown i EPUB zachowane).', 'success');
+              await fetchStatus();
+            } else {
+              showToast(`Błąd: ${data.error}`, 'error');
+              showStatus(`Błąd czyszczenia: ${data.error}`, 'error');
+            }
+          } catch (err) {
+            showToast(`Błąd: ${err.message}`, 'error');
+            showStatus(`Błąd: ${err.message}`, 'error');
+          }
+        }
+      });
+    }
+
     // Sprzątanie plików roboczych (z nowoczesnym modalem potwierdzenia)
     async function purgeWorkingFiles() {
       const currentBook = bookSelector.value || 'ksiazka';
@@ -1906,6 +1943,7 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
       btnCopyToWindows.addEventListener('click', copyToWindowsDownloads);
       btnOpenWindowsExplorer.addEventListener('click', () => openWindowsExplorer('output'));
       btnPurgeEpub.addEventListener('click', purgeEpubOnly);
+      btnPurgeCache?.addEventListener('click', purgeCacheOnly);
       btnPurgeWorkfiles.addEventListener('click', purgeWorkingFiles);
       ollamaBadge.addEventListener('click', showOllamaHelp);
 
