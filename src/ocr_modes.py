@@ -64,6 +64,7 @@ class CandidateRunConfig(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     docling_version: str
     docling_pipeline_options: dict[str, Any] = Field(default_factory=dict)
+    apply_geometry: bool = False
 
 
 class CandidateRunManifest(BaseModel):
@@ -77,6 +78,7 @@ class CandidateRunManifest(BaseModel):
     candidate_markdown_sha256: Optional[str] = None
     duration_seconds: Optional[float] = None
     page_durations: dict[int, float] = Field(default_factory=dict)
+    geometry_reports: dict[int, Any] = Field(default_factory=dict)
     completed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     is_production_truth: bool = False
 
@@ -158,6 +160,7 @@ def run_candidate_conversion(
     languages: Optional[list[str]] = None,
     output_base_dir: Path = Path("output/candidates"),
     run_id: Optional[str] = None,
+    apply_geometry: bool = False,
 ) -> CandidateRunManifest:
     """Execute an isolated candidate conversion run across specified pages.
 
@@ -201,6 +204,7 @@ def run_candidate_conversion(
         output_dir=str(cand_dir),
         docling_version=docling_ver,
         docling_pipeline_options=pipeline_summary,
+        apply_geometry=apply_geometry,
     )
 
     # Determine contiguous page range if possible, else process per page
@@ -210,6 +214,7 @@ def run_candidate_conversion(
     total_blocks = 0
     pages_converted: list[int] = []
     page_durations: dict[int, float] = {}
+    geometry_reports: dict[int, Any] = {}
 
     if is_contiguous:
         t0_conv = time.perf_counter()
@@ -219,6 +224,7 @@ def run_candidate_conversion(
         doc_dict = doc.export_to_dict()
 
         avg_page_time = round(conv_time / max(1, len(sorted_pages)), 3)
+        processed_pages: list[ExtractedPage] = []
 
         for pno in sorted_pages:
             page_durations[pno] = avg_page_time
@@ -232,18 +238,31 @@ def run_candidate_conversion(
                 target_page_no=pno,
                 transforms=[mode.value],
             )
+            if apply_geometry:
+                from src.ground_truth import render_page_image
+                from src.geometry import process_page_geometry
+
+                img_path, _ = render_page_image(pdf_path, pno, cand_dir / "images")
+                extracted_page, geo_rep = process_page_geometry(extracted_page, img_path)
+                geometry_reports[pno] = geo_rep.model_dump()
+
             save_extracted_page(extracted_page, pages_dir)
             total_blocks += len(extracted_page.blocks)
             pages_converted.append(pno)
+            processed_pages.append(extracted_page)
 
         # Export candidate Markdown
         cand_md_file = cand_dir / f"{pdf_path.stem}.md"
         ensure_candidate_does_not_overwrite_production(cand_md_file)
-        doc.save_as_markdown(
-            cand_md_file,
-            image_mode=ImageRefMode.REFERENCED,
-            artifacts_dir=assets_dir,
-        )
+        if apply_geometry:
+            md_text = "\n\n---\n\n".join(p.full_text() for p in processed_pages) + "\n"
+            cand_md_file.write_text(md_text, encoding="utf-8")
+        else:
+            doc.save_as_markdown(
+                cand_md_file,
+                image_mode=ImageRefMode.REFERENCED,
+                artifacts_dir=assets_dir,
+            )
     else:
         # Non-contiguous pages: convert each page individually
         md_pieces: list[str] = []
@@ -265,14 +284,25 @@ def run_candidate_conversion(
                 target_page_no=pno,
                 transforms=[mode.value],
             )
+            if apply_geometry:
+                from src.ground_truth import render_page_image
+                from src.geometry import process_page_geometry
+
+                img_path, _ = render_page_image(pdf_path, pno, cand_dir / "images")
+                extracted_page, geo_rep = process_page_geometry(extracted_page, img_path)
+                geometry_reports[pno] = geo_rep.model_dump()
+
             save_extracted_page(extracted_page, pages_dir)
             total_blocks += len(extracted_page.blocks)
             pages_converted.append(pno)
 
-            single_md = doc.export_to_markdown(
-                image_mode=ImageRefMode.REFERENCED,
-                image_dir=assets_dir,
-            )
+            if apply_geometry:
+                single_md = extracted_page.full_text()
+            else:
+                single_md = doc.export_to_markdown(
+                    image_mode=ImageRefMode.REFERENCED,
+                    image_dir=assets_dir,
+                )
             md_pieces.append(single_md)
 
         cand_md_file = cand_dir / f"{pdf_path.stem}.md"
@@ -291,6 +321,7 @@ def run_candidate_conversion(
         candidate_markdown_sha256=md_sha256,
         duration_seconds=total_duration,
         page_durations=page_durations,
+        geometry_reports=geometry_reports,
         is_production_truth=False,
     )
 

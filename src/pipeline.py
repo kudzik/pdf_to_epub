@@ -1195,6 +1195,82 @@ def extract_page_adapter_cmd(
     console.print(table)
 
 
+@app.command(name="geometry-inspect")
+def geometry_inspect_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (domyślnie 'ksiazka')."),
+    ] = "ksiazka",
+    page: Annotated[
+        int,
+        typer.Option("--page", "-p", help="Numer strony PDF do inspekcji geometrii."),
+    ] = 58,
+    dpi: Annotated[
+        int,
+        typer.Option("--dpi", help="Rozdzielczość renderingu do analizy."),
+    ] = 300,
+):
+    """Analizuje geometrię strony: kąt nachylenia (skew), układ wielokolumnowy i kolejność czytania."""
+    from src.ground_truth import render_page_image
+    from src.geometry import detect_skew_angle, detect_column_gutter, process_page_geometry
+    from src.extraction_adapter import from_docling_dict
+    from docling.document_converter import DocumentConverter
+
+    pdf_path = Path(f"input/{book}.pdf")
+    if not pdf_path.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono pliku PDF: {pdf_path}")
+        raise typer.Exit(code=1)
+
+    images_dir = Path("benchmarks/fixtures/images")
+    img_path, sha = render_page_image(pdf_path, page, images_dir, dpi=dpi)
+
+    import cv2
+
+    cv_img = cv2.imread(str(img_path))
+    skew_angle, gain = detect_skew_angle(cv_img)
+    gutter = detect_column_gutter(cv_img)
+
+    console.print(f"\n[bold cyan]Analiza geometrii strony {page} ({book}):[/bold cyan]")
+    console.print(f"  • Wykryty kąt nachylenia (skew): [bold]{skew_angle:+.2f}°[/bold] (gain wariancji: {gain:.2f})")
+    if abs(skew_angle) >= 0.2:
+        console.print(f"    [yellow]➔ Zalecana korekta nachylenia (deskew)[/yellow]")
+    else:
+        console.print(f"    [green]✓ Kąt w normie (< 0.2°) — prostowanie zbędne[/green]")
+
+    if gutter:
+        console.print(
+            f"  • Układ wielokolumnowy: [bold green]TAK[/bold green] (gutter na {gutter.split_x_relative*100:.1f}% szerokości, {gutter.gutter_width_px}px)"
+        )
+    else:
+        console.print(f"  • Układ wielokolumnowy: [dim]NIE (tekst jednokolumnowy)[/dim]")
+
+    # Run extraction & geometry pipeline
+    conv = DocumentConverter()
+    res = conv.convert(pdf_path, page_range=(page, page))
+    raw_page = from_docling_dict(res.document.export_to_dict(), f"inspect_p{page}", "docling", "2.0", pdf_path, sha, page)
+    refined_page, report = process_page_geometry(raw_page, img_path)
+
+    table = Table(title=f"Kolejność bloków po korekcie geometrii (strona {page})")
+    table.add_column("Kolejność", justify="right", style="cyan")
+    table.add_column("ID Bloku", style="white")
+    table.add_column("Typ", style="yellow")
+    table.add_column("Współrzędne (pt)", style="dim")
+    table.add_column("Tekst (podgląd)", style="green")
+
+    for b in refined_page.blocks:
+        bbox_str = f"[{b.bbox.l:.1f}, {b.bbox.b:.1f}, {b.bbox.r:.1f}, {b.bbox.t:.1f}]" if b.bbox else "brak"
+        table.add_row(
+            str(b.reading_order),
+            b.block_id,
+            b.block_type,
+            bbox_str,
+            b.text.strip().replace("\n", " ")[:60],
+        )
+
+    console.print(table)
+    console.print(f"[bold green]Zastosowane transformacje:[/bold green] {report.transformations_applied}")
+
+
 @app.command(name="candidate-convert")
 def candidate_convert_cmd(
     book: Annotated[
@@ -1221,6 +1297,10 @@ def candidate_convert_cmd(
         Path,
         typer.Option("--output-dir", help="Katalog bazowy dla kandydatów (domyślnie output/candidates)."),
     ] = Path("output/candidates"),
+    geometry: Annotated[
+        bool,
+        typer.Option("--geometry/--no-geometry", help="Włącz zaawansowaną korektę geometrii i separację 2 kolumn."),
+    ] = False,
 ):
     """Wykonuje izolowaną konwersję stron do katalogu kandydata z jawnym trybem OCR."""
     from src.ocr_modes import OcrEngineMode, run_candidate_conversion
@@ -1258,7 +1338,7 @@ def candidate_convert_cmd(
 
     console.print(
         f"[cyan]Uruchamianie konwersji kandydata: {len(parsed_pages)} stron, "
-        f"tryb=[bold]{engine_mode.value}[/bold], PDF={pdf_path.name}...[/cyan]"
+        f"tryb=[bold]{engine_mode.value}[/bold], PDF={pdf_path.name}, geometry={geometry}...[/cyan]"
     )
 
     manifest = run_candidate_conversion(
@@ -1268,6 +1348,7 @@ def candidate_convert_cmd(
         languages=lang_list,
         output_base_dir=output_dir,
         run_id=run_id,
+        apply_geometry=geometry,
     )
 
     console.print(f"\n[bold green]✓ Konwersja kandydata zakończona pomyślnie![/bold green]")

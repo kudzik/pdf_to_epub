@@ -232,3 +232,9 @@ def test_windows_copy_failure_preserves_successful_build(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.shutil, "copy2", deny_copy)
     assert pipeline.copy_to_windows_downloads(epub) is None
     assert epub.read_bytes() == b"epub"
+
+
+def test_geometry_inspect_cli():
+    result = runner.invoke(app, ["geometry-inspect", "--help"])
+    assert result.exit_code == 0
+    assert "Analizuje geometrię strony" in result.stdout
