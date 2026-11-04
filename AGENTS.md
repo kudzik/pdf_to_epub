@@ -63,6 +63,12 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Weryfikuje integralność istniejącego snapshotu:
   uv run python -m src.pipeline snapshot --verify-dir output/snapshots/<snapshot_id>
   ```
+- **Przeglądanie historii decyzji i weryfikacja kotwic indeksów (Gate G0 / R03):**
+  ```bash
+  uv run python -m src.pipeline history --book ksiazka
+  # Szczegóły dla konkretnego akapitu:
+  uv run python -m src.pipeline history --book ksiazka --index 51
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub
