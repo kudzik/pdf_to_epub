@@ -17,6 +17,7 @@ from src.cleaner import clean_markdown_file
 from src.auditor import audit_markdown_file
 from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
 from src.snapshot import SnapshotOptions, create_snapshot, verify_snapshot_integrity
+from src.history import load_history_ledger, verify_index_anchors
 
 app = typer.Typer(
     help="Pipeline ekstrakcji ze skanów PDF do Markdown i kompilacji EPUB 3 z integracją WSL/Windows.",
@@ -763,6 +764,80 @@ def snapshot_cmd(
         console.print(f"  Ollama: [green]Online[/green] ({manifest.environment.ollama_endpoint}, modele: {', '.join(manifest.environment.ollama_models[:3])})")
     else:
         console.print("  Ollama: [yellow]Offline lub nieosiągalna[/yellow]")
+
+
+@app.command(name="history")
+def history_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (np. 'ksiazka')."),
+    ] = "ksiazka",
+    index: Annotated[
+        Optional[int],
+        typer.Option("--index", "-i", help="Filtruj historię według numeru akapitu."),
+    ] = None,
+    verify: Annotated[
+        bool,
+        typer.Option("--verify", help="Weryfikuj kotwice indeksów w pliku Markdown (wykrywanie przesunięć)."),
+    ] = True,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog bazowy dla wyjścia."),
+    ] = Path("output"),
+):
+    """Przegląda historię decyzji, propozycji i napraw powiązaną z wersją dokumentu oraz kotwicami akapitów."""
+    from rich.table import Table
+
+    stem = book.replace(".pdf", "").replace(".md", "").replace(".epub", "")
+    ledger = load_history_ledger(stem, root_dir=Path("."))
+
+    records = ledger.records
+    if index is not None:
+        records = [r for r in records if r.paragraph_index == index]
+
+    if not records:
+        console.print(f"[yellow]Brak wpisów w historii decyzji dla książki '{stem}'.[/yellow]")
+        return
+
+    md_path = output_dir / "markdown" / f"{stem}.md"
+    anchors = {}
+    if verify and md_path.is_file():
+        anchors = verify_index_anchors(md_path, ledger)
+
+    table = Table(title=f"Historia decyzji i napraw: {stem} (łącznie: {len(records)})")
+    table.add_column("ID", style="dim", width=12)
+    table.add_column("Czas", style="cyan", width=19)
+    table.add_column("Akapit", justify="right", style="bold")
+    table.add_column("Silnik", style="magenta")
+    table.add_column("Decyzja", style="green")
+    table.add_column("Powód", style="white")
+    table.add_column("Kotwica / Przesunięcie", style="yellow")
+
+    for r in records[-50:]:
+        anchor_info = anchors.get(r.record_id, {})
+        status = anchor_info.get("status", "niezweryfikowany")
+        if status == "valid":
+            anchor_str = "[green]✓ Zgodny[/green]"
+        elif status == "shifted":
+            shift = anchor_info.get("shift_offset", 0)
+            anchor_str = f"[bold yellow]⚠ Przesunięty ({shift:+d}) -> #{anchor_info.get('current_index')}[/bold yellow]"
+        elif status == "displaced":
+            anchor_str = "[bold red]✗ Zmieniony/usunięty[/bold red]"
+        else:
+            anchor_str = "[dim]--[/dim]"
+
+        dec_color = "green" if r.decision == "applied" else ("yellow" if r.decision == "proposed" else "red")
+        table.add_row(
+            r.record_id,
+            r.timestamp[:19].replace("T", " "),
+            f"#{r.paragraph_index}",
+            r.source_engine,
+            f"[{dec_color}]{r.decision}[/{dec_color}]",
+            r.decision_reason[:40] if r.decision_reason else "-",
+            anchor_str,
+        )
+
+    console.print(table)
 
 
 @app.command(name="open-windows")

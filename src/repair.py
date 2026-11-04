@@ -3,6 +3,11 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+from src.history import (
+    HistoryRecord,
+    append_history_record,
+    compute_paragraph_sha256,
+)
 from src.write_control import (
     AssetIntegrityError,
     InvalidPatchError,
@@ -102,6 +107,22 @@ def patch_paragraph(
         owner=owner,
         timeout_seconds=timeout_seconds,
     )
+    if res.is_success and res.changed_count > 0:
+        stem = markdown_path.stem
+        append_history_record(
+            HistoryRecord(
+                book_name=stem,
+                paragraph_index=paragraph_index,
+                paragraph_sha256=compute_paragraph_sha256(expected_original or replacement_text),
+                document_sha256_before=res.sha256_before,
+                document_sha256_after=res.sha256_after,
+                source_engine=owner,
+                original_text=expected_original or "",
+                proposed_text=replacement_text,
+                decision="applied",
+                decision_reason="Akapit zmodyfikowany przez patch_paragraph",
+            )
+        )
     return res.is_success
 
 
@@ -160,4 +181,22 @@ def patch_batch_from_file(
         owner=owner,
         timeout_seconds=timeout_seconds,
     )
+    if res.is_success and res.changed_count > 0:
+        stem = markdown_path.stem
+        for p in patches:
+            if p.index in res.modified_indices:
+                append_history_record(
+                    HistoryRecord(
+                        book_name=stem,
+                        paragraph_index=p.index,
+                        paragraph_sha256=compute_paragraph_sha256(p.original or p.text),
+                        document_sha256_before=res.sha256_before,
+                        document_sha256_after=res.sha256_after,
+                        source_engine=owner,
+                        original_text=p.original or "",
+                        proposed_text=p.text,
+                        decision="applied",
+                        decision_reason="Akapit zmodyfikowany przez patch_batch_from_file",
+                    )
+                )
     return res.changed_count
