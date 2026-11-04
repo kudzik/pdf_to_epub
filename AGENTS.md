@@ -110,6 +110,11 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Zbiorczy benchmark porównawczy wielu silników (native, full_page, rapidocr) na stronach GT lub dev:
   uv run python -m src.pipeline benchmark-ocr --pages gt --modes native,full_page,rapidocr
   ```
+- **Kontrolowany test VLM na wycinkach uszkodzonych bloków (Gate G2 / R12):**
+  ```bash
+  # Test wycinków trudnych bloków (ułamki, stopnie, miary kulinarne) modelem wizyjnym Ollama:
+  uv run python -m src.pipeline vlm-test --pages 58,25 --model moondream:latest
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

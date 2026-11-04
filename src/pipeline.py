@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
 import pypdfium2 as pdfium
@@ -1652,6 +1653,85 @@ def benchmark_ocr_cmd(
         console.print(f"[bold blue]Najlepsza jakość:[/bold blue] [cyan]{report.best_overall_engine}[/cyan]")
     if report.fastest_engine:
         console.print(f"[bold blue]Najwyższa prędkość:[/bold blue] [cyan]{report.fastest_engine}[/cyan]")
+
+
+@app.command(name="vlm-test")
+def vlm_test_cmd(
+    pages: Annotated[
+        str,
+        typer.Option("--pages", "-p", help="Numery stron do testu wycinków VLM (np. '58', '58,25')."),
+    ] = "58,25",
+    model: Annotated[
+        str,
+        typer.Option("--model", "-m", help="Nazwa modelu wizyjnego w Ollama (np. 'moondream:latest')."),
+    ] = "moondream:latest",
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raporty benchmarku VLM."),
+    ] = None,
+):
+    """Przeprowadza kontrolowany test VLM na wycinkach uszkodzonych bloków zgodnie z bramką G2 (R12)."""
+    from rich.table import Table
+    from src.vlm_transcription import run_controlled_vlm_benchmark, save_vlm_benchmark_report
+
+    page_list: list[int] = []
+    for part in pages.split(","):
+        p = part.strip()
+        if p.isdigit():
+            page_list.append(int(p))
+
+    if not page_list:
+        console.print("[bold red]Błąd:[/bold red] Należy podać przynajmniej jeden prawidłowy numer strony.")
+        raise typer.Exit(code=1)
+
+    out_base = output_dir or Path(f"output/benchmarks/vlm_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+    console.print(f"[bold blue]=== Kontrolowany test VLM ({model}) na wycinkach stron: {page_list} ===[/bold blue]")
+    try:
+        report = run_controlled_vlm_benchmark(
+            pages=page_list,
+            model=model,
+            output_dir=out_base,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas testu VLM:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_vlm_benchmark_report(report, out_base)
+
+    table = Table(title=f"Wyniki Kontrolowanego Testu VLM — {report.run_id}")
+    table.add_column("Strona", justify="right", style="cyan")
+    table.add_column("Blok", style="dim")
+    table.add_column("Typ", style="white")
+    table.add_column("Werdykt", justify="center")
+    table.add_column("Halucynacja", justify="center")
+    table.add_column("Miary OK?", justify="center")
+    table.add_column("OCR CER", justify="right", style="green")
+    table.add_column("VLM CER", justify="right", style="magenta")
+
+    for c in report.comparisons:
+        hal_str = "[bold red]TAK[/bold red]" if c.hallucination_detected else "[green]NIE[/green]"
+        qty_str = "[bold green]TAK[/bold green]" if c.critical_quantities_preserved else "[bold red]NIE[/bold red]"
+        table.add_row(
+            str(c.page_no),
+            c.block_id.split("_")[-1],
+            c.block_type,
+            f"[bold green]{c.verdict}[/bold green]" if c.verdict == "vlm_better" else f"[cyan]{c.verdict}[/cyan]",
+            hal_str,
+            qty_str,
+            f"{c.ocr_cer*100:.1f}%",
+            f"{c.vlm_cer*100:.1f}%",
+        )
+
+    console.print(table)
+    console.print(f"\n[bold]Podsumowanie metryk VLM ({model}):[/bold]")
+    console.print(f"  • Średni CER: RapidOCR = [bold green]{report.ocr_mean_cer*100:.2f}%[/bold green] vs VLM = [bold magenta]{report.vlm_mean_cer*100:.2f}%[/bold magenta]")
+    console.print(f"  • Średni WER: RapidOCR = [bold green]{report.ocr_mean_wer*100:.2f}%[/bold green] vs VLM = [bold magenta]{report.vlm_mean_wer*100:.2f}%[/bold magenta]")
+    console.print(f"  • Średni czas na wycinek: RapidOCR = [bold green]~0.02s[/bold green] vs VLM = [bold magenta]{report.vlm_mean_duration_s:.2f}s[/bold magenta]")
+    console.print(f"  • Odsetek halucynacji VLM: [bold red]{report.hallucination_rate:.1f}%[/bold red]")
+    console.print(f"\n[bold yellow]Decyzja architektoniczna (D08):[/bold yellow]\n  {report.architectural_decision}")
+    console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
 @app.command(name="open-windows")
