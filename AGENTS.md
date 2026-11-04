@@ -125,6 +125,13 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Uruchomienie pilota 50 stron zamrożonym stosem produkcyjnym, kontrola przejść i ekstrapolacja kosztu:
   uv run python -m src.pipeline pilot-evaluate --pages 201-250
   ```
+- **Pełna konwersja kandydata 914 stron z checkpointami (Gate G4 / R17):**
+  ```bash
+  # Uruchomienie konwersji pełnej książki (partie po 50 stron, automatyczne wznawianie, raport pokrycia):
+  uv run python -m src.pipeline full-candidate-convert
+  # Szybki test na wybranym zakresie z mniejszą partią:
+  uv run python -m src.pipeline full-candidate-convert --pages 1-100 --batch-size 25
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

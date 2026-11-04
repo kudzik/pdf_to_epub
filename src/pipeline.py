@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 import pypdfium2 as pdfium
 import typer
 from rich.console import Console
@@ -1910,6 +1910,84 @@ def pilot_evaluate_cmd(
     console.print(f"\n[bold {verdict_color}]WERDYKT BRAMKI GATE G3: {report.verdict}[/bold {verdict_color}]")
     console.print(f"\n[bold yellow]Formalna Decyzja D10:[/bold yellow]\n  {report.decision_d10}")
     console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
+@app.command(name="full-candidate-convert")
+def full_candidate_convert_cmd(
+    input_pdf: Annotated[
+        Path,
+        typer.Option("--input-pdf", "-i", help="Ścieżka do bazowego pliku PDF."),
+    ] = Path("input/ksiazka.pdf"),
+    pages: Annotated[
+        Optional[str],
+        typer.Option("--pages", "-p", help="Zakres stron (np. '1-914', domyślnie cała książka)."),
+    ] = None,
+    batch_size: Annotated[
+        int,
+        typer.Option("--batch-size", "-b", help="Liczba stron w jednej partii checkpointu."),
+    ] = 50,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raporty pokrycia."),
+    ] = Path("output/benchmarks/full_candidate"),
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run-id", "-r", help="Identyfikator przebiegu (opcjonalny)."),
+    ] = None,
+    resume: Annotated[
+        bool,
+        typer.Option("--resume/--no-resume", help="Wznawianie od ostatniego checkpointu."),
+    ] = True,
+):
+    """Przeprowadza pełną konwersję stron do katalogu kandydata z checkpointami (Gate G4 / R17)."""
+    from rich.table import Table
+    from src.full_candidate_runner import run_full_candidate_conversion, save_full_candidate_report
+
+    parsed_pages: Optional[list[int]] = None
+    if pages:
+        if "-" in pages:
+            parts = pages.split("-")
+            parsed_pages = list(range(int(parts[0]), int(parts[1]) + 1))
+        elif "," in pages:
+            parsed_pages = [int(p.strip()) for p in pages.split(",") if p.strip()]
+        else:
+            parsed_pages = [int(pages)]
+
+    target_desc = f"{len(parsed_pages)} stron" if parsed_pages else "pełnych 914 stron"
+    console.print(f"[bold blue]=== Rozpoczynanie pełnej konwersji kandydata ({target_desc}, batch_size={batch_size}) ===[/bold blue]")
+
+    def on_progress(batch_idx: int, total_batches: int, batch: Any, skipped: bool):
+        status_lbl = "[cyan]POMINIĘTO (już ukończone)[/cyan]" if skipped else f"[green]UKOŃCZONO ({batch.duration_seconds:.1f}s, {batch.blocks_count} bloków)[/green]"
+        console.print(f"  • Partia [{batch_idx + 1}/{total_batches}]: strony {batch.start_page}–{batch.end_page} -> {status_lbl}")
+
+    try:
+        report = run_full_candidate_conversion(
+            pdf_path=input_pdf,
+            pages=parsed_pages,
+            batch_size=batch_size,
+            output_base_dir=Path("output/candidates"),
+            run_id=run_id,
+            resume=resume,
+            progress_callback=on_progress,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Błąd podczas konwersji kandydata:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    json_path, md_path = save_full_candidate_report(report, output_dir)
+
+    console.print(f"\n[bold]Podsumowanie Przebiegu Kandydata ({report.run_id}):[/bold]")
+    console.print(f"  • Pokrycie stron: [bold green]{report.total_pages_converted}/{report.total_pages_expected} ({report.coverage_percent}%)[/bold green]")
+    console.print(f"  • Łączna liczba bloków: [bold]{report.total_blocks}[/bold] (zaakceptowano: [bold green]{report.accepted_blocks}[/bold green], oflagowano: {report.flagged_blocks})")
+    console.print(f"  • Wskaźnik automatycznej akceptacji: [bold green]{report.acceptance_rate_percent}%[/bold green]")
+    console.print(f"  • Obszary niepewne: [bold yellow]{report.uncertain_areas_count}[/bold yellow] zarejestrowanych anomalii")
+    console.print(f"  • Czas trwania: [bold cyan]{report.total_duration_minutes:.2f} minut[/bold cyan] (p50: {report.p50_page_duration_s:.2f}s, p95: {report.p95_page_duration_s:.2f}s)")
+    console.print(f"  • Ochrona produkcji (output/markdown/ksiazka.md): [bold green]{'NIENARUSZONE' if report.production_preserved else 'NARUSZONE!'}[/bold green]")
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT KANDYDATA: {report.verdict}[/bold {verdict_color}]")
+    console.print(f"\n[bold green]✓ Zapisano kandydat Markdown:[/bold green] {report.candidate_markdown_path}")
+    console.print(f"[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
