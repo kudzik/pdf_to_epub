@@ -24,3 +24,10 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.2.0",
 ]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:.*force_full_page_ocr.*:DeprecationWarning",
+    "ignore:.*generate_table_images.*:DeprecationWarning",
+    "ignore:.*This field is deprecated.*:DeprecationWarning",
+]

@@ -1085,6 +1085,116 @@ def ground_truth_summary_cmd(
     )
 
 
+@app.command(name="extract-page-adapter")
+def extract_page_adapter_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (domyślnie 'ksiazka')."),
+    ] = "ksiazka",
+    page: Annotated[
+        int,
+        typer.Option("--page", "-p", help="Numer strony PDF do przetworzenia przez adapter."),
+    ] = 25,
+    ocr: Annotated[
+        bool,
+        typer.Option("--ocr/--no-ocr", help="Wymuś lub wyłącz OCR (EasyOCR). Domyślnie False (natywny odczyt)."),
+    ] = False,
+    run_id: Annotated[
+        Optional[str],
+        typer.Option("--run-id", help="Identyfikator przebiegu (domyślnie generowany na podstawie znacznika czasu)."),
+    ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option("--output-dir", help="Katalog wyjściowy dla wyników adaptera."),
+    ] = None,
+    crop_blocks: Annotated[
+        bool,
+        typer.Option("--crop-blocks/--no-crop-blocks", help="Generuj wycinki graficzne dla każdego bloku."),
+    ] = True,
+):
+    """Przetwarza stronę przez adapter ekstrakcji, utrwala pochodzenie (provenance), JSON i wycinki bloków."""
+    import importlib.metadata
+    from datetime import datetime, timezone
+    from src.extraction_adapter import (
+        from_docling_dict,
+        save_extracted_page,
+        crop_block_image,
+        compute_file_sha256,
+    )
+    from src.ground_truth import render_page_image
+
+    pdf_path = Path(f"input/{book}.pdf")
+    if not pdf_path.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono pliku PDF: {pdf_path}")
+        raise typer.Exit(code=1)
+
+    if run_id is None:
+        run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+
+    if output_dir is None:
+        output_dir = Path("output/benchmarks") / run_id
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pdf_sha = compute_file_sha256(pdf_path)
+
+    engine_name = "docling_easyocr" if ocr else "docling_native"
+    docling_ver = importlib.metadata.version("docling")
+
+    console.print(f"[cyan]Uruchamianie adaptera ekstrakcji dla strony {page} (silnik: {engine_name})...[/cyan]")
+    converter = get_converter(do_ocr=ocr, langs=["pl", "en"])
+    conv_result = converter.convert(pdf_path, page_range=(page, page))
+    doc_dict = conv_result.document.export_to_dict()
+
+    extracted = from_docling_dict(
+        doc_dict=doc_dict,
+        run_id=run_id,
+        engine=engine_name,
+        engine_version=docling_ver,
+        source_pdf_path=pdf_path,
+        source_pdf_sha256=pdf_sha,
+        target_page_no=page,
+        transforms=["native" if not ocr else "easyocr"],
+    )
+
+    out_json = save_extracted_page(extracted, output_dir)
+    console.print(f"[bold green]✓ Zapisano strukturę strony z pochodzeniem bloków:[/bold green] {out_json}")
+
+    if crop_blocks and extracted.blocks:
+        img_dir = output_dir / "images"
+        crops_dir = output_dir / "crops"
+        crops_dir.mkdir(parents=True, exist_ok=True)
+
+        page_img_path, _ = render_page_image(pdf_path, page, img_dir, dpi=300)
+        from PIL import Image
+        with Image.open(page_img_path) as full_img:
+            for b in extracted.blocks:
+                if b.bbox is not None and b.bbox.width > 0 and b.bbox.height > 0:
+                    crop = crop_block_image(
+                        page_image=full_img,
+                        bbox=b.bbox,
+                        page_width_pt=extracted.width_pt,
+                        page_height_pt=extracted.height_pt,
+                        dpi=300,
+                    )
+                    crop.save(crops_dir / f"{b.block_id}.png")
+        console.print(f"[bold green]✓ Wygenerowano wycinki {len(extracted.blocks)} bloków w:[/bold green] {crops_dir}")
+
+    # Display Rich summary table
+    table = Table(title=f"Wyekstrahowane bloki ze strony {page} (run: {run_id})")
+    table.add_column("ID", style="cyan")
+    table.add_column("Typ", style="white")
+    table.add_column("Kolejność", justify="right", style="dim")
+    table.add_column("Współrzędne (pt)", style="yellow")
+    table.add_column("Tekst (podgląd)", style="green")
+
+    for b in extracted.blocks:
+        bbox_str = f"[{b.bbox.l:.1f}, {b.bbox.b:.1f}, {b.bbox.r:.1f}, {b.bbox.t:.1f}]" if b.bbox else "brak"
+        preview = b.text.strip().replace("\n", " ")[:60]
+        table.add_row(b.block_id, b.block_type, str(b.reading_order), bbox_str, preview)
+
+    console.print(table)
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
