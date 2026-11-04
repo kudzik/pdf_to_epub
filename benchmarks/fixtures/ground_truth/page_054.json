@@ -1,0 +1,103 @@
+{
+  "page_no": 54,
+  "printed_page_no": 52,
+  "layout_type": "table_or_glossary",
+  "source_image_path": "benchmarks/fixtures/images/page_054.png",
+  "source_image_sha256": "f2a10c34e5593144de3581a31e4538202348ea08de5110edc4a03b8f4cd9554a",
+  "blocks": [
+    {
+      "block_id": "p54_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "52 Spices, Herbs, Seasonings",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_h01",
+      "reading_order": 2,
+      "block_type": "heading",
+      "text": "ONION",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_sub01",
+      "reading_order": 3,
+      "block_type": "subheading",
+      "text": "cebula",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_p01",
+      "reading_order": 4,
+      "block_type": "paragraph",
+      "text": "Onions (Allium cepa) are both a vegetable and one of the most common flavoring ingredients in Polish and many other cuisines. Chopped or thinly sliced raw onions are used in various salads. Cooked in various ways they are used in preparing a wide variety of meat, fish, egg, and vegetarian dishes, soups, and gravies. Fried, chopped onions are a frequent topping for potatoes, dumplings, noodles, and groats. They add flavor to savory stuffings, fillings, potato pancakes, and mushrooms and are usually included in marinades and pickled vegetables. Like garlic powder, commercially available onion powder is handy for sprinkling over various dishes when fresh onions are lacking or there isn't time to peel, chop, and saute them from scratch.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_h02",
+      "reading_order": 5,
+      "block_type": "heading",
+      "text": "HORSERADISH",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_sub02",
+      "reading_order": 6,
+      "block_type": "subheading",
+      "text": "chrzan",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_p02",
+      "reading_order": 7,
+      "block_type": "paragraph",
+      "text": "This sharp, pungent, eye-watering root (Cochlearia armoracia) is usually used freshly grated or marinated in vinegar. Despite its sinus-clearing potency, good horseradish should never be bitter, and the prepared variety should be kept refrigerated not more than a month. Beware of some inferior brands of prepared horseradish or horseradish sauce which may contain such fillers as turnips or rutabaga. Use prepared horseradish or horseradish sauce with beef tongue, hard-boiled eggs, fish, ham and kiełbasa and freshly grated in grated-vegetable salads, horseradish butter and ćwikła. A piece of horseradish root is often added to dill pickles and other pickled vegetables. Dry powdered horseradish is useful as a seasoning. If not commercially available, you can easily make your own. Peel and dice a horseradish root and leave it outside (a windowscreen is good for this purpose) until dehydrated and brittle. Then grate or pulverize fine in processor. Sift and store in air-tight container.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_h03",
+      "reading_order": 8,
+      "block_type": "heading",
+      "text": "MUSHROOM POWDER",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_sub03",
+      "reading_order": 9,
+      "block_type": "subheading",
+      "text": "proszek grzybowy / mączka grzybowa",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p54_p03",
+      "reading_order": 10,
+      "block_type": "paragraph",
+      "text": "This is commercially available, but you can also make your own quite easily. If you use a lot of fresh mushrooms, especially recipes that call for only the cap, you will have plenty of stems left over. Simply dry these (see food-preservation chapter), pound in mortar to a powder or pulverize in processor, strain through fine sieve, and store tightly sealed. Several sprinkles will enhance the flavor of meat, soups, gravies, sauerkraut dishes, or wherever a mushroom aroma is desired.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}

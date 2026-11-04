@@ -1,0 +1,276 @@
+{
+  "page_no": 58,
+  "printed_page_no": 56,
+  "layout_type": "recipe_single_column",
+  "source_image_path": "benchmarks/fixtures/images/page_058.png",
+  "source_image_sha256": "89ddfe8d9fea023a96ae5ef62d44cba26ba96192ae90738a033a288fc44d362e",
+  "blocks": [
+    {
+      "block_id": "p58_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "56 Spices, Herbs, Seasonings",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p01",
+      "reading_order": 2,
+      "block_type": "paragraph",
+      "text": "several months and make up a fresh batch when you run out. Naturally, it would be senseless to prepare seasonings for, let us say, lamb and mutton or duck and goose if you never prepare such dishes. An exception to this rule is Polish hunter's seasonings: Even if you never serve venison or hare, this delightful seasoning can be used to give an interesting twist of flavor to chicken, pork, beef, and other meats as well as soups and gravies. For variety, use it instead of Italian seasoning in such dishes as spaghetti, lasagne, or chicken cacciatore. (Incidentally, the latter is simply the Italian version of \"po myśliwsku\" or \"hunter's style\".) Also excellent in meatloaf and meatballs.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_sep01",
+      "reading_order": 3,
+      "block_type": "separator",
+      "text": "* * *",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_h01",
+      "reading_order": 4,
+      "block_type": "heading",
+      "text": "POLISH MILD HERB PEPPER",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_sub01",
+      "reading_order": 5,
+      "block_type": "subheading",
+      "text": "pieprz ziołowy łagodny",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p02",
+      "reading_order": 6,
+      "block_type": "ingredient_item",
+      "text": "Following the instructions above, crush or grind and sift together: 2 t. savory, 2 t. marjoram, 1 t. caraway, 1 t. coriander, and 1 t. (not freshly grated) dry horseradish.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "2",
+          "unit": "t.",
+          "ingredient_or_context": "savory",
+          "raw_token": "2 t. savory",
+          "bbox": null
+        },
+        {
+          "value": "2",
+          "unit": "t.",
+          "ingredient_or_context": "marjoram",
+          "raw_token": "2 t. marjoram",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "caraway",
+          "raw_token": "1 t. caraway",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "coriander",
+          "raw_token": "1 t. coriander",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "dry horseradish",
+          "raw_token": "1 t. (not freshly grated) dry horseradish",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_h02",
+      "reading_order": 7,
+      "block_type": "heading",
+      "text": "POLISH SHARP HERB PEPPER",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_sub02",
+      "reading_order": 8,
+      "block_type": "subheading",
+      "text": "pieprz ziołowy ostry",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p03",
+      "reading_order": 9,
+      "block_type": "ingredient_item",
+      "text": "Combine as above: 1 t. savory, 1 t. dry (pale yellow) mustard, 1 t. dry black mustard, 1 t. coriander, and 1 t. cayenne pepper.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "savory",
+          "raw_token": "1 t. savory",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "dry (pale yellow) mustard",
+          "raw_token": "1 t. dry (pale yellow) mustard",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "dry black mustard",
+          "raw_token": "1 t. dry black mustard",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "coriander",
+          "raw_token": "1 t. coriander",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "cayenne pepper",
+          "raw_token": "1 t. cayenne pepper",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p04",
+      "reading_order": 10,
+      "block_type": "paragraph",
+      "text": "Note: Herb pepper may be used in any recipe calling for ground black pepper as in the frequent directive: salt and pepper to taste. Note: Either of the above-mentioned seasonings will give a peppery taste with interesting new overtones to everything from meat, fish, soups, and gravies to farmer's cheese and scrambled eggs. Variation: Fill your pepper shaker with 1 part of either of the above-mentioned herb peppers mixed with an equal part of ground black pepper.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1",
+          "unit": "part",
+          "ingredient_or_context": "herb peppers",
+          "raw_token": "1 part of either of the above-mentioned herb peppers",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "part",
+          "ingredient_or_context": "ground black pepper",
+          "raw_token": "an equal part of ground black pepper",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_h03",
+      "reading_order": 11,
+      "block_type": "heading",
+      "text": "POLISH PORK SEASONING",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_sub03",
+      "reading_order": 12,
+      "block_type": "subheading",
+      "text": "przyprawa do mięs wieprzowych",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p05",
+      "reading_order": 13,
+      "block_type": "ingredient_item",
+      "text": "Combine: 2 t. black pepper, 2 T. marjoram, 1 t. paprika, 1 t. caraway, 1 t. sage (optional), 1 t. onion powder, and 1 t. garlic powder.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "2",
+          "unit": "t.",
+          "ingredient_or_context": "black pepper",
+          "raw_token": "2 t. black pepper",
+          "bbox": null
+        },
+        {
+          "value": "2",
+          "unit": "T.",
+          "ingredient_or_context": "marjoram",
+          "raw_token": "2 T. marjoram",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "paprika",
+          "raw_token": "1 t. paprika",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "caraway",
+          "raw_token": "1 t. caraway",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "sage (optional)",
+          "raw_token": "1 t. sage (optional)",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "onion powder",
+          "raw_token": "1 t. onion powder",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "garlic powder",
+          "raw_token": "1 t. garlic powder",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p58_p06",
+      "reading_order": 14,
+      "block_type": "paragraph",
+      "text": "Note: The perfect blend for roast pork, roast bacon, pork goulash, and bigos. Sprinkle a little over meat when preparing both Polish-style breaded pork cutlets and American-style breaded pork chops. It is also good in meatloaf, meatballs, and other ground meat dishes.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}

@@ -1,0 +1,49 @@
+{
+  "page_no": 25,
+  "printed_page_no": 23,
+  "layout_type": "prose_single_column",
+  "source_image_path": "benchmarks/fixtures/images/page_025.png",
+  "source_image_sha256": "f5bb85499911ef258ca54a8cac95aa0eed1d1e33280ebbc067a61a24aa8a3efe",
+  "blocks": [
+    {
+      "block_id": "p25_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "Foreword 23",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p25_p01",
+      "reading_order": 2,
+      "block_type": "paragraph",
+      "text": "A great many people seem to have quite a lopsided attitude toward exercise. I am sure you know people who surround themselves with every manner of push-button gadgetry. They mow their lawns by riding mini-tractors and hop into their cars when the place they are going is only half a block away. The cars, of course, are loaded down with automatic this, power that, and push-button something else, and when they get back they push another button for the automatic garage door to open. If you asked them about it, they would say it's to save time and effort. Chances are, most of the time they save is spent in an easy chair in front of the boob-tube. They probably use a remote-control channel-changer so they don't have to budge to switch programs. Eventually these same people, who do everything in their power to burn up as few calories as possible, notice that they are getting fat, flabby and out of shape. Do they change their daily routine to include more ordinary physical activity? Not on your life! They either go on some crash diet, sign up at a weight-control clinic, join an aerobics class or start going to a spa, fitness club, or gym. In other words, they pay a fortune for doing something they could correct on their own right around the house.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p25_p02",
+      "reading_order": 3,
+      "block_type": "paragraph",
+      "text": "Besides taking brisk walks, you can also burn up calories simply doing ordinary things without the aid of too much gadgetry. You might avoid hopping into the car when what you have to attend to is within reasonable walking distance, or mow the lawn if not with a manual mower, then at least with a power model that you actually have to walk behind. The kitchen provides many opportunities to exercise while doing something constructive, like using a hand-cranked meat-grinder, pounding cutlets, kneading yeast dough. Although this may smack of heresy by the standards of the advertising and convenience-product industry, what about scrubbing the floor on your hands and knees? For the able-bodied, it is marvelous exercise. Not only will the floor be cleaner than you ever thought possible, but many of those muscles which have fallen into disuse will get a good honest work-out. Instead of storing calories, you will be putting them to good use and your body will be the winner. The more different muscles, ligaments, and joints that are regularly exerted, the less chance there is of a painful sprain during that occasional stretch to reach something on the top shelf or some unusual bend or twist. Moreover, regular physical activity is an excellent way to keep cholesterol in check and promote many of the body's natural functions. It strengthens the heart, increases the lungs' air capacity, improves circulation, promotes regularity and provides an overall sense of well-being. Aren't those reasons enough to choose a nice brisk walk the next time you are tempted to plop yourself in front of the TV set?",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p25_p03",
+      "reading_order": 4,
+      "block_type": "paragraph",
+      "text": "In addition to food fallacies, fad-inspired nutritional obsessions, and a one-sided view of exercise, industry opinion-molders have also worked overtime to entrench a self-serving approach to food preparation itself. Their classic battle cry has been \"slaving over a hot stove\" and, indeed, generations of Americans have come to believe that cooking means back-breaking drudgery. It should be remembered, of course, that said opinion-molders don't",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}

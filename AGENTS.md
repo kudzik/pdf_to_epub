@@ -75,6 +75,15 @@ Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym,
   # Szczegółowa tabela stron dev i holdout:
   uv run python -m src.pipeline test-manifest --details
   ```
+- **Zarządzanie wzorcami ze skanów i rendering stron (Gate G1 / R05):**
+  ```bash
+  # Renderowanie skanów stron PDF (300 DPI) do benchmarks/fixtures/images/:
+  uv run python -m src.pipeline ground-truth-render --page 25
+  # Walidacja poprawności wzorców i spójności z manifestem:
+  uv run python -m src.pipeline ground-truth-validate
+  # Podsumowanie liczby bloków, ilości/jednostek i tabel:
+  uv run python -m src.pipeline ground-truth-summary
+  ```
 - **Otwieranie folderu z e-bookiem w Eksploratorze Windows (WSL):**
   ```bash
   uv run python -m src.pipeline open-windows --folder epub

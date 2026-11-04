@@ -1,0 +1,362 @@
+{
+  "page_no": 142,
+  "printed_page_no": 140,
+  "layout_type": "recipe_single_column",
+  "source_image_path": "benchmarks/fixtures/images/page_142.png",
+  "source_image_sha256": "5886ba8ebb9d5bc2df76c4a3120b72de3efc435fe40fbdab8888e0fdd88b0185",
+  "blocks": [
+    {
+      "block_id": "p142_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "140 Cold Savory Sauces, Dressings & Relishes",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_p01",
+      "reading_order": 2,
+      "block_type": "direction_step",
+      "text": "grated apple. Separately, combine in small pot 1/4 c. 6% distilled vinegar, 1/4 c. beer, 1/2 t. dill seed lightly crushed in mortar. Add 1 t. salt and 2-3 t. sugar, bring to boil, reduce heat, and simmer covered 5 min. Cool. Pour over beet mixture, cover, and refrigerate overnight before serving.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "6% distilled vinegar",
+          "raw_token": "1/4 c. 6% distilled vinegar",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "beer",
+          "raw_token": "1/4 c. beer",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "dill seed",
+          "raw_token": "1/2 t. dill seed",
+          "bbox": null
+        },
+        {
+          "value": "1",
+          "unit": "t.",
+          "ingredient_or_context": "salt",
+          "raw_token": "1 t. salt",
+          "bbox": null
+        },
+        {
+          "value": "2-3",
+          "unit": "t.",
+          "ingredient_or_context": "sugar",
+          "raw_token": "2-3 t. sugar",
+          "bbox": null
+        },
+        {
+          "value": "5",
+          "unit": "min.",
+          "ingredient_or_context": "simmer covered",
+          "raw_token": "simmer covered 5 min.",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_h01",
+      "reading_order": 3,
+      "block_type": "heading",
+      "text": "EASY BEET & HORSERADISH RELISH",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_sub01",
+      "reading_order": 4,
+      "block_type": "subheading",
+      "text": "ćwikła najłatwiejsza",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_p02",
+      "reading_order": 5,
+      "block_type": "direction_step",
+      "text": "Combine 2 c. coarsely grated drained canned beets (reserving liquid for soup) with 1/4-1/2 c. prepared horseradish. In pot, combine 1/4 c. 6% distilled vinegar, 1/4 c. water, 1/2 t. salt, 2-3 t. sugar and 1/4 t. slightly crushed caraway seeds or ground caraway. Bring to boil, cover, and simmer on low heat 5 min. and let cool to room temp. Pour over beet mixture, cover, and refrigerate overnight.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "2",
+          "unit": "c.",
+          "ingredient_or_context": "grated drained canned beets",
+          "raw_token": "2 c. coarsely grated drained canned beets",
+          "bbox": null
+        },
+        {
+          "value": "1/4-1/2",
+          "unit": "c.",
+          "ingredient_or_context": "prepared horseradish",
+          "raw_token": "1/4-1/2 c. prepared horseradish",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "6% distilled vinegar",
+          "raw_token": "1/4 c. 6% distilled vinegar",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "water",
+          "raw_token": "1/4 c. water",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "salt",
+          "raw_token": "1/2 t. salt",
+          "bbox": null
+        },
+        {
+          "value": "2-3",
+          "unit": "t.",
+          "ingredient_or_context": "sugar",
+          "raw_token": "2-3 t. sugar",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "t.",
+          "ingredient_or_context": "caraway seeds",
+          "raw_token": "1/4 t. slightly crushed caraway seeds",
+          "bbox": null
+        },
+        {
+          "value": "5",
+          "unit": "min.",
+          "ingredient_or_context": "simmer on low heat",
+          "raw_token": "simmer on low heat 5 min.",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_h02",
+      "reading_order": 6,
+      "block_type": "heading",
+      "text": "CREAMY PLUM SAUCE",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_sub02",
+      "reading_order": 7,
+      "block_type": "subheading",
+      "text": "sos śliwkowy ze śmietaną",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": [
+        {
+          "glyph_id": "p142_g01",
+          "bbox": null,
+          "best_reading": "ą",
+          "notes": "Faded ogonek on śmietaną caused OCR to detect question mark or letter a without ogonek.",
+          "confidence_assessment": "verified_on_scan"
+        }
+      ]
+    },
+    {
+      "block_id": "p142_p03",
+      "reading_order": 8,
+      "block_type": "direction_step",
+      "text": "Fork-blend vigorously or mix in electric mixer 1/2 c. Polish plum jam (powidła) with 1/4 c. prepared horseradish. Mix in 1/2 c. sour cream, juice of 1/2 lemon, and salt to taste. Serve with cold meats.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1/2",
+          "unit": "c.",
+          "ingredient_or_context": "Polish plum jam (powidła)",
+          "raw_token": "1/2 c. Polish plum jam (powidła)",
+          "bbox": null
+        },
+        {
+          "value": "1/4",
+          "unit": "c.",
+          "ingredient_or_context": "prepared horseradish",
+          "raw_token": "1/4 c. prepared horseradish",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "c.",
+          "ingredient_or_context": "sour cream",
+          "raw_token": "1/2 c. sour cream",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "lemon",
+          "ingredient_or_context": "lemon juice",
+          "raw_token": "juice of 1/2 lemon",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_h03",
+      "reading_order": 9,
+      "block_type": "heading",
+      "text": "VINAIGRETTE (LEMON & OIL DRESSING)",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_sub03",
+      "reading_order": 10,
+      "block_type": "subheading",
+      "text": "vinaigrette/winegret",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_p04",
+      "reading_order": 11,
+      "block_type": "direction_step",
+      "text": "In small bowl, beat 3 T. lemon juice or wine vinegar with 1/2 t. salt, 1/8 t. white or black pepper, and (optional) 1/2 t. sugar. Gradually add 6 T. olive oil or other salad oil, beating constantly with wire whisk. Use immediately to dress potato salad, lettuce and other salads. Variation: Add 2-3 T. finely chopped greens: parsley, dill, chives, chervil, and tarragon.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "3",
+          "unit": "T.",
+          "ingredient_or_context": "lemon juice or wine vinegar",
+          "raw_token": "3 T. lemon juice or wine vinegar",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "salt",
+          "raw_token": "1/2 t. salt",
+          "bbox": null
+        },
+        {
+          "value": "1/8",
+          "unit": "t.",
+          "ingredient_or_context": "white or black pepper",
+          "raw_token": "1/8 t. white or black pepper",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "sugar",
+          "raw_token": "1/2 t. sugar",
+          "bbox": null
+        },
+        {
+          "value": "6",
+          "unit": "T.",
+          "ingredient_or_context": "olive oil or other salad oil",
+          "raw_token": "6 T. olive oil",
+          "bbox": null
+        },
+        {
+          "value": "2-3",
+          "unit": "T.",
+          "ingredient_or_context": "finely chopped greens",
+          "raw_token": "2-3 T. finely chopped greens",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_h04",
+      "reading_order": 12,
+      "block_type": "heading",
+      "text": "MUSTARD VINAIGRETTE",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_sub04",
+      "reading_order": 13,
+      "block_type": "subheading",
+      "text": "vinaigrette z musztardą",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p142_p05",
+      "reading_order": 14,
+      "block_type": "direction_step",
+      "text": "In small bowl beat with wire whisk 1 1/2 T. lemon juice or wine vinegar with 1/2 t. salt, 1/8 t. pepper, and (optional) 1/2 t. sugar. Mixing constantly, add 1 1/2-2 T. brown prepared mustard and 6 T. olive oil or other salad oil of choice. Use as above.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1 1/2",
+          "unit": "T.",
+          "ingredient_or_context": "lemon juice or wine vinegar",
+          "raw_token": "1 1/2 T. lemon juice or wine vinegar",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "salt",
+          "raw_token": "1/2 t. salt",
+          "bbox": null
+        },
+        {
+          "value": "1/8",
+          "unit": "t.",
+          "ingredient_or_context": "pepper",
+          "raw_token": "1/8 t. pepper",
+          "bbox": null
+        },
+        {
+          "value": "1/2",
+          "unit": "t.",
+          "ingredient_or_context": "sugar",
+          "raw_token": "1/2 t. sugar",
+          "bbox": null
+        },
+        {
+          "value": "1 1/2-2",
+          "unit": "T.",
+          "ingredient_or_context": "brown prepared mustard",
+          "raw_token": "1 1/2-2 T. brown prepared mustard",
+          "bbox": null
+        },
+        {
+          "value": "6",
+          "unit": "T.",
+          "ingredient_or_context": "olive oil",
+          "raw_token": "6 T. olive oil",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}

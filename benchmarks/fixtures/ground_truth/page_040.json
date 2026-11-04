@@ -1,0 +1,88 @@
+{
+  "page_no": 40,
+  "printed_page_no": 38,
+  "layout_type": "prose_single_column",
+  "source_image_path": "benchmarks/fixtures/images/page_040.png",
+  "source_image_sha256": "ea0602daf921d7b9a02d6418c589017ac190c84a9b8f4deb82a88fd00a6d8b51",
+  "blocks": [
+    {
+      "block_id": "p40_h00",
+      "reading_order": 1,
+      "block_type": "header_footer",
+      "text": "38 Foreword",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p40_p01",
+      "reading_order": 2,
+      "block_type": "paragraph",
+      "text": "A few words should be said about variables, whose understanding is absolutely essential to your quest for culinary expertise. Many recipes in this and other cookbooks may call for \"about 1 c. water\" or direct you to bake something \"20 min. or until golden brown\". It is true that various package mixes and other commercially prefabricated foods have been calculated rather precisely, but with basic, natural ingredients this is not always possible. A cup of flour may seem straightforward enough, except that a loosely packed cup suddenly grows smaller when it is tapped down even slightly. One person's idea of \"simmer at medium heat\" differs from someone else's, as does \"set aside until cool enough to handle\". Besides these subjective differences, there are variables over which the cook has little control. These include the quality, texture and moisture content of various ingredients, the hardness of the water you use, local elevation above sea level and the settings on your oven. When you set your oven at 375° does it actually produce exactly that temperature? This can be checked easily enough with a thermometer, but some of the other variables are more difficult to determine.",
+      "bbox": null,
+      "critical_quantities": [
+        {
+          "value": "1",
+          "unit": "c.",
+          "ingredient_or_context": "water",
+          "raw_token": "about 1 c. water",
+          "bbox": null
+        },
+        {
+          "value": "20",
+          "unit": "min.",
+          "ingredient_or_context": "bake duration",
+          "raw_token": "20 min.",
+          "bbox": null
+        },
+        {
+          "value": "375",
+          "unit": "°",
+          "ingredient_or_context": "oven temperature",
+          "raw_token": "375°",
+          "bbox": null
+        }
+      ],
+      "unresolved_glyphs": [
+        {
+          "glyph_id": "p40_g01",
+          "bbox": null,
+          "best_reading": "°",
+          "notes": "Degree symbol ° frequently misrecognized as 8, \", or omitted by OCR engines.",
+          "confidence_assessment": "verified_on_scan"
+        }
+      ]
+    },
+    {
+      "block_id": "p40_p02",
+      "reading_order": 3,
+      "block_type": "paragraph",
+      "text": "If you have a favorite brand of flour and usually turn out baked goods with excellent results, you may be surprised if you suddenly switch brands. The new brand may also be labeled \"enriched all-purpose flour\", but it may be just a shade more finely or coarsely milled, contain a different amount of gluten or simply come from wheat grown in slightly different soil and weather conditions. This may also be the case with many other seemingly ordinary products.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p40_p03",
+      "reading_order": 4,
+      "block_type": "paragraph",
+      "text": "The point is to be aware of such variables as you follow these or any other recipes and make the necessary adjustment as you go. Knowing your ingredients and equipment is a good start towards acquiring a \"feel\" for cooking. When something seems to be browning too quickly, although the specified cooking time has not elapsed, reduce the oven temperature somewhat or loosely cover the food with a piece of aluminum foil. We have included such hints a number of times, but to do so in every recipe would have swelled the size of this already substantial volume.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    },
+    {
+      "block_id": "p40_p04",
+      "reading_order": 5,
+      "block_type": "paragraph",
+      "text": "Some people nowadays scoff at the way old-timers approached cooking: \"Take a little of this and a bit of that\", or \"mix until it is just right\", or \"add as much water as the dough will absorb\". In many cases they were not far off the mark. What they were saying was that cooking requires a certain knack, and \"feel\" and even the best recipe is no substitute for that. For instance, no recipe for pierogi dough can give the exact amount of water needed to get it right precisely because of such variables as the dryness and texture of the flour and the dampness or softness of the water. If the dough is dry and crumbly, additional moisture is needed. If it is sticky, a bit more flour must be worked in. If you try a recipe the first time and it doesn't come out just right, don't be discouraged, try it again. Remember, even the best cooks started by preparing a given dish for the first time, and through trial and error got to where they are today.",
+      "bbox": null,
+      "critical_quantities": [],
+      "unresolved_glyphs": []
+    }
+  ],
+  "tables": [],
+  "has_unresolved_glyphs": false,
+  "unresolved_notes": null,
+  "metadata": {}
+}

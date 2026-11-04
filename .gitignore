@@ -43,6 +43,10 @@ node_modules/
 /output/epub/*
 !/output/epub/.gitkeep
 
+# Duże obrazy skanów stron generowane na żądanie z PDF (nie obciążają repozytorium git)
+/benchmarks/fixtures/images/*
+!/benchmarks/fixtures/images/.gitkeep
+
 # Lokalne zmienne środowiskowe; szablony można wersjonować
 .env
 .env.*

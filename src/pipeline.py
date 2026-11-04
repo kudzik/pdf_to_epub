@@ -6,6 +6,7 @@ from typing import Annotated, Optional
 import pypdfium2 as pdfium
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions
@@ -901,6 +902,187 @@ def test_manifest_cmd(
                 ", ".join(p.key_challenges[:2]),
             )
         console.print(table)
+
+
+@app.command(name="ground-truth-render")
+def ground_truth_render_cmd(
+    book: Annotated[
+        str,
+        typer.Option("--book", "-b", help="Nazwa książki (domyślnie 'ksiazka')."),
+    ] = "ksiazka",
+    page: Annotated[
+        Optional[int],
+        typer.Option("--page", "-p", help="Konkretny numer strony PDF do wyrenderowania."),
+    ] = None,
+    all_dev: Annotated[
+        bool,
+        typer.Option("--all-dev", help="Renderuj wszystkie strony ze zbioru DEV z manifestu."),
+    ] = False,
+    all_holdout: Annotated[
+        bool,
+        typer.Option("--all-holdout", help="Renderuj wszystkie strony ze zbioru HOLDOUT z manifestu."),
+    ] = False,
+    dpi: Annotated[
+        int,
+        typer.Option("--dpi", help="Rozdzielczość renderingu w DPI (domyślnie 300)."),
+    ] = 300,
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Katalog docelowy dla wygenerowanych skanów PNG."),
+    ] = Path("benchmarks/fixtures/images"),
+):
+    """Renderuje obrazy skanów stron PDF w wysokiej rozdzielczości (300 DPI) do wzorców."""
+    from src.ground_truth import render_page_image
+    from src.benchmark_manifest import load_test_pages_manifest
+
+    pdf_path = Path(f"input/{book}.pdf")
+    if not pdf_path.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Nie znaleziono pliku PDF: {pdf_path}")
+        raise typer.Exit(code=1)
+
+    pages_to_render: list[int] = []
+    manifest_path = Path("benchmarks/fixtures/test_pages_manifest.json")
+
+    if page is not None:
+        pages_to_render.append(page)
+    elif all_dev or all_holdout:
+        if not manifest_path.exists():
+            console.print(f"[bold red]Błąd:[/bold red] Brak pliku manifestu: {manifest_path}")
+            raise typer.Exit(code=1)
+        manifest = load_test_pages_manifest(manifest_path)
+        if all_dev:
+            pages_to_render.extend([p.pdf_page for p in manifest.dev_pages])
+        if all_holdout:
+            pages_to_render.extend([p.pdf_page for p in manifest.holdout_pages])
+    else:
+        # Default: render key test fixture pages
+        pages_to_render = [25, 40, 54, 58, 125, 142]
+
+    console.print(
+        f"[cyan]Renderowanie {len(pages_to_render)} stron ze skanu {pdf_path} (DPI={dpi}) do {output_dir}...[/cyan]"
+    )
+    for p in sorted(set(pages_to_render)):
+        img_path, sha = render_page_image(pdf_path, p, output_dir, dpi=dpi)
+        console.print(f"  • Strona {p:03d} -> [green]{img_path.name}[/green] (SHA-256: [dim]{sha[:16]}...[/dim])")
+    console.print(f"[bold green]✓ Pomyślnie wyrenderowano {len(pages_to_render)} stron testowych.[/bold green]")
+
+
+@app.command(name="ground-truth-validate")
+def ground_truth_validate_cmd(
+    fixtures_dir: Annotated[
+        Path,
+        typer.Option("--fixtures-dir", help="Katalog zawierający wzorce JSON."),
+    ] = Path("benchmarks/fixtures/ground_truth"),
+    manifest_path: Annotated[
+        Path,
+        typer.Option("--manifest", help="Ścieżka do pliku manifestu stron."),
+    ] = Path("benchmarks/fixtures/test_pages_manifest.json"),
+    verify_images: Annotated[
+        bool,
+        typer.Option("--verify-images/--no-verify-images", help="Weryfikuj obecność i sumy SHA-256 obrazów skanów."),
+    ] = True,
+):
+    """Waliduje poprawność, schematy Pydantic v2 i spójność z manifestem dla wzorców skanów."""
+    from src.ground_truth import (
+        load_all_ground_truths,
+        validate_ground_truth_against_manifest,
+        compute_file_sha256,
+    )
+
+    if not fixtures_dir.exists():
+        console.print(f"[bold red]Błąd:[/bold red] Brak katalogu wzorców: {fixtures_dir}")
+        raise typer.Exit(code=1)
+
+    fixtures = load_all_ground_truths(fixtures_dir)
+    if not fixtures:
+        console.print(f"[bold yellow]Ostrzeżenie:[/bold yellow] Brak wzorców w {fixtures_dir}")
+        raise typer.Exit(code=0)
+
+    console.print(f"[cyan]Weryfikacja {len(fixtures)} wzorców stron z {fixtures_dir}...[/cyan]")
+    errors: list[str] = []
+
+    for pno, gt in sorted(fixtures.items()):
+        try:
+            gt.validate_integrity()
+            validate_ground_truth_against_manifest(gt, manifest_path)
+
+            if verify_images:
+                img_path = Path(gt.source_image_path)
+                if not img_path.exists():
+                    errors.append(f"Strona {pno:03d}: brak pliku obrazu '{img_path}'")
+                else:
+                    actual_sha = compute_file_sha256(img_path)
+                    if actual_sha != gt.source_image_sha256:
+                        errors.append(
+                            f"Strona {pno:03d}: niezgodność SHA-256 obrazu (oczekiwano {gt.source_image_sha256[:12]}, jest {actual_sha[:12]})"
+                        )
+        except Exception as e:
+            errors.append(f"Strona {pno:03d}: {e}")
+
+    if errors:
+        console.print(f"[bold red]Wykryto {len(errors)} błędów spójności wzorców:[/bold red]")
+        for err in errors:
+            console.print(f"  • [red]{err}[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold green]✓ Wszystkie {len(fixtures)} wzorców przeszło weryfikację pomyślnie![/bold green]")
+
+
+@app.command(name="ground-truth-summary")
+def ground_truth_summary_cmd(
+    fixtures_dir: Annotated[
+        Path,
+        typer.Option("--fixtures-dir", help="Katalog zawierający wzorce JSON."),
+    ] = Path("benchmarks/fixtures/ground_truth"),
+):
+    """Wyświetla podsumowanie zdefiniowanych wzorców referencyjnych (bloki, ilości, tabele)."""
+    from src.ground_truth import load_all_ground_truths
+
+    fixtures = load_all_ground_truths(fixtures_dir)
+    if not fixtures:
+        console.print(f"[bold yellow]Brak wzorców w {fixtures_dir}[/bold yellow]")
+        return
+
+    table = Table(title="Wzorce referencyjne ze skanów (Ground Truth Fixtures)")
+    table.add_column("PDF", justify="right", style="cyan")
+    table.add_column("Druk", justify="right", style="dim")
+    table.add_column("Układ", style="white")
+    table.add_column("Bloki", justify="right", style="green")
+    table.add_column("Ilości/Jedn.", justify="right", style="yellow")
+    table.add_column("Tabele", justify="right", style="magenta")
+    table.add_column("Glify niepewne", justify="right", style="red")
+
+    total_blocks = 0
+    total_quantities = 0
+    total_tables = 0
+    total_glyphs = 0
+
+    for pno, gt in sorted(fixtures.items()):
+        blocks = len(gt.blocks)
+        quantities = len(gt.all_critical_quantities())
+        tables = len(gt.tables)
+        glyphs = len(gt.all_unresolved_glyphs())
+
+        total_blocks += blocks
+        total_quantities += quantities
+        total_tables += tables
+        total_glyphs += glyphs
+
+        table.add_row(
+            str(gt.page_no),
+            str(gt.printed_page_no or "-"),
+            gt.layout_type,
+            str(blocks),
+            str(quantities),
+            str(tables),
+            str(glyphs) if glyphs > 0 else "-",
+        )
+
+    console.print(table)
+    console.print(
+        f"[bold]Łącznie:[/bold] {len(fixtures)} stron, {total_blocks} bloków, "
+        f"{total_quantities} adnotacji ilości/miar, {total_tables} tabel, {total_glyphs} oznaczonych trudnych glifów."
+    )
 
 
 @app.command(name="open-windows")
