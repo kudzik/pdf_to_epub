@@ -635,10 +635,18 @@ def purge_cmd(
         bool,
         typer.Option("--keep-epub", help="Zachowaj gotowy plik .epub (domyślne zachowanie)."),
     ] = True,
+    keep_snapshots: Annotated[
+        bool,
+        typer.Option("--keep-snapshots", help="Zachowaj katalog snapshotów bezpieczeństwa."),
+    ] = False,
+    keep_benchmarks: Annotated[
+        bool,
+        typer.Option("--keep-benchmarks", help="Zachowaj raporty benchmarków i ewaluacji."),
+    ] = False,
     output_dir: Annotated[Path, typer.Option("--output-dir", "-o")] = Path("output"),
 ):
     """
-    Usuwa wygenerowane pliki robocze (.md, .bak, assets, raporty, cache, candidates) po skończonej pracy.
+    Usuwa wygenerowane pliki robocze (.md, .bak, assets, raporty, cache, candidates, benchmarks, rag, snapshots) po skończonej pracy.
     Domyślnie zachowuje gotowy plik .epub.
     Opcja --temp-only usuwa wyłącznie pamięć podręczną i pliki tymczasowe bez naruszania Markdowna i EPUB.
     """
@@ -731,20 +739,23 @@ def purge_cmd(
             shutil.rmtree(nested_output)
             deleted_files += 1
 
-        # Usunięcie śmieci w cache i candidates
+        # Usunięcie śmieci w cache, candidates, scratch
         deleted_files += _clean_directory_contents(output_dir / "candidates")
         deleted_files += _clean_directory_contents(output_dir / "cache" / "images")
         deleted_files += _clean_directory_contents(output_dir / "cache")
         deleted_files += _clean_directory_contents(output_dir / "source_cache")
         deleted_files += _clean_directory_contents(output_dir / "scratch")
 
-        # Usunięcie zbędnych snapshotów testowych
-        snap_folder = output_dir / "snapshots"
-        if snap_folder.exists():
-            for s in snap_folder.iterdir():
-                if s.is_dir() and s.name != "20261104_075036_ksiazka":
-                    shutil.rmtree(s)
-                    deleted_files += 1
+        # Usunięcie baz wiedzy RAG i historii audytu dla książki
+        deleted_files += _clean_directory_contents(output_dir / "rag")
+        deleted_files += _clean_directory_contents(output_dir / "history")
+
+        # Usunięcie raportów benchmarków i snapshotów
+        if not keep_benchmarks:
+            deleted_files += _clean_directory_contents(output_dir / "benchmarks")
+
+        if not keep_snapshots:
+            deleted_files += _clean_directory_contents(output_dir / "snapshots")
 
         scope = "wszystkie pliki robocze oraz EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
         console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} elementów)[/bold green]")
@@ -794,13 +805,14 @@ def purge_cmd(
         deleted_files += _clean_directory_contents(output_dir / "cache")
         deleted_files += _clean_directory_contents(output_dir / "source_cache")
         deleted_files += _clean_directory_contents(output_dir / "scratch")
+        deleted_files += _clean_directory_contents(output_dir / "rag")
+        deleted_files += _clean_directory_contents(output_dir / "history")
 
-        snap_folder = output_dir / "snapshots"
-        if snap_folder.exists():
-            for s in snap_folder.iterdir():
-                if s.is_dir() and s.name != "20261104_075036_ksiazka":
-                    shutil.rmtree(s)
-                    deleted_files += 1
+        if not keep_benchmarks:
+            deleted_files += _clean_directory_contents(output_dir / "benchmarks")
+
+        if not keep_snapshots:
+            deleted_files += _clean_directory_contents(output_dir / "snapshots")
 
         if with_epub:
             epub_folder = output_dir / "epub"
