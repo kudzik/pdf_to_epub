@@ -347,6 +347,9 @@ import '../styles/global.css';
 
     <!-- 4. LIVE EXECUTION CONSOLE & ACTIVITY FEED (Centrum Postępu i Logów) -->
     <div id="liveProgressCard" class="hidden bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-xl space-y-3 transition-all" role="status" aria-live="polite">
+      <div id="pipelineStatusBanner" class="hidden px-3 py-1.5 rounded-lg border text-xs font-medium">
+        <span id="pipelineStatusText"></span>
+      </div>
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800 pb-2.5">
         <div class="flex items-center gap-2.5">
           <div id="liveProgressSpinner" class="w-5 h-5 text-emerald-400 animate-spin">
@@ -2817,15 +2820,20 @@ import '../styles/global.css';
     }
 
     function showStatus(text, type = 'info') {
-      pipelineStatusBanner.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/40', 'text-rose-300', 'bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
-      if (type === 'success') {
-        pipelineStatusBanner.classList.add('bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300');
-      } else if (type === 'error') {
-        pipelineStatusBanner.classList.add('bg-rose-950/40', 'border-rose-500/40', 'text-rose-300');
-      } else {
-        pipelineStatusBanner.classList.add('bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
+      if (liveProgressSubtitle) {
+        liveProgressSubtitle.textContent = text;
       }
-      pipelineStatusText.textContent = text;
+      if (pipelineStatusBanner && pipelineStatusText) {
+        pipelineStatusBanner.classList.remove('hidden', 'bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300', 'bg-rose-950/40', 'border-rose-500/40', 'text-rose-300', 'bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
+        if (type === 'success') {
+          pipelineStatusBanner.classList.add('bg-emerald-950/40', 'border-emerald-500/40', 'text-emerald-300');
+        } else if (type === 'error') {
+          pipelineStatusBanner.classList.add('bg-rose-950/40', 'border-rose-500/40', 'text-rose-300');
+        } else {
+          pipelineStatusBanner.classList.add('bg-zinc-900', 'border-zinc-700', 'text-zinc-300');
+        }
+        pipelineStatusText.textContent = text;
+      }
     }
 
     function copyAgentPrompt() {
