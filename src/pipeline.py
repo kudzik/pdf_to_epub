@@ -2132,6 +2132,104 @@ def candidate_rollback_cmd(
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
 
 
+@app.command(name="epub-validate")
+def epub_validate_cmd(
+    epub_path: Annotated[
+        Path,
+        typer.Option("--epub", "-e", help="Ścieżka do pliku EPUB do walidacji."),
+    ] = Path("output/epub/ksiazka.epub"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog wyjściowy na raport walidacji."),
+    ] = Path("output/benchmarks/epub"),
+):
+    """Waliduje plik EPUB 3 pod kątem integralności kontenera, specyfikacji i obecności grafik."""
+    from src.epub_validator import validate_epub, save_epub_validation_report
+
+    console.print(f"[bold cyan]=== Rozpoczynanie Walidacji EPUB 3 ({epub_path.name}) ===[/bold cyan]")
+    report = validate_epub(epub_path)
+    json_path, md_path = save_epub_validation_report(report, output_dir)
+
+    console.print(f"\n[bold]Wynik Walidacji EPUB:[/bold]")
+    console.print(f"  • Status: [bold {'green' if report.is_valid else 'red'}]{report.verdict}[/bold {'green' if report.is_valid else 'red'}]")
+    console.print(f"  • Wersja EPUB: [bold]{report.epub_version}[/bold]")
+    console.print(f"  • Mimetype poprawny: [bold green]{report.mimetype_valid}[/bold green]")
+    console.print(f"  • Kontener XML poprawny: [bold green]{report.container_valid}[/bold green]")
+    console.print(f"  • Pakiet OPF poprawny: [bold green]{report.opf_valid}[/bold green]")
+    console.print(f"  • Nawigacja (nav.xhtml): [bold green]{report.nav_valid}[/bold green]")
+    console.print(f"  • Pozycje w manifeście: [bold]{report.total_manifest_items}[/bold] (brakujących plików: {len(report.missing_manifest_files)})")
+    console.print(f"  • Ilustracje (Assets): [bold green]{report.total_image_assets}[/bold green]")
+    if report.issues:
+        console.print(f"\n[bold yellow]Wykryte uwagi ({len(report.issues)}):[/bold yellow]")
+        for iss in report.issues:
+            color = "red" if iss.severity.value == "ERROR" else "yellow"
+            console.print(f"  • [{color}][{iss.severity.value}][/{color}] {iss.code}: {iss.message}")
+
+    verdict_color = "green" if report.verdict == "PASS" else "red"
+    console.print(f"\n[bold {verdict_color}]WERDYKT GATE G5 (EPUB): {report.verdict}[/bold {verdict_color}]")
+    console.print(f"[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
+    console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+
+
+@app.command(name="rag-export")
+def rag_export_cmd(
+    input_md: Annotated[
+        Path,
+        typer.Option("--input-md", "-m", help="Ścieżka do źródłowego pliku Markdown."),
+    ] = Path("output/markdown/ksiazka.md"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", "-o", help="Katalog docelowy na bazę wiedzy RAG."),
+    ] = Path("output/rag"),
+    embed: Annotated[
+        bool,
+        typer.Option("--embed/--no-embed", help="Generowanie embeddingów wektorowych na GPU przez Ollama."),
+    ] = False,
+    ollama_endpoint: Annotated[
+        str,
+        typer.Option("--endpoint", help="Adres endpointu Ollama."),
+    ] = "http://172.22.192.1:11434",
+    embedding_model: Annotated[
+        str,
+        typer.Option("--model", help="Nazwa modelu embeddingów w Ollama."),
+    ] = "nomic-embed-text",
+    max_words_per_chunk: Annotated[
+        int,
+        typer.Option("--max-words", help="Maksymalna liczba słów na chunk RAG."),
+    ] = 400,
+    max_embed_chunks: Annotated[
+        Optional[int],
+        typer.Option("--max-embed-chunks", help="Limit chunków do zaembedowania (None = wszystkie)."),
+    ] = None,
+):
+    """Eksportuje plik Markdown do ustrukturyzowanej bazy wiedzy RAG (JSONL/JSON) z embeddingami GPU."""
+    from src.rag_exporter import export_rag_knowledge_base
+
+    console.print(f"[bold cyan]=== Eksport Bazy Wiedzy RAG ({input_md.name}) ===[/bold cyan]")
+    if embed:
+        console.print(f"[cyan]Włączono wektoryzację GPU: model=[bold]{embedding_model}[/bold] na {ollama_endpoint}[/cyan]")
+
+    jsonl_path, json_path, summary = export_rag_knowledge_base(
+        md_path=input_md,
+        output_dir=output_dir,
+        embed=embed,
+        ollama_endpoint=ollama_endpoint,
+        embedding_model=embedding_model,
+        max_words_per_chunk=max_words_per_chunk,
+        max_embed_chunks=max_embed_chunks,
+    )
+
+    console.print(f"\n[bold green]✓ Pomyślnie wygenerowano bazę wiedzy RAG![/bold green]")
+    console.print(f"  • Łączna liczba chunków: [bold]{summary.total_chunks}[/bold]")
+    console.print(f"  • Chunki przepisów (recipes): [bold cyan]{summary.recipe_chunks_count}[/bold cyan]")
+    console.print(f"  • Chunki tekstu ogólnego: [bold]{summary.prose_chunks_count}[/bold]")
+    console.print(f"  • Wykryte miary kulinarne: [bold green]{summary.total_culinary_measurements}[/bold green]")
+    console.print(f"  • Powiązane ilustracje (assets): [bold green]{summary.total_assets_referenced}[/bold green]")
+    console.print(f"  • Zaembedowane chunki na GPU: [bold magenta]{summary.embedded_chunks_count}[/bold magenta]")
+    console.print(f"\n[bold green]✓ Zapisano plik JSONL:[/bold green] {jsonl_path}")
+    console.print(f"[bold green]✓ Zapisano raport podsumowujący:[/bold green] {json_path}")
+
+
 @app.command(name="open-windows")
 def open_windows_cmd(
     folder: Annotated[
