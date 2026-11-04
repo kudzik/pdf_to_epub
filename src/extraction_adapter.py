@@ -288,11 +288,12 @@ def save_extracted_page(page: ExtractedPage, output_dir: Path) -> Path:
     return out_file
 
 
-def load_extracted_page(file_path: Path) -> ExtractedPage:
+def load_extracted_page(file_path: Path | str) -> ExtractedPage:
     """Load and validate an ExtractedPage from JSON."""
-    if not file_path.exists():
-        raise FileNotFoundError(f"Extracted page file not found: {file_path}")
-    data = json.loads(file_path.read_text(encoding="utf-8"))
+    p = Path(file_path)
+    if not p.exists():
+        raise FileNotFoundError(f"Extracted page file not found: {p}")
+    data = json.loads(p.read_text(encoding="utf-8"))
     return ExtractedPage.model_validate(data)
 
 
