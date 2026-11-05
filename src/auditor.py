@@ -30,6 +30,7 @@ class AuditReport:
     anomalies: list[AnomalyIssue] = field(default_factory=list)
     markdown_sha256: str = ""
     generated_at: str = ""
+    completeness_checked: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -128,7 +129,7 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
         p_strip = p.strip()
         p_lines = p.count("\n") + 2  # +2 za podwójny enter
 
-        if not p_strip or p_strip.startswith("|"):
+        if not p_strip:
             current_line += p_lines
             continue
 
@@ -215,6 +216,7 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
         anomalies=anomalies,
         markdown_sha256=content_sha256,
         generated_at=gen_time,
+        completeness_checked=bool(expected_chapters),
     )
 
 

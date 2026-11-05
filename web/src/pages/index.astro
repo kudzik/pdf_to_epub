@@ -37,7 +37,7 @@ import '../styles/global.css';
         <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-sm">
           <span class="text-xs text-zinc-400 font-medium">Książka:</span>
           <select id="bookSelector" class="bg-transparent text-emerald-400 font-mono font-medium focus:outline-none cursor-pointer">
-            <option value="ksiazka" class="bg-zinc-900 text-zinc-100">ksiazka</option>
+            <option value="">Wybierz książkę…</option>
           </select>
         </div>
 
@@ -149,17 +149,17 @@ import '../styles/global.css';
         <div class="space-y-0.5">
           <div class="flex items-center gap-2">
             <span class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Zalecana kolejna akcja</span>
-            <span id="nextActionStepTag" class="text-xs text-zinc-400 font-mono">Krok 1 z 4</span>
+            <span id="nextActionStepTag" class="text-xs text-zinc-400 font-mono">Przygotowanie</span>
           </div>
-          <h2 id="nextActionTitle" class="text-base font-bold text-white tracking-tight">Krok 1: Wyekstrahuj PDF do Markdown</h2>
+          <h2 id="nextActionTitle" class="text-base font-bold text-white tracking-tight">Wybierz książkę, aby odczytać stan pracy</h2>
           <p id="nextActionDescription" class="text-xs text-zinc-400 leading-relaxed max-w-2xl">
-            Znaleziono plik PDF w katalogu input/. Kliknij, aby wygenerować źródłowy plik Markdown i wyodrębnić ilustracje.
+            Wybór książki nie uruchamia ekstrakcji ani nie zmienia plików.
           </p>
         </div>
       </div>
 
       <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-        <button id="btnNextActionCta" class="w-full md:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
+        <button disabled id="btnNextActionCta" class="w-full md:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
           <span id="nextActionCtaText">Uruchom Zalecany Krok</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
         </button>
@@ -206,6 +206,8 @@ import '../styles/global.css';
           <div id="stepStatus2" class="text-[10px] text-zinc-400 flex items-center gap-1">
             <span>● Status: --</span>
           </div>
+          <p id="extractSettingsSummary" class="mt-2 text-xs text-zinc-400"></p>
+          <button disabled data-stage-action="extract" class="mt-3 px-2 py-2 rounded border border-zinc-700 text-xs disabled:opacity-40">Ekstrahuj PDF</button>
         </div>
 
         <!-- Step 3: Czyszczenie tekstu (Krok 2) -->
@@ -221,6 +223,7 @@ import '../styles/global.css';
           <div id="stepStatus3" class="text-[10px] text-zinc-400 flex items-center gap-1">
             <span>● Status: --</span>
           </div>
+          <button disabled data-stage-action="clean" class="mt-3 px-2 py-2 rounded border border-zinc-700 text-xs disabled:opacity-40">Wyczyść tekst</button>
         </div>
 
         <!-- Step 4: Audyt i Naprawa OCR (Krok 3) -->
@@ -236,6 +239,8 @@ import '../styles/global.css';
           <div id="stepStatus4" class="text-[10px] text-zinc-400 flex items-center gap-1">
             <span>● Status: --</span>
           </div>
+          <button disabled data-stage-action="audit" class="mt-3 px-2 py-2 rounded border border-zinc-700 text-xs disabled:opacity-40">Uruchom audyt</button>
+          <button disabled data-stage-action="repair" class="mt-2 px-2 py-2 rounded border border-purple-700 text-xs disabled:opacity-40">Autopilot — napraw wykryte anomalie</button>
         </div>
 
         <!-- Step 5: EPUB 3 (Krok 4) -->
@@ -251,6 +256,7 @@ import '../styles/global.css';
           <div id="stepStatus5" class="text-[10px] text-zinc-400 flex items-center gap-1">
             <span>● Status: --</span>
           </div>
+          <button disabled data-stage-action="build" class="mt-3 px-2 py-2 rounded border border-zinc-700 text-xs disabled:opacity-40">Kompiluj i sprawdź EPUB</button>
         </div>
       </div>
     </div>
@@ -273,19 +279,19 @@ import '../styles/global.css';
               </button>
               <div class="h-4 w-px bg-zinc-700 mx-1"></div>
               <select id="extractRangeSelect" class="bg-transparent text-cyan-200 text-[11px] font-mono focus:outline-none pr-1 cursor-pointer" title="Zakres stron do ekstrakcji">
-                <option value="1-10" selected>Strony 1-10 (Szybki test ~15s)</option>
+                <option value="1-10">Strony 1-10 (Próbka w osobnym katalogu)</option>
                 <option value="1-25">Strony 1-25 (Wstęp)</option>
-                <option value="all">Pełna książka (1-914)</option>
+                <option value="all" selected>Cała książka</option>
                 <option value="custom">Własny zakres...</option>
               </select>
               <input id="extractCustomPages" type="text" placeholder="np. 20-30" class="w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-white hidden ml-1" title="Podaj zakres stron, np. 20-30 lub 5" />
             </div>
 
             <select id="extractOcrEngine" class="bg-zinc-800/80 border border-zinc-700 text-zinc-300 text-[11px] font-mono rounded-xl px-2 py-2 focus:outline-none cursor-pointer" title="Silnik OCR do użycia przy ekstrakcji">
-              <option value="rapidocr" selected>⚡ RapidOCR (Szybki, zalecany)</option>
+              <option value="rapidocr" selected>⚡ RapidOCR (wymuszony OCR)</option>
               <option value="auto">Auto (detekcja jakości)</option>
               <option value="native">Tylko warstwa tekstowa PDF</option>
-              <option value="easyocr">EasyOCR</option>
+              <option value="easyocr">EasyOCR (wymuszony OCR)</option>
             </select>
 
             <button id="btnRunClean" class="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 border border-zinc-700 active:scale-95 shadow-sm" title="Krok 2: Rekonstrukcja polskich znaków, ułamków i de-hyphenation">
@@ -979,19 +985,22 @@ import '../styles/global.css';
     // Inicjalizacja: natychmiastowe podpięcie słuchaczy zdarzeń, następnie pobranie listy książek i statusu
     async function init() {
       setupEventListeners();
+      stageAvailability();
       await loadBooks();
+      await pollJobs();
       await fetchStatus();
+      setInterval(pollJobs, 1500);
     }
 
     async function loadBooks() {
       try {
         const res = await fetch('/api/files');
         const data = await res.json();
-        if (data.books && data.books.length > 0) {
-          const currentVal = bookSelector.value;
-          bookSelector.innerHTML = data.books.map(b => {
-            const badge = b.hasEpub ? '✓ EPUB gotowy' : b.hasMd ? 'MD gotowy' : 'Tylko PDF';
-            return `<option value="${b.stem}">${b.stem} (${badge})</option>`;
+        if (Array.isArray(data.books)) {
+          const currentVal = bookSelector.value || localStorage.getItem('selectedBook');
+          bookSelector.innerHTML = '<option value="">Wybierz książkę…</option>' + data.books.map(b => {
+            const badge = b.ready ? '✓ EPUB sprawdzony' : b.hasMd ? 'Istniejący MD' : b.hasPdf ? 'PDF' : 'Archiwalny EPUB';
+            return `<option value="${escapeHtml(b.stem)}">${escapeHtml(b.stem)} (${badge})</option>`;
           }).join('');
           if (currentVal && data.books.some(b => b.stem === currentVal)) {
             bookSelector.value = currentVal;
@@ -1002,8 +1011,8 @@ import '../styles/global.css';
       }
     }
 
-    async function fetchHistoryStatuses() {
-      const currentBook = (typeof bookSelector !== 'undefined' && bookSelector && bookSelector.value) ? bookSelector.value : 'ksiazka';
+    async function fetchHistoryStatuses(historyBook = null) {
+      const currentBook = historyBook || bookSelector?.value || 'ksiazka';
       try {
         const res = await fetch(`/api/history?book=${encodeURIComponent(currentBook)}`);
         const data = await res.json();
@@ -1024,11 +1033,114 @@ import '../styles/global.css';
       }
     }
 
+    let observedJob = null;
+    let observingRemoteJob = false;
+    let pollingJobs = false;
+    let lastJobId = null;
+    function updateExtractSettings() {
+      const engine = document.getElementById('extractOcrEngine');
+      const range = document.getElementById('extractRangeSelect');
+      const pages = range.value === 'custom' ? document.getElementById('extractCustomPages').value || 'podaj zakres' : range.selectedOptions[0].textContent;
+      localStorage.setItem('extractSettings',JSON.stringify({engine:engine.value,range:range.value,custom:document.getElementById('extractCustomPages').value}));
+      document.getElementById('extractSettingsSummary').textContent = `${engine.selectedOptions[0].textContent} · ${pages}. Te same ustawienia co w dolnym pasku.`;
+    }
+    async function pollJobs() {
+      const book = bookSelector.value;
+      if (!book || pollingJobs) return;
+      pollingJobs = true;
+      try {
+        const response = await fetch(`/api/jobs?book=${encodeURIComponent(book)}`);
+        if (!response.ok) throw new Error('Nie można odczytać stanu zadania');
+        const data = await response.json();
+        if (bookSelector.value !== book) return;
+        observedJob = data.activeJob || null;
+        if (observedJob) {
+          if (!isSystemBusy) {
+            observingRemoteJob = true;
+            setSystemBusy(true, observedJob.action, `Trwa ${observedJob.action} — ${observedJob.book}`);
+          }
+          lastJobId = observedJob.id;
+          liveProgressCard.classList.remove('hidden');
+          liveTerminalDrawer.classList.remove('hidden');
+          if (data.logTail && data.job?.id === observedJob.id) liveConsoleOutput.textContent = data.logTail;
+          const seconds = Math.max(0, Math.floor((Date.now() - observedJob.startTime) / 1000));
+          systemBusySeconds = seconds;
+          liveProgressTimer.textContent = `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')} s`;
+          const progress = data.extractProgress;
+          if (observedJob.book === book && observedJob.action === 'extract' && progress?.status === 'running') {
+            liveProgressTitle.textContent = `Ekstrakcja ${book}: ${progress.percent}% (${progress.completed_pages}/${progress.total_pages})`;
+            document.getElementById('liveProgressBar').style.width = `${progress.percent || 0}%`;
+          } else liveProgressTitle.textContent = `Trwa ${observedJob.action} — ${observedJob.book}`;
+          liveProgressSubtitle.textContent = observedJob.book === book ? 'Zadanie działa na serwerze. Widok odtwarza się po odświeżeniu.' : `Zapis jest zablokowany przez operację książki ${observedJob.book}.`;
+          document.getElementById('btnCancelActiveJob').classList.remove('hidden');
+        } else if (observingRemoteJob) {
+          observingRemoteJob = false;
+          const success = data.job?.status === 'succeeded';
+          setSystemBusy(false, '', success ? 'Zadanie zakończone' : 'Zadanie przerwane lub zakończone błędem', success ? 'success' : 'error');
+          if (data.logTail) liveConsoleOutput.textContent = data.logTail;
+          document.getElementById('btnCancelActiveJob').classList.add('hidden');
+          lastJobId = data.job?.id || lastJobId;
+          await fetchStatus();
+        } else if (!isSystemBusy && data.job && data.job.id !== lastJobId) {
+          lastJobId = data.job.id;
+          liveProgressCard.classList.remove('hidden');
+          liveProgressTitle.textContent = `Ostatnie zadanie: ${data.job.action} — ${data.job.status}`;
+          liveProgressSubtitle.textContent = data.job.error || 'Zapisany wynik zadania serwerowego.';
+          document.getElementById('btnCancelActiveJob').classList.add('hidden');
+          if (data.logTail) {
+            liveTerminalDrawer.classList.remove('hidden');
+            liveConsoleOutput.textContent = data.logTail;
+          }
+          await fetchStatus();
+        }
+        stageAvailability(globalStatusData);
+      } catch (error) {
+        if (observingRemoteJob) liveProgressSubtitle.textContent = 'Brak połączenia ze stanem zadania. Nie potwierdzono zakończenia.';
+      } finally { pollingJobs = false; }
+    }
+    let statusRequestId = 0;
+    let statusLoading = true;
+    function stageAvailability(data = null) {
+      const ready = !!data && !statusLoading && !isSystemBusy && !isAutopilotRunning && !observedJob;
+      const usable = !!data?.mdInfo?.usable;
+      const allow = { extract: ready && !!data?.pdfInfo?.exists, clean: ready && usable,
+        audit: ready && usable, repair: ready && !!data?.report?.anomalies?.length,
+        build: ready && usable && !!data?.report && !!data?.cleanInfo?.cleaned };
+      document.querySelectorAll('[data-stage-action]').forEach(button => {
+        button.disabled = !allow[button.dataset.stageAction];
+      });
+      for (const [button, action] of [[btnRunExtract, 'extract'], [btnRunClean, 'clean'], [btnRunAudit, 'audit'], [btnRunBuild, 'build'], [btnRunAutopilot, 'repair']]) {
+        if (button) button.disabled = !allow[action];
+      }
+      btnNextActionCta.disabled = !ready || !activeCtaHandler;
+    }
     async function fetchStatus() {
-      const currentBook = bookSelector.value || 'ksiazka';
+      const requestId = ++statusRequestId;
+      const currentBook = bookSelector.value;
+      statusLoading = true;
+      globalStatusData = null;
+      globalReport = null;
+      activeCtaHandler = null;
+      stageAvailability();
+      nextActionStepTag.textContent = currentBook ? 'Ładowanie' : 'Przygotowanie';
+      nextActionTitle.textContent = currentBook ? 'Odczytywanie stanu książki…' : 'Wybierz książkę';
+      nextActionDescription.textContent = 'Wybór książki nie uruchamia przetwarzania.';
+      anomaliesList.replaceChildren();
+      for (let i = 1; i <= 5; i++) {
+        const card = document.getElementById(`stepCard${i}`);
+        card.className = 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all';
+        document.getElementById(`stepStatus${i}`).textContent = currentBook ? 'Odczytywanie…' : 'Wybierz książkę';
+        document.getElementById(`stepBadge${i}`).textContent = '—';
+        document.getElementById(`stepSub${i}`).textContent = '';
+        document.getElementById(`stepTitle${i}`).textContent = ['PDF', 'Ekstrakcja Markdown', 'Czyszczenie tekstu', 'Audyt i naprawa', 'Kompilacja EPUB'][i - 1];
+      }
+      if (!currentBook) return;
+
       try {
         const res = await fetch(`/api/status?book=${encodeURIComponent(currentBook)}`);
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Nie udało się odczytać stanu');
+        if (requestId !== statusRequestId || bookSelector.value !== currentBook || data.book !== currentBook) return;
         globalStatusData = data;
 
         // 1. Wskaźnik Ollama i selektor modeli
@@ -1055,9 +1167,9 @@ import '../styles/global.css';
             }).join('') + '<option value="heuristic">Silnik Regułowy (Wbudowany)</option>';
 
             const saved = localStorage.getItem('selectedOllamaModel');
-            if (saved && allOptions.includes(saved)) {
+            if (saved && (saved === 'heuristic' || allOptions.includes(saved))) {
               modelSelector.value = saved;
-            } else if (currentVal && allOptions.includes(currentVal)) {
+            } else if (currentVal && (currentVal === 'heuristic' || allOptions.includes(currentVal))) {
               modelSelector.value = currentVal;
             } else if (llmModels.length > 0) {
               modelSelector.value = llmModels[0];
@@ -1085,7 +1197,7 @@ import '../styles/global.css';
         }
 
         // 3. Metryki EPUB
-        if (data.epubInfo && data.epubInfo.exists) {
+        if (data.epubInfo && data.epubInfo.current) {
           document.getElementById('statEpubSize').textContent = data.epubInfo.size;
           document.getElementById('statEpubTime').textContent = `Kompilacja: ${data.epubInfo.mtime}`;
           document.getElementById('statEpubLabel').textContent = `${data.epubInfo.filename}`;
@@ -1112,7 +1224,8 @@ import '../styles/global.css';
           document.getElementById('statLowBadge').textContent = `Low: ${low}`;
           if (anomalyCounterBadge) anomalyCounterBadge.textContent = `${total} usterek`;
 
-          await fetchHistoryStatuses();
+          await fetchHistoryStatuses(currentBook);
+          if (requestId !== statusRequestId || bookSelector.value !== currentBook) return;
           renderAnomalies();
         } else {
           const statTotal = document.getElementById('statAnomalyTotal');
@@ -1127,14 +1240,22 @@ import '../styles/global.css';
 
           anomaliesList.innerHTML = `
             <div class="bg-zinc-900/60 border border-zinc-800 rounded-xl p-8 text-center text-zinc-400">
-              <p class="font-medium">Brak wygenerowanego raportu audytu dla ${currentBook}.</p>
-              <p class="text-xs text-zinc-500 mt-1">Kliknij "Ekstrahuj z PDF" lub "Uruchom Audyt", aby rozpocząć przetwarzanie.</p>
+              <p class="font-medium">Raport audytu: ${escapeHtml(data.reportState || "missing")} — ${escapeHtml(currentBook)}.</p>
+              <p class="text-xs text-zinc-500 mt-1">Uruchom audyt istniejącego Markdowna. Ekstrakcja jest osobną operacją.</p>
             </div>
           `;
         }
+        statusLoading = false;
         updateWorkflowStepper(data);
+        stageAvailability(data);
+        if (localStorage.getItem(`autopilot:${currentBook}`) && !isAutopilotRunning) {
+          showStatus('Poprzednia sesja Autopilota została przerwana. Zapisane poprawki zachowano. Wykonaj audyt przed ponownym uruchomieniem.', 'warning');
+        }
       } catch (e) {
-        console.error('Błąd odświeżania statusu:', e);
+        if (requestId !== statusRequestId) return;
+        nextActionTitle.textContent = 'Nie udało się odczytać stanu książki';
+        nextActionDescription.textContent = e.message;
+        showStatus(e.message, 'error');
       }
     }
 
@@ -1657,7 +1778,7 @@ import '../styles/global.css';
     window.applyPatch = async function(pIdx) {
       const textarea = document.getElementById(`input-${pIdx}`);
       if (!textarea) return;
-      if (isAutopilotRunning || activeRepairController) return;
+      if (statusLoading || isSystemBusy || isAutopilotRunning || activeRepairController) return;
       const text = textarea.value;
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       const currentBook = bookSelector.value || 'ksiazka';
@@ -1705,7 +1826,7 @@ import '../styles/global.css';
     };
 
     window.applyHeuristicToCard = async function(pIdx) {
-      if (isAutopilotRunning || activeRepairController) return;
+      if (statusLoading || isSystemBusy || isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       if (!anomaly) return;
@@ -1759,7 +1880,7 @@ import '../styles/global.css';
     };
 
     window.requestOllamaRepair = async function(pIdx) {
-      if (isAutopilotRunning || activeRepairController) return;
+      if (statusLoading || isSystemBusy || isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
       const anomaly = globalReport.anomalies.find(a => a.paragraph_index === pIdx);
       if (!anomaly) return;
@@ -1889,8 +2010,13 @@ import '../styles/global.css';
         return;
       }
 
-      if (isAutopilotRunning || activeRepairController) return;
+      if (statusLoading || isSystemBusy || isAutopilotRunning || activeRepairController) return;
       const currentBook = bookSelector.value || 'ksiazka';
+      const resumeKey = `autopilot:${currentBook}`;
+      let savedRun = null;
+      try { savedRun = JSON.parse(localStorage.getItem(resumeKey) || 'null'); } catch {}
+      if (savedRun?.markdownSha === globalReport.markdown_sha256 && savedRun?.nextIndex) autopilotResumeIndex = savedRun.nextIndex;
+      localStorage.setItem(resumeKey, JSON.stringify({markdownSha:globalReport.markdown_sha256,nextIndex:typeof autopilotResumeIndex === 'undefined' ? 0 : autopilotResumeIndex}));
       const anomalies = [...globalReport.anomalies];
       const total = anomalies.length;
 
@@ -1905,6 +2031,7 @@ import '../styles/global.css';
       const engineName = isAiOnline ? `Ollama (${selectedModel})` : 'Silnik Regułowy';
 
       isAutopilotRunning = true;
+      stageAvailability(globalStatusData);
       stopRequested = false;
 
       autopilotProgressBox.classList.remove('hidden');
@@ -2094,11 +2221,12 @@ import '../styles/global.css';
 
       autopilotStepLabel.textContent = stopRequested 
         ? `Autopilot zatrzymany. Zaktualizowano ${repairedCount} akapitów.` 
-        : `✓ Zakończono! Zaktualizowano ${repairedCount} z ${total} akapitów. Kompilacja EPUB...`;
+        : `✓ Zakończono! Zaktualizowano ${repairedCount} z ${total} akapitów. Ponowny audyt...`;
       
       btnStartOllamaAutopilot.classList.remove('opacity-50', 'pointer-events-none');
       isAutopilotRunning = false;
       bookSelector.disabled = false;
+      stageAvailability(globalStatusData);
       if (stopRequested) {
         const resumeBtnText = document.getElementById('btnStartOllamaAutopilotText');
         if (resumeBtnText) {
@@ -2108,6 +2236,7 @@ import '../styles/global.css';
         return;
       }
 
+      localStorage.removeItem(resumeKey);
       if (typeof autopilotResumeIndex !== 'undefined') autopilotResumeIndex = 0;
       const resumeBtnText = document.getElementById('btnStartOllamaAutopilotText');
       if (resumeBtnText) {
@@ -2119,12 +2248,9 @@ import '../styles/global.css';
         showStatus(`Nie zmieniono akapitów. Do kontroli: ${failedCount} z ${total}.`, 'info');
         return;
       }
-      // Automatyczna rekompilacja EPUB i ponowny audyt
-      showStatus('Kompilacja EPUB z zapisanych poprawek...', 'info');
-      if (!await triggerAction('build')) return;
-      showStatus('Odświeżanie raportu jakościowego po naprawie...', 'info');
+      showStatus('Ponowny audyt po zapisaniu napraw…', 'info');
       if (!await triggerAction('audit')) return;
-      showStatus(`Zmieniono ${repairedCount} z ${total} akapitów. Błędy: ${failedCount}. Pozostało anomalii: ${globalReport?.anomalies?.length ?? 'brak raportu'}. EPUB przebudowany.`, failedCount ? 'warning' : 'info');
+      showStatus(`Zmieniono ${repairedCount} akapitów. Sprawdź raport, następnie uruchom kompilację EPUB.`, 'info');
     }
 
     // Szybka Rekonstrukcja (Polskie znaki, ułamki i auto-rekompilacja EPUB)
@@ -2132,11 +2258,9 @@ import '../styles/global.css';
       showStatus('Trwa rekonstrukcja polskich znaków, ułamków i normalizacja tekstu...', 'info');
       try {
         if (!await triggerAction('clean')) return;
-        showStatus('Trwa kompilacja czystego EPUB 3 przez Pandoc...', 'info');
-        if (!await triggerAction('build')) return;
         showStatus('Odświeżanie audytu jakościowego...', 'info');
         if (!await triggerAction('audit')) return;
-        showStatus(`Czyszczenie i budowa EPUB zakończone. Pozostało anomalii: ${globalReport?.anomalies?.length ?? 'brak raportu'}.`, 'info');
+        showStatus(`Czyszczenie i audyt zakończone. Kompilację uruchom po kontroli raportu. Pozostało anomalii: ${globalReport?.anomalies?.length ?? 'brak raportu'}.`, 'info');
       } catch (err) {
         showStatus('Błąd: ' + err.message, 'error');
       }
@@ -2254,7 +2378,8 @@ import '../styles/global.css';
         btnStartOllamaAutopilot, btnHeuristicBatch, btnNextActionCta,
         bookSelector,
         document.getElementById('extractRangeSelect'),
-        document.getElementById('extractOcrEngine')
+        document.getElementById('extractOcrEngine'),
+        ...document.querySelectorAll('[data-stage-action]')
       ];
 
       const spinnerEl = document.getElementById('liveProgressSpinner');
@@ -2402,9 +2527,10 @@ import '../styles/global.css';
       if (!data) return;
       const currentBook = bookSelector.value || 'ksiazka';
       const pdfExists = !!data.pdfInfo?.exists;
-      const mdExists = !!data.mdInfo?.exists;
+      const mdExists = data.mdInfo?.usable ?? !!data.mdInfo?.exists;
       const mdLines = data.mdInfo?.lines || 0;
-      const hasReport = !!data.report;
+      const hasReport = mdExists && !!data.report;
+      const missingChapters = data.report?.missing_chapters?.length || 0;
       const anomaliesCount = (data.report && Array.isArray(data.report.anomalies)) ? data.report.anomalies.length : 0;
       const epubExists = !!data.epubInfo?.exists;
       const isEpubValid = epubExists && mdExists && data.epubInfo?.current !== false;
@@ -2440,15 +2566,15 @@ import '../styles/global.css';
           : 'bg-zinc-950/60 border border-zinc-800 rounded-xl p-3 flex flex-col justify-between transition-all';
       }
       if (stepTitle2) stepTitle2.textContent = data.mdInfo?.filename || `${currentBook}.md`;
-      if (stepSub2) stepSub2.textContent = mdExists ? `${mdLines.toLocaleString()} linii (${data.mdInfo.size})` : (pdfExists ? 'Gotowy do ekstrakcji' : 'Wymaga ekstrakcji');
+      if (stepSub2) stepSub2.textContent = mdExists ? `${mdLines.toLocaleString()} linii (${data.mdInfo.size}); pokrycie: ${data.extractionInfo?.scope || 'nieznane'}` : (pdfExists ? 'Gotowy do ekstrakcji' : 'Wymaga ekstrakcji');
       if (stepStatus2) {
         stepStatus2.innerHTML = mdExists 
-          ? '<span class="text-emerald-400 font-medium">✓ Wyekstrahowano</span>' 
+          ? '<span class="text-emerald-400 font-medium">Znaleziono istniejący Markdown</span>'
           : (pdfExists ? '<span class="text-amber-400 font-medium">● Gotowy do ekstrakcji</span>' : '<span class="text-zinc-500">Oczekuje na PDF</span>');
       }
       if (stepBadge2) {
         stepBadge2.className = mdExists ? 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300 font-bold' : 'text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
-        stepBadge2.textContent = mdExists ? '✓ MD' : 'DO ZROBIENIA';
+        stepBadge2.textContent = mdExists ? 'MD ISTNIEJE' : 'DO ZROBIENIA';
       }
 
       // Krok 2: Czyszczenie tekstu
@@ -2472,7 +2598,7 @@ import '../styles/global.css';
       // Krok 3: Audyt i Naprawa OCR
       if (stepCard4) {
         if (hasReport) {
-          stepCard4.className = anomaliesCount === 0
+          stepCard4.className = anomaliesCount === 0 && missingChapters === 0
             ? 'bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 flex flex-col justify-between transition-all'
             : 'bg-rose-950/20 border border-rose-500/40 rounded-xl p-3 flex flex-col justify-between transition-all';
         } else {
@@ -2481,7 +2607,7 @@ import '../styles/global.css';
       }
       if (stepTitle4) stepTitle4.textContent = 'Audyt i Naprawa OCR';
       if (stepSub4) {
-        stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? '0 wykrytych anomalii' : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
+        stepSub4.textContent = hasReport ? (anomaliesCount === 0 ? `0 anomalii; braki: ${missingChapters}; kompletność: ${data.report?.completeness_checked ? 'oceniona' : 'nie oceniono'}` : `${anomaliesCount} wad do naprawy`) : (mdExists ? 'Wymaga audytu' : 'Wymaga Markdowna');
       }
       if (stepStatus4) {
         if (hasReport) {
@@ -2577,6 +2703,12 @@ import '../styles/global.css';
         cta = 'Uruchom Autopilot Naprawczy';
         actionHandler = () => startOllamaAutopilot();
         if (stepCard4) stepCard4.classList.add('ring-2', 'ring-purple-400', 'animate-pulse');
+      } else if (mdExists && hasReport && missingChapters > 0) {
+        tag = 'Krok 3 z 4 (Kontrola kompletności)';
+        title = `Brakujące rozdziały: ${missingChapters}`;
+        desc = 'Porównaj zakres i treść z PDF. Kompilacja wersji roboczej jest dostępna na karcie EPUB.';
+        cta = 'Ponów audyt';
+        actionHandler = () => triggerAction('audit');
       } else if (mdExists && !isEpubValid) {
         tag = 'Krok 4 z 4 (Zalecany)';
         title = 'Krok 4: Skompiluj gotowy e-book EPUB 3';
@@ -2585,8 +2717,8 @@ import '../styles/global.css';
         actionHandler = () => triggerAction('build');
         if (stepCard5) stepCard5.classList.add('ring-2', 'ring-emerald-400', 'animate-pulse');
       } else if (isEpubValid) {
-        tag = 'Sukces (Publikacja Gotowa)';
-        title = 'Publikacja EPUB 3 jest gotowa do czytania!';
+        tag = data.workflow?.coverageVerified ? 'Sukces (Publikacja Gotowa)' : 'EPUB sprawdzony — pokrycie nieznane';
+        title = 'EPUB skompilowany i sprawdzony';
         desc = `Plik ${data.epubInfo?.filename || 'ksiazka.epub'} (${data.epubInfo?.size || ''}) został wygenerowany z bieżącego Markdowna.`;
         cta = 'Kopiuj do Windows Pobrane';
         actionHandler = () => copyToWindowsDownloads();
@@ -2600,7 +2732,7 @@ import '../styles/global.css';
       activeCtaHandler = actionHandler;
 
       if (stepperGlobalStatus) {
-        stepperGlobalStatus.textContent = isEpubValid && isCleaned && hasReport && anomaliesCount === 0
+        stepperGlobalStatus.textContent = isEpubValid && isCleaned && hasReport && anomaliesCount === 0 && missingChapters === 0 && missingChapters === 0
           ? '✓ E-book gotowy' 
           : mdExists 
             ? (hasReport ? (anomaliesCount === 0 ? '✓ Brak wykrytych anomalii' : `Wykryto ${anomaliesCount} wad`) : 'Krok 1 ukończony (MD gotowy)')
@@ -2621,33 +2753,20 @@ import '../styles/global.css';
 
       const currentBook = bookSelector.value || 'ksiazka';
 
-      // Guardrail: Ostrzeżenie przed długim czasem przetwarzania pełnej książki (914 stron)
-      if (actionName === 'extract') {
-        const rangeSelect = document.getElementById('extractRangeSelect');
-        if (rangeSelect && rangeSelect.value === 'all') {
-          showConfirmModal({
-            title: 'Pełna ekstrakcja 914 stron z OCR',
-            message: `Wybrano przetwarzanie całej książki (wszystkie 914 stron) z silnikiem OCR.\n\nOperacja na 914 stronach zajmie około 20-30 minut w tle w WSL.\n\nCzy na pewno chcesz kontynuować pełny przebieg, czy wolisz szybki test (strony 1-25)?`,
-            confirmText: 'Kontynuuj pełne 914 stron',
-            danger: false,
-            onConfirm: async () => {
-              await executeAction(actionName, currentBook);
-            }
-          });
-          return false;
-        }
+      if (statusLoading || !currentBook || globalStatusData?.book !== currentBook) return false;
+      const rangeSelect = document.getElementById('extractRangeSelect');
+      if (actionName === 'extract' && rangeSelect.value === 'custom' && !/^\d+(?:-\d+)?$/.test(document.getElementById('extractCustomPages').value.trim())) {
+        showStatus('Podaj poprawny zakres stron, np. 1-10.', 'error');
+        return false;
       }
-
-      // Guardrail: Ostrzeżenie przed nadpisaniem istniejącego pliku Markdown
-      if (actionName === 'extract' && globalStatusData?.mdInfo?.exists && globalStatusData.mdInfo.lines > 10) {
+      if (actionName === 'extract' && rangeSelect.value === 'all') {
+        const replaces = !!globalStatusData?.mdInfo?.exists;
         showConfirmModal({
-          title: 'Ostrzeżenie przed nadpisaniem Markdowna',
-          message: `Plik "${currentBook}.md" (${globalStatusData.mdInfo.lines.toLocaleString()} linii) już istnieje i może zawierać naniesione poprawki.\n\nPonowna ekstrakcja z PDF całkowicie nadpisze ten plik surową zawartością z OCR.\n\nCzy na pewno chcesz wygenerować Markdown od nowa?`,
-          confirmText: 'Nadpisz i wyekstrahuj',
-          danger: true,
-          onConfirm: async () => {
-            await executeAction(actionName, currentBook);
-          }
+          title: replaces ? 'Ostrzeżenie przed nadpisaniem Markdowna' : 'Pełna ekstrakcja PDF',
+          message: replaces ? 'Pełna ekstrakcja zastąpi istniejący Markdown i poprawki. Próbki stron zapisujemy osobno. Kontynuować?' : 'Odczyt całego PDF może potrwać. Kontynuować?',
+          confirmText: replaces ? 'Zastąp Markdown' : 'Ekstrahuj całość',
+          danger: replaces,
+          onConfirm: async () => { await executeAction(actionName, currentBook, replaces); }
         });
         return false;
       }
@@ -2655,7 +2774,7 @@ import '../styles/global.css';
       return await executeAction(actionName, currentBook);
     }
 
-    async function executeAction(actionName, currentBook) {
+    async function executeAction(actionName, currentBook, overwrite = false) {
       const actionLabels = {
         extract: 'Ekstrakcja układu i tekstu z PDF',
         clean: 'Czyszczenie de-hyphenation i ułamków',
@@ -2678,7 +2797,7 @@ import '../styles/global.css';
         liveConsoleOutput.textContent = `[${new Date().toLocaleTimeString()}] ▶ Uruchamianie: ${label}...\n`;
       }
 
-      let bodyData = { action: actionName, book: currentBook };
+      let bodyData = { action: actionName, book: currentBook, overwrite };
       let progressTimer = null;
 
       if (actionName === 'extract') {
@@ -2794,6 +2913,7 @@ import '../styles/global.css';
         }
 
         if (actionSuccess) {
+          if (actionName === 'audit') localStorage.removeItem(`autopilot:${currentBook}`);
           const timeSec = (durationMs / 1000).toFixed(1);
           showToast(`✓ ${label} — zakończono sukcesem! (${timeSec}s)`, 'success');
           showStatus(`✓ Akcja "${label}" ukończona pomyślnie (${timeSec}s).`, 'success');
@@ -2821,29 +2941,26 @@ import '../styles/global.css';
         activeAbortController = null;
         if (progressTimer) clearInterval(progressTimer);
         setSystemBusy(false, actionName, label, actionSuccess ? 'success' : 'error');
+        stageAvailability(globalStatusData);
       }
     }
 
     async function cancelActiveJob() {
-      const currentBook = bookSelector.value || 'ksiazka';
-      if (activeAbortController) {
-        try { activeAbortController.abort(); } catch {}
-        activeAbortController = null;
-      }
-      setSystemBusy(false, 'cancel', 'Operacja anulowana', 'error');
-      showToast('Przerwano operację.', 'info');
-      showStatus('Operacja została przerwana na żądanie użytkownika.', 'warning');
+      const currentBook = observedJob?.book || bookSelector.value;
+      showStatus('Zatrzymywanie procesu — oczekiwanie na zakończenie…', 'warning');
       try {
         const res = await fetch('/api/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'cancel', book: currentBook })
         });
-        const data = await res.json();
+        if (!res.ok) throw new Error('Nie udało się zatrzymać procesu');
+        await res.json();
+        if (activeAbortController) activeAbortController.abort();
+        activeAbortController = null;
         await fetchStatus();
-      } catch (err) {
-        showToast(`Błąd anulowania: ${err.message}`, 'error');
-      }
+        setSystemBusy(false, 'cancel', 'Proces zatrzymany', 'error');
+        stageAvailability(globalStatusData);
+      } catch (err) { showToast(`Błąd anulowania: ${err.message}`, 'error'); }
     }
 
     function showStatus(text, type = 'info') {
@@ -2879,7 +2996,31 @@ Plik wynikowy trafi do: output/epub/${currentBook}.epub oraz do folderu Pobrane 
     }
 
     function setupEventListeners() {
-      bookSelector.addEventListener('change', () => fetchStatus());
+      bookSelector.addEventListener('change', async () => {
+        if (bookSelector.value) localStorage.setItem('selectedBook',bookSelector.value);
+        else localStorage.removeItem('selectedBook');
+        await pollJobs(); await fetchStatus();
+      });
+      try {
+        const settings=JSON.parse(localStorage.getItem('extractSettings') || 'null');
+        if (settings) {
+          for (const [id,value] of [['extractOcrEngine',settings.engine],['extractRangeSelect',settings.range]]) {
+            const select=document.getElementById(id);
+            if ([...select.options].some(option=>option.value===value)) select.value=value;
+          }
+          document.getElementById('extractCustomPages').value=settings.custom || '';
+          document.getElementById('extractCustomPages').classList.toggle('hidden',settings.range!=='custom');
+        }
+      } catch {}
+      for (const id of ['extractRangeSelect','extractOcrEngine','extractCustomPages']) {
+        document.getElementById(id).addEventListener('change', updateExtractSettings);
+        document.getElementById(id).addEventListener('input', updateExtractSettings);
+      }
+      updateExtractSettings();
+      document.querySelectorAll('[data-stage-action]').forEach(button => button.addEventListener('click', () => {
+        if (button.dataset.stageAction === 'repair') startOllamaAutopilot();
+        else triggerAction(button.dataset.stageAction);
+      }));
 
       severityFilter.addEventListener('change', (e) => {
         activeFilter = e.target.value;

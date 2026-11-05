@@ -217,17 +217,15 @@ def test_split_merged_column_block():
     assert left_b.bbox.r < right_b.bbox.l or left_b.bbox.r == right_b.bbox.l
 
 
-def test_process_page_geometry_real_pdf_page(tmp_path: Path):
-    pdf_path = Path("input/ksiazka.pdf")
-    if not pdf_path.exists():
-        pytest.skip("Input PDF not available.")
+def test_process_page_geometry_real_pdf_page(tmp_path: Path, text_pdf):
+    pdf_path = text_pdf
 
-    img_path, sha = render_page_image(pdf_path, 58, tmp_path / "images", dpi=300)
+    img_path, sha = render_page_image(pdf_path, 1, tmp_path / "images", dpi=300)
 
     # Construct ExtractedPage for page 58
     prov = BlockProvenance(
         run_id="test_geo",
-        page_no=58,
+        page_no=1,
         source_pdf_path=str(pdf_path),
         source_pdf_sha256=sha,
         engine="test",
@@ -235,7 +233,7 @@ def test_process_page_geometry_real_pdf_page(tmp_path: Path):
     )
     dummy_block = ExtractedBlock(
         block_id="p58_b01",
-        page_no=58,
+        page_no=1,
         reading_order=1,
         block_type="paragraph",
         text="Test block on page 58",
@@ -244,7 +242,7 @@ def test_process_page_geometry_real_pdf_page(tmp_path: Path):
     )
     ext_page = ExtractedPage(
         run_id="test_geo",
-        page_no=58,
+        page_no=1,
         width_pt=420.0,
         height_pt=595.0,
         blocks=[dummy_block],
@@ -253,7 +251,7 @@ def test_process_page_geometry_real_pdf_page(tmp_path: Path):
 
     new_page, report = process_page_geometry(ext_page, img_path)
 
-    assert report.page_no == 58
+    assert report.page_no == 1
     assert report.deskew is not None
     assert isinstance(report.deskew.angle_degrees, float)
     assert report.original_block_count == 1

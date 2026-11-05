@@ -233,7 +233,7 @@ def test_compute_percentiles():
     vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
     p50, p95 = compute_percentiles(vals)
     assert p50 == 5.0
-    assert p95 == 9.0
+    assert p95 == 10.0
 
 
 def test_compare_candidate_manifests(tmp_path: Path):
@@ -315,3 +315,13 @@ def test_compare_candidate_manifests(tmp_path: Path):
     assert "# Raport z Benchmarku OCR" in md
     assert "`native`" in md
     assert "`full_page`" in md
+
+
+def test_p95_cannot_hide_one_slow_holdout_page():
+    assert compute_percentiles([1.0] * 9 + [60.0]) == (1.0, 60.0)
+
+
+@pytest.mark.parametrize('invalid', [float('nan'), float('inf'), -1.0])
+def test_percentiles_reject_invalid_durations(invalid):
+    with pytest.raises(ValueError):
+        compute_percentiles([1.0, invalid])

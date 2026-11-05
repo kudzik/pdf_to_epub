@@ -202,10 +202,9 @@ def test_map_docling_labels():
     assert map_docling_label_to_block_type("unknown_label") == "paragraph"
 
 
-def test_real_docling_native_adapter_page_25(tmp_path: Path):
-    pdf_path = Path("input/ksiazka.pdf")
-    if not pdf_path.exists():
-        pytest.skip("Input PDF not available.")
+@pytest.mark.document_integration
+def test_real_docling_native_adapter_page_25(tmp_path: Path, text_pdf):
+    pdf_path = text_pdf
 
     from docling.document_converter import DocumentConverter, PdfFormatOption
     from docling.datamodel.base_models import InputFormat
@@ -217,7 +216,7 @@ def test_real_docling_native_adapter_page_25(tmp_path: Path):
     converter = DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
     )
-    result = converter.convert(pdf_path, page_range=(25, 25))
+    result = converter.convert(pdf_path, page_range=(1, 1))
     doc_dict = result.document.export_to_dict()
 
     extracted = from_docling_dict(
@@ -227,12 +226,12 @@ def test_real_docling_native_adapter_page_25(tmp_path: Path):
         engine_version=importlib.metadata.version("docling"),
         source_pdf_path=pdf_path,
         source_pdf_sha256="dummy_sha",
-        target_page_no=25,
+        target_page_no=1,
         printed_page="23",
         transforms=["native"],
     )
 
-    assert extracted.page_no == 25
+    assert extracted.page_no == 1
     assert len(extracted.blocks) > 0
     # First block should be Foreword header
     first_block = extracted.blocks[0]

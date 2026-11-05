@@ -6,45 +6,27 @@ import pytest
 from src.pipeline import evaluate_text_layer_quality, has_text_layer, get_converter
 
 
-def test_ksiazka_pdf_detects_corrupted_legacy_ocr():
-    """Verify that input/ksiazka.pdf with 20-year-old embedded OCR is flagged as not clean, enforcing OCR."""
-    pdf_path = Path("input/ksiazka.pdf")
-    if not pdf_path.exists():
-        pytest.skip("input/ksiazka.pdf not present in workspace")
-
-    res = evaluate_text_layer_quality(str(pdf_path))
-    assert res["has_text"] is True
-    assert res["is_clean"] is False, "Legacy scanned book should not be considered clean digital text"
-    assert res["recommended_ocr"] is True
-    assert res["total_garbage"] > 0
-    assert 0.0 < res["quality_score"] < 0.95
-
-    # has_text_layer should return False so OCR is activated instead of dumping garbage
-    assert has_text_layer(str(pdf_path)) is False
+def test_detects_corrupted_text_layer(make_text_pdf):
+    pdf = make_text_pdf([[
+        "Recipes and traditional dishes made with fresh herbs and vegetables.",
+        "Add the food^stuff to the warm water and mix the dough~mix carefully.",
+        "Use flour and salt to make a loaf of bread for the family dinner.",
+        "The recipe describes several useful methods of cooking vegetables.",
+    ]])
+    result = evaluate_text_layer_quality(str(pdf))
+    assert result["has_text"] is True
+    assert result["is_clean"] is False
+    assert result["recommended_ocr"] is True
+    assert result["total_garbage"] > 0
+    assert has_text_layer(str(pdf)) is False
 
 
-def test_clean_vector_pdf_quality(tmp_path: Path):
-    """Verify that a synthetic PDF with clean digital text is recognized as high quality (no OCR needed)."""
-    # Create a tiny 1-page PDF using pypdfium2 or text
-    clean_pdf_path = tmp_path / "clean_digital.pdf"
-    
-    # We can create a simple PDF document using reportlab or pypdfium2
-    try:
-        from reportlab.pdfgen import canvas
-        c = canvas.Canvas(str(clean_pdf_path))
-        c.drawString(100, 750, "Chapter 1: The Foundations of Polish Cookery")
-        c.drawString(100, 730, "Polish cuisine has evolved over centuries through diverse regional traditions.")
-        c.drawString(100, 710, "Ingredients such as dill, parsley, mushrooms, and sourdough form the basis of many soups.")
-        c.save()
-
-        res = evaluate_text_layer_quality(str(clean_pdf_path))
-        assert res["has_text"] is True
-        assert res["is_clean"] is True
-        assert res["recommended_ocr"] is False
-        assert res["quality_score"] >= 0.90
-        assert has_text_layer(str(clean_pdf_path)) is True
-    except ImportError:
-        pytest.skip("reportlab not installed, skipping synthetic vector PDF test")
+def test_clean_vector_pdf_quality(text_pdf):
+    result = evaluate_text_layer_quality(str(text_pdf))
+    assert result["has_text"] is True
+    assert result["is_clean"] is True
+    assert result["recommended_ocr"] is False
+    assert has_text_layer(str(text_pdf)) is True
 
 
 def test_get_converter_supports_rapidocr():

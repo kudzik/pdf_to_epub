@@ -100,7 +100,7 @@ for (const scenario of ['rejected', 'network']) {
       });
       return elements.get(id);
     };
-    const context = {
+    const context = { statusLoading: false, isSystemBusy: false, globalStatusData: {}, stageAvailability() {},
       window: {}, document: { getElementById: element }, bookSelector: { value: 'sample' },
       globalReport: { anomalies: [{ paragraph_index: 1, raw_paragraph: 'OCR text' }] },
       isAutopilotRunning: false, activeRepairController: null, repairStates: new Map(),

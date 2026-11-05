@@ -56,9 +56,9 @@ def test_purge_command_book_keep_epub(tmp_path: Path):
     bak_file = md_dir / "ksiazka1.md.bak"
     img_file = assets_dir / "img1.png"
     epub_file = epub_dir / "ksiazka1.epub"
-    report_file = tmp_path / "audit_report.json"
+    report_file = tmp_path / "audit_ksiazka1.json"
 
-    md_file.write_text("md", encoding="utf-8")
+    md_file.write_text("![image](assets/img1.png)", encoding="utf-8")
     bak_file.write_text("bak", encoding="utf-8")
     img_file.write_text("fake png", encoding="utf-8")
     epub_file.write_text("epub", encoding="utf-8")
@@ -100,7 +100,7 @@ def test_purge_command_book_with_epub(tmp_path: Path):
     other_md = md_dir / "inna.md"
     other_epub = epub_dir / "inna.epub"
 
-    md_file.write_text("md", encoding="utf-8")
+    md_file.write_text("![image](assets/img1.png)", encoding="utf-8")
     bak_file.write_text("bak", encoding="utf-8")
     img_file.write_text("fake png", encoding="utf-8")
     epub_file.write_text("epub", encoding="utf-8")

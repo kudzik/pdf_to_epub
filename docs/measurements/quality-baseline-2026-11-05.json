@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-05",
+  "scope": "read-only and in-memory; no extraction",
+  "ground_truth": [
+    {
+      "page": 25,
+      "blocks": 4,
+      "quantities": 0,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    },
+    {
+      "page": 40,
+      "blocks": 5,
+      "quantities": 3,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    },
+    {
+      "page": 54,
+      "blocks": 10,
+      "quantities": 0,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    },
+    {
+      "page": 58,
+      "blocks": 14,
+      "quantities": 19,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    },
+    {
+      "page": 125,
+      "blocks": 8,
+      "quantities": 28,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    },
+    {
+      "page": 142,
+      "blocks": 14,
+      "quantities": 30,
+      "image_exists": true,
+      "image_hash_matches": true,
+      "bbox_blocks": 0
+    }
+  ],
+  "annotated_dev_pages": 6,
+  "annotated_holdout_pages": 0,
+  "manifest_dev_pages": 20,
+  "manifest_holdout_pages": 10,
+  "cleaner_reference_blocks": 48,
+  "cleaner_changed_reference_blocks": [],
+  "cleaner_probes": [
+    {
+      "input": "Add 1/2 tsp salt.",
+      "output": "Add 1/2 tsp salt.",
+      "measurements_changed": false
+    },
+    {
+      "input": "1/2 tsp salt",
+      "output": "1/2 tsp salt",
+      "measurements_changed": false
+    },
+    {
+      "input": "1/4 cup flour",
+      "output": "1/4 cup flour",
+      "measurements_changed": false
+    },
+    {
+      "input": "Vitamin B and D are useful.",
+      "output": "Vitamin B and D are useful.",
+      "measurements_changed": false
+    },
+    {
+      "input": "## TABLE OF CONTENTS",
+      "output": "## TABLE OF CONTENTS",
+      "measurements_changed": false
+    },
+    {
+      "input": "Bake at 180°C for 20 minutes.",
+      "output": "Bake at 180°C for 20 minutes.",
+      "measurements_changed": false
+    },
+    {
+      "input": "Mix 1 1/2 cups flour.",
+      "output": "Mix 1 1/2 cups flour.",
+      "measurements_changed": false
+    },
+    {
+      "input": "| Salt | 1/2 tsp |",
+      "output": "| Salt | 1/2 tsp |",
+      "measurements_changed": false
+    },
+    {
+      "input": "![Photo](assets/image.png)",
+      "output": "![Photo](assets/image.png)",
+      "measurements_changed": false
+    }
+  ],
+  "production_markdown": [
+    {
+      "file": "output/markdown/olish Heritage Cookery Robert i Maria Strybel.md",
+      "bytes": 1977465,
+      "lines": 19632,
+      "audit_seconds": 0.6271405219999906,
+      "anomalies": 1016,
+      "missing_chapters": 6,
+      "clean_seconds": 2.0133594310000262,
+      "clean_changes_content": true
+    }
+  ],
+  "epubcheck_on_path": null,
+  "pandoc_on_path": "/home/kudzik/.local/bin/pandoc",
+  "python": "3.13.18",
+  "auditor_flagged_reference_blocks": [
+    {
+      "page": 40,
+      "block": "p40_p03",
+      "issues": [
+        [
+          "to do so in"
+        ]
+      ]
+    }
+  ],
+  "onnxruntime_available_providers": [
+    "AzureExecutionProvider",
+    "CPUExecutionProvider"
+  ]
+}

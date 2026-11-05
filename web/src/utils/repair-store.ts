@@ -1,4 +1,6 @@
 import fs from 'node:fs'
+import path from 'node:path'
+import { acquireMutationLock } from './mutation-lock.ts'
 import { randomUUID, createHash } from 'node:crypto'
 import { assetsPreserved } from './repair-assets.ts'
 
@@ -32,8 +34,10 @@ export const acquireBookLock = (mdPath: string, timeoutMs = 5000, owner = 'web')
       if (err.code === 'EEXIST') {
         try {
           const stat = fs.statSync(lockPath)
-          if (Date.now() - stat.mtimeMs > 30000) {
-            try { fs.unlinkSync(lockPath) } catch {}
+          const owner = JSON.parse(fs.readFileSync(lockPath, 'utf8'))
+          if (Number.isInteger(owner.pid) && owner.pid > 0) {
+            try { process.kill(owner.pid, 0) }
+            catch (dead: any) { if (dead.code === 'ESRCH') fs.unlinkSync(lockPath) }
           }
         } catch {}
 
@@ -43,9 +47,7 @@ export const acquireBookLock = (mdPath: string, timeoutMs = 5000, owner = 'web')
           throw lockError
         }
 
-        const waitTill = Date.now() + 50
-        while (Date.now() < waitTill) {}
-        continue
+        throw Object.assign(new Error('Zapis książki jest zablokowany; spróbuj ponownie'), { status: 423 })
       }
       throw err
     }
@@ -53,7 +55,11 @@ export const acquireBookLock = (mdPath: string, timeoutMs = 5000, owner = 'web')
 }
 
 export const writeRepairs = (mdPath: string, patches: Patch[], expectedSha256?: string): number => {
-  const unlock = acquireBookLock(mdPath)
+  const mdDir = path.dirname(mdPath)
+  const canonical = path.basename(mdDir) === 'markdown' && path.basename(path.dirname(mdDir)) === 'output'
+  const releaseMutation = acquireMutationLock(canonical ? path.resolve(mdDir, '../..') : mdDir, !canonical)
+  let unlock: (() => void) | undefined
+  try { unlock = acquireBookLock(mdPath) } catch (error) { releaseMutation(); throw error }
 
   try {
     const rawContent = fs.readFileSync(mdPath, 'utf8')
@@ -113,7 +119,8 @@ export const writeRepairs = (mdPath: string, patches: Patch[], expectedSha256?: 
 
     return changed
   } finally {
-    unlock()
+    unlock?.()
+    releaseMutation()
   }
 }
 

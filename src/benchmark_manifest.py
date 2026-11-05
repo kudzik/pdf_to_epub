@@ -36,6 +36,7 @@ class BenchmarkPagesManifest(BaseModel):
     manifest_version: str = "1.0"
     book_name: str = "ksiazka"
     source_pdf_path: str = "input/ksiazka.pdf"
+    source_pdf_sha256: Optional[str] = None
     total_pages_in_pdf: int = 914
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     description: str = (

@@ -227,9 +227,11 @@ def test_existing_ground_truth_fixtures_valid():
         assert len(gt.blocks) > 0, f"Page {pno} has no blocks"
 
 
-def test_render_page_image_negative():
+def test_render_page_image_negative(tmp_path):
     with pytest.raises(FileNotFoundError):
-        render_page_image(Path("non_existent.pdf"), 1, Path("/tmp"))
+        render_page_image(tmp_path / "missing.pdf", 1, tmp_path)
 
+    fixture = tmp_path / "fixture.pdf"
+    fixture.write_bytes(b"PDF placeholder: rejected before parsing")
     with pytest.raises(ValueError, match="page_no must be >= 1"):
-        render_page_image(Path("input/ksiazka.pdf"), 0, Path("/tmp"))
+        render_page_image(fixture, 0, tmp_path)

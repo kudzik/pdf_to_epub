@@ -1,4 +1,3 @@
-import fcntl
 import hashlib
 import json
 import os
@@ -80,11 +79,22 @@ def is_lock_stale(lock_path: Path, max_age_seconds: float = 30.0) -> bool:
     if not lock_path.is_file():
         return False
     try:
-        mtime = lock_path.stat().st_mtime
-        if (time.time() - mtime) > max_age_seconds:
+        payload = json.loads(lock_path.read_text(encoding="utf-8"))
+        pid = int(payload["pid"])
+        if pid <= 0:
+            return False
+        try:
+            os.kill(pid, 0)
+            return False
+        except ProcessLookupError:
             return True
-    except OSError:
-        pass
+        except PermissionError:
+            return False
+    except (OSError, ValueError, KeyError, TypeError):
+        try:
+            return time.time() - lock_path.stat().st_mtime > max_age_seconds
+        except OSError:
+            pass
     return False
 
 
@@ -96,7 +106,7 @@ def book_write_lock(
 ) -> Generator[Path, None, None]:
     """
     Menedżer kontekstu zapewniający blokadę pojedynczego zapisującego (single-writer lock)
-    za pomocą pliku .lock oraz fcntl.flock z detekcją przestarzałych blokad.
+    za pomocą wyłącznego tworzenia .lock (wspólny protokół CLI/API).
     """
     lock_path = markdown_path.with_name(f"{markdown_path.name}.lock")
     start_time = time.monotonic()
@@ -105,9 +115,8 @@ def book_write_lock(
     while True:
         try:
             # Tworzymy / otwieramy plik blokady
-            fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o644)
             # Próbujemy uzyskać wyłączną blokadę bez blokowania (non-blocking)
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
             # Zapisujemy metadane właściciela blokady
             payload = json.dumps({
@@ -145,7 +154,6 @@ def book_write_lock(
     finally:
         if fd is not None:
             try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
                 os.close(fd)
             except OSError:
                 pass

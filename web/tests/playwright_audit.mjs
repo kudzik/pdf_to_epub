@@ -1,125 +1,87 @@
+// All API traffic is intercepted: this test never extracts, cleans or deletes real books.
 import { chromium } from 'playwright';
-
-async function run() {
-  console.log('🚀 Uruchamianie Playwright Chromium...');
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-
-  const logs = [];
-  const errors = [];
-  const network = [];
-
-  page.on('console', msg => {
-    logs.push(`[BROWSER CONSOLE ${msg.type().toUpperCase()}]: ${msg.text()}`);
-    console.log(`[BROWSER CONSOLE ${msg.type().toUpperCase()}]: ${msg.text()}`);
-  });
-
-  page.on('pageerror', err => {
-    errors.push(`[BROWSER PAGEERROR]: ${err.message}\n${err.stack}`);
-    console.error(`[BROWSER PAGEERROR]: ${err.message}`);
-  });
-
-  page.on('request', req => {
-    network.push(`--> ${req.method()} ${req.url()}`);
-  });
-
-  page.on('response', res => {
-    network.push(`<-- ${res.status()} ${res.url()}`);
-  });
-
-  page.on('requestfailed', req => {
-    errors.push(`[NETWORK FAILED]: ${req.method()} ${req.url()} - ${req.failure()?.errorText}`);
-    console.error(`[NETWORK FAILED]: ${req.method()} ${req.url()}`);
-  });
-
-  console.log('🌐 Nawigacja do http://localhost:4343...');
-  await page.goto('http://localhost:4343', { waitUntil: 'networkidle' });
-
-  console.log('🔍 Sprawdzanie stanu początkowego strony...');
-  const title = await page.title();
-  console.log(`Tytuł strony: ${title}`);
-
-  const liveConsole = await page.$eval('#liveConsoleOutput', el => el.textContent);
-  console.log(`Początkowa zawartość #liveConsoleOutput:\n"${liveConsole}"`);
-
-  // Sprawdź czy są błędy JS na starcie
-  console.log(`Liczba błędów na starcie: ${errors.length}`);
-
-  // 1. TEST: Kliknięcie "Ekstrahuj z PDF"
-  console.log('\n--- TEST 1: Kliknięcie "Ekstrahuj z PDF" (#btnRunExtract) ---');
-  await page.click('#btnRunExtract');
-  await page.waitForTimeout(1000);
-
-  // Sprawdź czy pojawił się modal potwierdzenia (np. ostrzeżenie o nadpisaniu)
-  const isModalVisible = await page.$eval('#confirmModal', el => !el.classList.contains('hidden'));
-  console.log(`Czy modal potwierdzenia jest widoczny? ${isModalVisible}`);
-
-  if (isModalVisible) {
-    const modalTitle = await page.$eval('#confirmModalTitle', el => el.textContent);
-    const modalMsg = await page.$eval('#confirmModalMessage', el => el.textContent);
-    console.log(`Modal Title: "${modalTitle}"`);
-    console.log(`Modal Message:\n${modalMsg}`);
-    console.log('Klikam przycisk potwierdzenia (#btnAcceptConfirm)...');
-    await page.click('#btnAcceptConfirm');
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({headless:true});
+const page = await browser.newPage();
+const errors = [];
+page.on('pageerror', e => errors.push(e.message));
+const states = new Map(['alpha', 'beta'].map(book => [book, {
+  book, pdfInfo:{exists:true,filename:`${book}.pdf`,size:'100 KB'},
+  mdInfo:{exists:book === 'alpha',usable:book === 'alpha',filename:`${book}.md`,lines:12,size:'1 KB'},
+  cleanInfo:{cleaned:false},report:null,reportState:'missing',epubInfo:{exists:false,current:false},
+  extractionInfo:{scope:'unknown'},workflow:{step:book==='alpha'?2:1,coverageVerified:false},
+  ollama:{available:false,models:[]}
+}]));
+const actions=[];
+let slowAlpha = false;
+let failBeta = false;
+let activeJob = null;
+let latestJob = null;
+await page.route('**/api/**', async route => {
+  const url=new URL(route.request().url());
+  if(url.pathname==='/api/files') return route.fulfill({json:{books:[{stem:'alpha',hasPdf:true,hasMd:true},{stem:'beta',hasPdf:true,hasMd:false}]}});
+  if(url.pathname==='/api/jobs') return route.fulfill({json:{activeJob,job:latestJob,logTail:'fixture progress log',extractProgress:{status:'running',percent:35,completed_pages:7,total_pages:20}}});
+  if(url.pathname==='/api/history') return route.fulfill({json:{success:true,ledger:{records:[]}}});
+  if(url.pathname==='/api/status') {
+    const book=url.searchParams.get('book');
+    if (slowAlpha && book==='alpha') await new Promise(resolve=>setTimeout(resolve,400));
+    if (failBeta && book==='beta') return route.fulfill({status:503,json:{error:'Fixture status unavailable'}});
+    return route.fulfill({json:states.get(book)});
   }
-
-  // Obserwuj przez 5 sekund terminal i postęp
-  for (let i = 1; i <= 5; i++) {
-    await page.waitForTimeout(1000);
-    const termVisible = await page.$eval('#liveTerminalDrawer', el => !el.classList.contains('hidden'));
-    const termText = await page.$eval('#liveConsoleOutput', el => el.textContent);
-    const progressTitle = await page.$eval('#liveProgressTitle', el => el.textContent);
-    const progressTimer = await page.$eval('#liveProgressTimer', el => el.textContent);
-    console.log(`[T+${i}s] Drawer visible: ${termVisible} | Timer: ${progressTimer} | Title: "${progressTitle}"`);
-    console.log(`[T+${i}s] Console output snippet:\n${termText.slice(-300)}`);
+  if(url.pathname==='/api/action') {
+    const body=route.request().postDataJSON(); actions.push(body);
+    const state=states.get(body.book);
+    if(body.action==='clean') { state.cleanInfo.cleaned=true; await new Promise(resolve=>setTimeout(resolve,350)); }
+    if(body.action==='audit') {state.report={anomalies:[],missing_chapters:[],total_anomalies:0};state.reportState='current';}
+    if(body.action==='build') state.epubInfo={exists:true,current:true,validated:true,filename:'alpha.epub',size:'2 KB',mtime:'12:00'};
+    return route.fulfill({json:{success:true,stdout:'Fixture action completed',durationMs:1}});
   }
-
-  // 2. TEST: Kliknięcie Anuluj
-  console.log('\n--- TEST 2: Kliknięcie "⏹ Anuluj" (#btnCancelActiveJob) ---');
-  const cancelVisible = await page.$eval('#btnCancelActiveJob', el => !el.classList.contains('hidden'));
-  console.log(`Czy przycisk Anuluj jest widoczny? ${cancelVisible}`);
-  if (cancelVisible) {
-    await page.click('#btnCancelActiveJob');
-    await page.waitForTimeout(2000);
-    const termTextAfterCancel = await page.$eval('#liveConsoleOutput', el => el.textContent);
-    const statusText = await page.$eval('#pipelineStatusBanner', el => el.textContent);
-    console.log(`Status po anulowaniu: "${statusText.trim()}"`);
-    console.log(`Console output po anulowaniu:\n${termTextAfterCancel.slice(-200)}`);
-  }
-
-  // 3. TEST: Kliknięcie "Wyczyść pliki (Reset)"
-  console.log('\n--- TEST 3: Kliknięcie "Wyczyść pliki (Reset)" (#btnPurgeWorkfiles) ---');
-  await page.click('#btnPurgeWorkfiles');
-  await page.waitForTimeout(500);
-
-  const isPurgeModalVisible = await page.$eval('#confirmModal', el => !el.classList.contains('hidden'));
-  console.log(`Czy modal czyszczenia jest widoczny? ${isPurgeModalVisible}`);
-  if (isPurgeModalVisible) {
-    const purgeTitle = await page.$eval('#confirmModalTitle', el => el.textContent);
-    console.log(`Modal Title: "${purgeTitle}"`);
-    console.log('Potwierdzam czyszczenie...');
-    await page.click('#btnAcceptConfirm');
-  }
-
-  for (let i = 1; i <= 4; i++) {
-    await page.waitForTimeout(1000);
-    const termText = await page.$eval('#liveConsoleOutput', el => el.textContent);
-    const progressTitle = await page.$eval('#liveProgressTitle', el => el.textContent);
-    const progressTimer = await page.$eval('#liveProgressTimer', el => el.textContent);
-    console.log(`[Purge T+${i}s] Timer: ${progressTimer} | Title: "${progressTitle}"`);
-    console.log(`[Purge T+${i}s] Console snippet:\n${termText.slice(-250)}`);
-  }
-
-  console.log('\n--- PODSUMOWANIE BŁĘDÓW PRZEGLĄDARKI ---');
-  console.log(`Błędy JS (${errors.length}):`, errors);
-
-  await browser.close();
-  console.log('✅ Zakończono audyt Playwright.');
-}
-
-run().catch(err => {
-  console.error('❌ Błąd krytyczny audytu Playwright:', err);
-  process.exit(1);
+  return route.fulfill({status:404,json:{error:'Unexpected API call blocked by test'}});
 });
-
+try {
+  await page.goto(process.env.STUDIO_TEST_URL || 'http://localhost:4344', {waitUntil:'networkidle'});
+  assert.equal(await page.locator('#bookSelector').inputValue(),'');
+  assert.equal(await page.locator('[data-stage-action="extract"]').isDisabled(),true);
+  await page.selectOption('#bookSelector','alpha');
+  await page.waitForFunction(() => document.querySelector('#nextActionStepTag').textContent.includes('2 z 4'));
+  assert.match(await page.locator('#stepStatus2').innerText(),/Znaleziono istniejący Markdown/);
+  assert.equal(actions.length,0,'Selection must never execute a pipeline action');
+  await page.click('[data-stage-action="clean"]');
+  assert.equal(await page.locator('[data-stage-action="audit"]').isDisabled(),true);
+  assert.equal(await page.locator('#btnRunAudit').isDisabled(),true);
+  await page.waitForFunction(() => document.querySelector('#nextActionStepTag').textContent.includes('3 z 4'));
+  await page.click('[data-stage-action="audit"]');
+  await page.waitForFunction(() => document.querySelector('#nextActionStepTag').textContent.includes('4 z 4'));
+  await page.click('[data-stage-action="build"]');
+  await page.waitForFunction(() => document.querySelector('#nextActionStepTag').textContent.includes('pokrycie nieznane'));
+  await page.selectOption('#bookSelector','beta');
+  await page.waitForFunction(() => document.querySelector('#nextActionStepTag').textContent.includes('1 z 4'));
+  assert.equal(await page.locator('[data-stage-action="clean"]').isDisabled(),true);
+  assert.deepEqual(actions.map(a=>a.action),['clean','audit','build']);
+  await page.selectOption('#extractOcrEngine','easyocr');
+  await page.selectOption('#extractRangeSelect','1-10');
+  assert.match(await page.locator('#extractSettingsSummary').innerText(),/EasyOCR/);
+  activeJob=latestJob={id:'fixture-job',book:'beta',action:'extract',pid:123,startTime:Date.now()-120000,status:'running'};
+  await page.reload({waitUntil:'networkidle'});
+  await page.waitForFunction(()=>document.querySelector('#liveProgressTitle').textContent.includes('35%'));
+  assert.equal(await page.locator('#bookSelector').inputValue(),'beta');
+  assert.equal(await page.locator('[data-stage-action="extract"]').isDisabled(),true);
+  assert.match(await page.locator('#liveConsoleOutput').innerText(),/fixture progress log/);
+  assert.match(await page.locator('#liveProgressTimer').innerText(),/02:/);
+  activeJob=null;
+  latestJob={...latestJob,status:'succeeded'};
+  await page.waitForFunction(()=>!document.querySelector('#bookSelector').disabled);
+  slowAlpha=true;
+  await page.selectOption('#bookSelector','alpha');
+  await page.selectOption('#bookSelector','beta');
+  await page.waitForFunction(() => document.querySelector('#stepTitle2').textContent==='beta.md');
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator('#stepTitle2').innerText(),'beta.md','A late response must not overwrite book B');
+  failBeta=true;
+  await page.selectOption('#bookSelector','alpha');
+  await page.selectOption('#bookSelector','beta');
+  await page.waitForFunction(() => document.querySelector('#nextActionTitle').textContent.includes('Nie udało'));
+  assert.equal(await page.locator('[data-stage-action="extract"]').isDisabled(),true);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: selection, card actions, four stages, unknown coverage, book switch, delayed response race, API failure; no real API writes.');
+} finally { await browser.close(); }

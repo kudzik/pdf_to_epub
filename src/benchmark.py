@@ -419,14 +419,16 @@ def evaluate_page_quality(
 
 
 def compute_percentiles(values: list[float]) -> tuple[float, float]:
-    """Compute p50 (median) and p95 from a list of floats."""
+    """Compute p50/p95 using the documented nearest-rank convention."""
     if not values:
         return 0.0, 0.0
+    import math
+    if any(not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("Durations must be finite and non-negative")
     s = sorted(values)
-    n = len(s)
-    p50_idx = int(0.50 * (n - 1))
-    p95_idx = int(0.95 * (n - 1))
-    return round(s[p50_idx], 3), round(s[p95_idx], 3)
+    # Nearest-rank quantiles: for ten samples p95 is the slowest sample.
+    return tuple(round(s[max(0, math.ceil(q * len(s)) - 1)], 3) for q in (0.5, 0.95))
+
 
 
 class BenchmarkRunReport(BaseModel):

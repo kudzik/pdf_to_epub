@@ -3,15 +3,18 @@
 ## Cel projektu
 Konwersja dokumentów i skanów PDF (książek z tekstem jedno- i dwukolumnowym, tabelami, przepisami i grafikami) do czystego formatu Markdown (baza wiedzy pod RAG/LLM) oraz kompilacja do walidującego się standardu EPUB 3 z zachowaniem hierarchii nagłówków i grafik.
 
+Kompleksowa dokumentacja workflow, bibliotek i narzędzi: [docs/WORKFLOW_KONWERSJI_PDF_DO_EPUB.md](docs/WORKFLOW_KONWERSJI_PDF_DO_EPUB.md).
+
 ## Środowisko
 - **Python:** 3.13+ zarządzany przez `uv`.
-- **Zależności:** `docling[easyocr]`, `pypdfium2`, `typer`, `rich`, `pytest`.
+- **Zależności:** `docling[easyocr]`, `pypdfium2`, `rapidocr-onnxruntime`, `typer`, `rich`, `pytest`.
 - **Kompilator EPUB:** `pandoc` 3.13+.
 
 ## Architektura i niezmienniki procesu
-1. **Pipeline 3-etapowy:**
+1. **Pipeline 3-etapowy + Weryfikacja Hybrydowa OCR:**
    - **Krok 1: Ekstrakcja (`extract`):** Odczyt struktury Document AI. Jeśli PDF ma warstwę tekstową, domyślnie pomija wolny EasyOCR, zachowując perfekcyjny podział kolumn i ułamki.
-   - **Krok 2: Czyszczenie (`clean`):** Moduł `src/cleaner.py` automatycznie wykonuje de-hyphenation (scalanie rozbitych słów), zamienia ułamki Unicode (`½` ➔ `1/2`), naprawia miary kulinarne (`1 2 tsp` ➔ `1/2 tsp`), usuwa artefakty skanera (`■ ^p-`, `FlraS -*`) oraz powtarzające się nagłówki żywej paginy.
+   - **Krok 1b: Weryfikacja uszkodzonych fontów (ToUnicode) i komiksów:** Na stronach ilustrowanych, w komiksach oraz na stronach tytułowych, cyfrowa warstwa PDF bywa zniekształcona przez uszkodzone tablice ToUnicode (scrambled glyphs). W takich przypadkach uruchamiany jest RapidOCR na wyrenderowanym obrazie strony (300 DPI), aby odtworzyć rzeczywisty tekst bez halucynacji i utraty treści.
+   - **Krok 2: Czyszczenie (`clean`):** Moduł `src/cleaner.py` automatycznie wykonuje de-hyphenation (scalanie rozbitych słów), zamienia ułamki Unicode (`½` ➔ `1/2`), naprawia miary kulinarne (`1 2 tsp` ➔ `1/2 tsp`), formatuje składniki (`format_recipe_ingredients`), usuwa artefakty skanera (`■ ^p-`, `FlraS -*`) oraz powtarzające się nagłówki żywej paginy.
    - **Krok 3: Kompilacja (`build`):** Pandoc kompiluje czysty Markdown do EPUB 3 ze stylami `templates/epub.css` i metadanymi `metadata.yaml`.
 2. **Niezmiennik źródła prawdy:** Katalog `output/markdown/` oraz wygenerowany w nim plik `<nazwa>.md` stanowią jedyne źródło prawdy. Jeśli poprawiasz treść, edytuj plik `.md`, a następnie uruchom `build`.
 3. **Zakaz niepotrzebnego ponownego OCR:** Jeśli plik `.md` już istnieje i pracujesz nad korektą treści, **nie uruchamiaj ponownie** `extract` ani `all`, ponieważ surowy odczyt nadpisze Twoje poprawki! Używaj wtedy `clean` oraz `build`.

@@ -124,3 +124,36 @@ def test_scan_noise_preserves_short_words_and_paragraph_boundaries():
 def test_cleaner_does_not_invent_missing_prose():
     text = "sam e ne t e sae e ices aed s see es"
     assert "same sweeteners that were" not in clean_markdown_text(text)
+
+
+def test_clean_markdown_headings():
+    """Weryfikuje oddzielanie obrazów od nagłówków i demotowanie kroków wykonawczych."""
+    from src.cleaner import clean_markdown_headings
+
+    sample = (
+        "## INTRODUCTION![Image](assets/img.png)\n"
+        "## Preheat the oven to 425°F.\n"
+        "## SHAPING POTSTICKERS \\_\\_-SE\n"
+    )
+    cleaned = clean_markdown_headings(sample)
+    assert "## INTRODUCTION\n\n![Image](assets/img.png)" in cleaned
+    assert "Preheat the oven to 425°F." in cleaned
+    assert not cleaned.startswith("## Preheat")
+    assert "## SHAPING POTSTICKERS" in cleaned
+
+
+def test_format_recipe_ingredients():
+    """Weryfikuje rozbijanie sklejonych składników do list punktowanych bez utraty słów."""
+    from src.cleaner import format_recipe_ingredients
+
+    sample = (
+        "## FERMENT\n"
+        "2 quarts water 1 1/4 ounces (2 tablespoons plus 1 1/2 teaspoons) salt 1 head (2 pounds) green cabbage\n"
+        "4 fresh red Fresno chillies, stemmed and thinly sliced\n"
+    )
+    cleaned = format_recipe_ingredients(sample)
+    assert "- 2 quarts water" in cleaned
+    assert "- 1 1/4 ounces (2 tablespoons plus 1 1/2 teaspoons) salt" in cleaned
+    assert "- 1 head (2 pounds) green cabbage" in cleaned
+    assert "- 4 fresh red Fresno chillies" in cleaned
+

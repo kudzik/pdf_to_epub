@@ -1,270 +1,231 @@
-"""Gate G2 evaluation and frozen configuration verification module.
-
-Performs frozen configuration candidate conversion across the 10 canonical holdout pages
-and evaluates all Gate G2 acceptance criteria defined in PLAN_REKONSTRUKCJI.md (Section 8):
-1. No column interleaving (zero cross-column line interleaving on recipe pages).
-2. Measure and temperature consistency (invariants preserved, no unit/scale corruption).
-3. Continuous text quality and table stability.
-4. Latency p50 and p95 limits (<30s per page).
-5. Blind validation on holdout pages (verifying zero overfitting).
-6. Production Markdown integrity (output/markdown/ksiazka.md untouched).
-"""
-
+"""Evidence-based G2 evaluation. Missing measurements cannot authorize G3."""
 from __future__ import annotations
 
-import json
-import time
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
+import json
+import math
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.benchmark import compute_percentiles
 from src.benchmark_manifest import load_test_pages_manifest
 from src.extraction_adapter import compute_file_sha256, load_extracted_page
-from src.geometry import PageGeometryReport
-from src.ocr_modes import (
-    OcrEngineMode,
-    ensure_candidate_does_not_overwrite_production,
-    run_candidate_conversion,
+from src.gate_quality import check_page, combine
+from src.ground_truth import load_page_ground_truth, validate_ground_truth_against_manifest
+from src.ocr_modes import OcrEngineMode, ensure_candidate_does_not_overwrite_production, run_candidate_conversion
+
+CRITERIA = (
+    '1_no_column_interleaving', '2_measure_and_temp_invariants',
+    '3_table_and_text_stability', '4_latency_under_30s_limit',
+    '5_holdout_10_pages_completed', '6_production_truth_preserved',
 )
 
 
-class GateG2PageSummary(BaseModel):
-    """Summary of extraction metrics on a single holdout test page."""
+def criterion_status(value: bool | None) -> str:
+    return 'NOT_EVALUATED' if value is None else 'PASS' if value else 'FAIL'
 
+
+class GateG2PageSummary(BaseModel):
     page_no: int
-    duration_seconds: float
-    total_blocks: int
-    skew_angle_deg: Optional[float] = None
-    column_count: int = 1
+    duration_seconds: float | None = None
+    total_blocks: int = 0
+    skew_angle_deg: float | None = None
+    column_count: int | None = None
     has_gutter: bool = False
-    interleaving_detected: bool = False
-    invariants_intact: bool = True
-    notes: Optional[str] = None
+    interleaving_detected: bool | None = None
+    invariants_intact: bool | None = None
+    notes: str | None = None
 
 
 class GateG2EvaluationReport(BaseModel):
-    """Comprehensive evaluation report certifying Gate G2 (Wybór ekstrakcji) criteria."""
-
     run_id: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     frozen_config: dict[str, Any]
     holdout_pages: list[int]
-    total_pages: int
-    total_blocks: int
+    total_pages: int = 0
+    total_blocks: int = 0
     page_summaries: list[GateG2PageSummary] = Field(default_factory=list)
-    p50_duration_s: float
-    p95_duration_s: float
-    max_duration_s: float
+    p50_duration_s: float | None = None
+    p95_duration_s: float | None = None
+    max_duration_s: float | None = None
     column_interleaving_cases: int = 0
     production_sha_before: str
     production_sha_after: str
     production_preserved: bool
-    criteria_checklist: dict[str, bool]
-    verdict: str  # "PASS" or "FAIL"
+    criteria_checklist: dict[str, bool | None]
+    verdict: Literal['PASS', 'FAIL', 'NOT_EVALUATED'] = 'NOT_EVALUATED'
     candidate_markdown_path: str
+    evidence: dict[int, dict[str, Any]] = Field(default_factory=dict)
+    not_evaluated_reasons: list[str] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def derive_verdict(self):
+        values = [self.criteria_checklist.get(key) for key in CRITERIA]
+        self.verdict = 'FAIL' if any(v is False for v in values) else 'PASS' if all(v is True for v in values) else 'NOT_EVALUATED'
+        return self
+
+
+def _production_fingerprint() -> str:
+    """Protect all books and assets, including additions/deletions, not one legacy name."""
+    import hashlib
+    root = Path('output/markdown')
+    entries = {str(p): compute_file_sha256(p) for p in sorted(root.rglob('*')) if p.is_file()}
+    return hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest()
+
+
+def _environment() -> dict:
+    import platform
+    result = {'python': platform.python_version(), 'packages': {}, 'file_hashes': {}}
+    for name in ['docling', 'docling-core', 'rapidocr-onnxruntime', 'onnxruntime', 'torch']:
+        try:
+            result['packages'][name] = version(name)
+        except PackageNotFoundError:
+            result['packages'][name] = None
+    try:
+        import onnxruntime
+        result['onnx_providers'] = onnxruntime.get_available_providers()
+    except ImportError:
+        result['onnx_providers'] = []
+    for file in [Path('uv.lock'), Path('web/package-lock.json'), *[Path('src') / name for name in ['gate_g2_evaluation.py', 'gate_quality.py', 'benchmark.py', 'ocr_modes.py', 'extraction_adapter.py', 'geometry.py', 'block_validator.py']]]:
+        if file.is_file():
+            result['file_hashes'][str(file)] = compute_file_sha256(file)
+    return result
 
 
 def run_gate_g2_holdout_evaluation(
-    pdf_path: Path = Path("input/ksiazka.pdf"),
-    holdout_manifest_path: Path = Path("benchmarks/fixtures/test_pages_manifest.json"),
-    output_base_dir: Path = Path("output/candidates"),
-    run_id: Optional[str] = None,
+    pdf_path: Path = Path('input/ksiazka.pdf'),
+    holdout_manifest_path: Path = Path('benchmarks/fixtures/test_pages_manifest.json'),
+    output_base_dir: Path = Path('output/candidates'),
+    run_id: str | None = None,
+    ground_truth_dir: Path = Path('benchmarks/fixtures/ground_truth'),
 ) -> GateG2EvaluationReport:
-    """Run candidate conversion on the 10 holdout pages using the frozen production stack and evaluate Gate G2."""
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"Source PDF not found: {pdf_path}")
-
-    prod_md = Path("output/markdown/ksiazka.md")
-    sha_prod_before = compute_file_sha256(prod_md) if prod_md.exists() else "none"
-
+    if not pdf_path.is_file():
+        raise FileNotFoundError(f'Source PDF not found: {pdf_path}')
+    ensure_candidate_does_not_overwrite_production(output_base_dir)
     manifest = load_test_pages_manifest(holdout_manifest_path)
-    holdout_pages = [p.pdf_page for p in manifest.holdout_pages]
-    if len(holdout_pages) != 10:
-        raise ValueError(f"Expected 10 holdout pages, found {len(holdout_pages)}")
-
-    run_id = run_id or f"gate_g2_frozen_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Frozen Production Configuration:
-    frozen_config = {
-        "structure_layout_engine": "docling_layout_predictor",
-        "table_engine": "tableformer",
-        "ocr_engine": "rapidocr_onnxruntime",
-        "ocr_mode": OcrEngineMode.RAPID_OCR.value,
-        "languages": ["pl", "en"],
-        "apply_geometry": True,
-        "deskewing": "variance_maximization_0.1deg",
-        "column_gutter_detection": "vertical_projection_histogram",
-        "two_column_resequencing": "headers_left_right_footers",
-        "vlm_status": "omitted_due_to_hallucination_and_vram_limits (Decision D08)",
-        "invariants_validator": "src/block_validator.py (R13)",
-    }
-
-    # Execute candidate run with frozen settings
-    cand_manifest = run_candidate_conversion(
-        pdf_path=pdf_path,
-        pages=holdout_pages,
-        mode=OcrEngineMode.RAPID_OCR,
-        languages=["pl", "en"],
-        apply_geometry=True,
-        output_base_dir=output_base_dir,
-        run_id=run_id,
-    )
-
+    pages = [entry.pdf_page for entry in manifest.holdout_pages]
+    if len(pages) != 10 or len(set(pages)) != 10 or set(pages) & {p.pdf_page for p in manifest.dev_pages}:
+        raise ValueError('Expected ten unique holdout pages disjoint from dev')
+    if any(page < 1 or page > manifest.total_pages_in_pdf for page in pages):
+        raise ValueError('Holdout page outside the source range')
+    run_id = run_id or f'gate_g2_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")}'
     cand_dir = output_base_dir / run_id
-    cand_pages_dir = cand_dir / "pages"
+    ensure_candidate_does_not_overwrite_production(cand_dir)
+    before = _production_fingerprint()
+    source_sha = compute_file_sha256(pdf_path)
+    config = {'ocr_mode': OcrEngineMode.RAPID_OCR.value, 'languages': ['pl', 'en'], 'apply_geometry': True,
+              'max_cer': 0.01, 'max_wer': 0.03, 'max_page_p95_s': 30,
+              'environment': _environment(), 'source_pdf_sha256': source_sha,
+              'holdout_manifest_sha256': compute_file_sha256(holdout_manifest_path), 'references': {}, 'reference_images': {}}
+    reasons = []
+    if manifest.source_pdf_sha256 != source_sha:
+        reasons.append('Missing or mismatched source PDF SHA-256 in holdout manifest')
+    references = {}
+    for page in pages:
+        file = ground_truth_dir / f'page_{page:03d}.json'
+        try:
+            gt = load_page_ground_truth(file)
+            gt.validate_integrity()
+            validate_ground_truth_against_manifest(gt, holdout_manifest_path)
+            image = Path(gt.source_image_path)
+            if gt.page_no != page or not image.is_file() or compute_file_sha256(image) != gt.source_image_sha256:
+                raise ValueError('Page identity or reference image hash mismatch')
+            if gt.has_unresolved_glyphs or gt.all_unresolved_glyphs() or not gt.blocks:
+                raise ValueError('Unresolved or empty reference')
+            if gt.metadata.get('source_pdf_sha256') != source_sha:
+                raise ValueError('Reference is not bound to the source PDF hash')
+            references[page] = gt
+            config['references'][str(page)] = compute_file_sha256(file)
+            config['reference_images'][str(image)] = gt.source_image_sha256
+        except (OSError, ValueError) as error:
+            reasons.append(f'Page {page}: {error}')
+    criteria = dict.fromkeys(CRITERIA)
+    # Refuse to consume holdout through OCR without usable, source-bound references.
+    if reasons:
+        after = _production_fingerprint()
+        criteria[CRITERIA[5]] = before == after
+        return GateG2EvaluationReport(run_id=run_id, frozen_config=config, holdout_pages=pages,
+            production_sha_before=before, production_sha_after=after, production_preserved=before == after,
+            criteria_checklist=criteria, candidate_markdown_path=str(cand_dir / f'{pdf_path.stem}.md'),
+            not_evaluated_reasons=reasons)
 
-    page_summaries: list[GateG2PageSummary] = []
-    durations: list[float] = []
-    interleaving_cases = 0
-
-    for pno in holdout_pages:
-        sidecar_file = cand_pages_dir / f"page_{pno:03d}_extracted.json"
-        extracted = load_extracted_page(sidecar_file)
-        dur = cand_manifest.page_durations.get(pno, 0.0)
-        durations.append(dur)
-
-        # Check geometry report
-        geo_info = cand_manifest.geometry_reports.get(pno, {})
-        skew = geo_info.get("skew_angle")
-        gutter = geo_info.get("column_gutter")
-        has_gutter = gutter is not None and gutter.get("detected", False)
-        col_count = 2 if has_gutter else 1
-
-        # Check for column interleaving:
-        # On 2-column pages, left column blocks (center_x < gutter_start) should not alternate
-        # back and forth repeatedly with right column blocks.
-        interleaved = False
-        if has_gutter and gutter:
-            g_start = gutter.get("x_start", 0.0)
-            col_sequence = []
-            for b in extracted.blocks:
-                if b.bbox and b.bbox.width > 0 and b.block_type not in ("header_footer",):
-                    center_x = (b.bbox.l + b.bbox.r) / 2.0
-                    col_sequence.append(1 if center_x < g_start else 2)
-
-            # Detect illegal alternation (e.g. 1 -> 2 -> 1 -> 2 -> 1)
-            transitions = 0
-            for i in range(1, len(col_sequence)):
-                if col_sequence[i] != col_sequence[i - 1]:
-                    transitions += 1
-            if transitions > 2 and len(col_sequence) >= 4:
-                interleaved = True
-                interleaving_cases += 1
-
-        page_summaries.append(
-            GateG2PageSummary(
-                page_no=pno,
-                duration_seconds=dur,
-                total_blocks=len(extracted.blocks),
-                skew_angle_deg=skew,
-                column_count=col_count,
-                has_gutter=has_gutter,
-                interleaving_detected=interleaved,
-                invariants_intact=True,
-            )
-        )
-
-    p50, p95 = compute_percentiles(durations)
-    max_dur = max(durations) if durations else 0.0
-
-    sha_prod_after = compute_file_sha256(prod_md) if prod_md.exists() else "none"
-    prod_preserved = sha_prod_before == sha_prod_after
-
-    criteria = {
-        "1_no_column_interleaving": interleaving_cases == 0,
-        "2_measure_and_temp_invariants": True,
-        "3_table_and_text_stability": cand_manifest.total_blocks > 0,
-        "4_latency_under_30s_limit": p95 < 30.0,
-        "5_holdout_10_pages_completed": cand_manifest.total_pages == 10,
-        "6_production_truth_preserved": prod_preserved,
-    }
-
-    all_passed = all(criteria.values())
-    verdict = "PASS" if all_passed else "FAIL"
-
-    return GateG2EvaluationReport(
-        run_id=run_id,
-        frozen_config=frozen_config,
-        holdout_pages=holdout_pages,
-        total_pages=cand_manifest.total_pages,
-        total_blocks=cand_manifest.total_blocks,
-        page_summaries=page_summaries,
-        p50_duration_s=p50,
-        p95_duration_s=p95,
-        max_duration_s=max_dur,
-        column_interleaving_cases=interleaving_cases,
-        production_sha_before=sha_prod_before,
-        production_sha_after=sha_prod_after,
-        production_preserved=prod_preserved,
-        criteria_checklist=criteria,
-        verdict=verdict,
-        candidate_markdown_path=str(cand_dir / f"{pdf_path.stem}.md"),
-    )
+    candidate = run_candidate_conversion(pdf_path=pdf_path, pages=pages, mode=OcrEngineMode.RAPID_OCR,
+        languages=['pl', 'en'], apply_geometry=True, output_base_dir=output_base_dir, run_id=run_id)
+    config['candidate_config'] = candidate.config.model_dump(mode='json')
+    evidence = {}
+    summaries = []
+    durations = []
+    actual_pages = []
+    counts = 0
+    for entry in manifest.holdout_pages:
+        page = entry.pdf_page
+        file = cand_dir / 'pages' / f'page_{page:03d}_extracted.json'
+        try:
+            extracted = load_extracted_page(file)
+            if extracted.page_no != page or extracted.run_id != run_id:
+                raise ValueError('Sidecar page/run identity mismatch')
+            if not extracted.blocks or any(b.page_no != page or b.provenance.page_no != page or b.provenance.run_id != run_id or b.provenance.source_pdf_sha256 != source_sha for b in extracted.blocks):
+                raise ValueError('Missing blocks or wrong source provenance')
+        except (OSError, ValueError) as error:
+            evidence[page] = {'invariants': None, 'text_and_tables': None, 'reading_order': None, 'error': str(error)}
+            summaries.append(GateG2PageSummary(page_no=page, notes=str(error)))
+            continue
+        actual_pages.append(page)
+        quality = check_page(references[page], extracted)
+        if entry.has_tables and not references[page].tables:
+            quality['text_and_tables'] = None
+        evidence[page] = quality
+        duration = candidate.page_durations.get(page)
+        if duration is not None and math.isfinite(duration) and duration > 0:
+            durations.append(duration)
+        else:
+            duration = None
+        counts += len(extracted.blocks)
+        summaries.append(GateG2PageSummary(page_no=page, duration_seconds=duration, total_blocks=len(extracted.blocks),
+            invariants_intact=quality['invariants'], interleaving_detected=None if quality['reading_order'] is None else not quality['reading_order']))
+    p50, p95 = compute_percentiles(durations) if len(durations) == len(pages) else (None, None)
+    after = _production_fingerprint()
+    reference_inputs_intact = all((ground_truth_dir / f'page_{int(page):03d}.json').is_file() and compute_file_sha256(ground_truth_dir / f'page_{int(page):03d}.json') == expected for page, expected in config['references'].items()) and all(Path(image).is_file() and compute_file_sha256(Path(image)) == expected for image, expected in config['reference_images'].items())
+    config['reference_inputs_intact'] = reference_inputs_intact
+    criteria.update({
+        CRITERIA[0]: combine([evidence[p]['reading_order'] for p in pages]),
+        CRITERIA[1]: combine([evidence[p]['invariants'] for p in pages]),
+        CRITERIA[2]: combine([reference_inputs_intact, *[evidence[p]['text_and_tables'] for p in pages]]),
+        CRITERIA[3]: None if p95 is None else p95 < 30,
+        CRITERIA[4]: sorted(actual_pages) == sorted(pages) and sorted(candidate.pages_converted) == sorted(pages)
+            and not candidate.is_production_truth and candidate.total_pages == len(pages) and candidate.total_blocks == counts
+            and candidate.config.source_pdf_sha256 == source_sha and candidate.config.pages == pages and compute_file_sha256(pdf_path) == source_sha,
+        CRITERIA[5]: before == after,
+    })
+    for key, value in criteria.items():
+        if value is None:
+            reasons.append(f'{key}: incomplete or unsupported evidence')
+    return GateG2EvaluationReport(run_id=run_id, frozen_config=config, holdout_pages=pages,
+        total_pages=len(actual_pages), total_blocks=counts, page_summaries=summaries,
+        p50_duration_s=p50, p95_duration_s=p95, max_duration_s=max(durations) if durations else None,
+        column_interleaving_cases=sum(ps.interleaving_detected is True for ps in summaries),
+        production_sha_before=before, production_sha_after=after, production_preserved=before == after,
+        criteria_checklist=criteria, candidate_markdown_path=str(cand_dir / f'{pdf_path.stem}.md'),
+        evidence=evidence, not_evaluated_reasons=reasons)
 
 
 def save_gate_g2_report(report: GateG2EvaluationReport, output_dir: Path) -> tuple[Path, Path]:
-    """Persist Gate G2 report to JSON and GitHub Markdown formats."""
     ensure_candidate_does_not_overwrite_production(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    json_path = output_dir / f"{report.run_id}.json"
-    json_path.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
-
-    md_path = output_dir / f"{report.run_id}.md"
-    lines = [
-        f"# Raport Bramki Decyzyjnej Gate G2 (Wybór Ekstrakcji) — {report.verdict}",
-        "",
-        f"- **ID Przebiegu:** `{report.run_id}`",
-        f"- **Data:** `{report.created_at}`",
-        f"- **Status Bramki Gate G2:** **`{report.verdict}`**",
-        f"- **Liczba stron odłożonych (holdout):** {report.total_pages}",
-        f"- **Łączna liczba wyekstrahowanych bloków:** {report.total_blocks}",
-        "",
-        "## Zamrożona Konfiguracja Produkcyjna (Frozen Production Stack)",
-        "",
-        "- **Silnik struktury i układu:** `Docling Layout Predictor` + `TableFormer` (Decyzja D01)",
-        "- **Silnik OCR:** `RapidOCR ONNX` (`rapidocr-onnxruntime`) z obsługą języków PL i EN (Decyzje D06, D07)",
-        "- **Przetwarzanie geometrii:** `src/geometry.py` — automatyczny deskewing z krokiem 0.1°, pionowy histogram guttera, re-sekwencjonowanie 2 kolumn (nagłówki -> lewa kolumna -> prawa kolumna -> stopka)",
-        "- **Filtr VLM:** Odrzucono jako automatyczny ekstraktor (Decyzja D08 — zapobieganie halucynacjom i rywalizacji o VRAM)",
-        "- **Niezmienniki bloków:** `src/block_validator.py` (R13)",
-        "",
-        "## Spełnienie Kryteriów Bramki G2 (Sekcja 8)",
-        "",
-        "| Kryterium z sekcji 8 | Oczekiwana norma | Wynik na 10 stronach holdout | Status |",
-        "| --- | --- | --- | --- |",
-        f"| 1. Brak przeplatania kolumn | Zero przeplatania sąsiednich kolumn | {report.column_interleaving_cases} przypadków | {'PASS' if report.criteria_checklist['1_no_column_interleaving'] else 'FAIL'} |",
-        f"| 2. Spójność miar i temperatur | >=95% zgodności, brak zamian jednostek | Zachowane niezmienniki w blokach | {'PASS' if report.criteria_checklist['2_measure_and_temp_invariants'] else 'FAIL'} |",
-        f"| 3. Stabilność tekstu i tabel | Zachowana liczba wierszy/kolumn | {report.total_blocks} bloków wyekstrahowanych | {'PASS' if report.criteria_checklist['3_table_and_text_stability'] else 'FAIL'} |",
-        f"| 4. Latencja i zasoby | p95 < 30.0s na stronę | p50: **{report.p50_duration_s:.2f}s**, p95: **{report.p95_duration_s:.2f}s** | {'PASS' if report.criteria_checklist['4_latency_under_30s_limit'] else 'FAIL'} |",
-        f"| 5. Ślepy test odłożony | 10 odłożonych stron ukończonych | 10 / 10 stron przetworzonych | {'PASS' if report.criteria_checklist['5_holdout_10_pages_completed'] else 'FAIL'} |",
-        f"| 6. Ochrona źródła prawdy | output/markdown/ksiazka.md nienaruszony | Suma SHA-256 identyczna | {'PASS' if report.criteria_checklist['6_production_truth_preserved'] else 'FAIL'} |",
-        "",
-        "## Wyniki per strona holdout",
-        "",
-        "| PDF Strona | Kolumny | Gutter | Kąt nachylenia | Liczba bloków | Czas (s) | Przeplatanie? |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
-    ]
-
-    for ps in report.page_summaries:
-        skew_str = f"{ps.skew_angle_deg:+.1f}°" if ps.skew_angle_deg is not None else "0.0°"
-        gut_str = "TAK" if ps.has_gutter else "NIE"
-        inter_str = "TAK" if ps.interleaving_detected else "NIE"
-        lines.append(
-            f"| {ps.page_no} | {ps.column_count} | {gut_str} | {skew_str} | {ps.total_blocks} | {ps.duration_seconds:.2f}s | {inter_str} |"
-        )
-
-    lines.extend([
-        "",
-        "## Wnioski i Decyzja o Bramce G2",
-        "",
-        f"> **Decyzja Bramki G2:** **{report.verdict}**",
-        "> Konfiguracja produkcyjna została zweryfikowana na ślepym zestawie holdout i spełnia wszystkie wymagania.",
-        "> Zezwolono na przejście do Gate G3 (Zadania R15–R16: UI kontroli i pilot 50 nowych stron).",
-    ])
-
-    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Revalidate derived verdict instead of trusting a manually changed field.
+    report = GateG2EvaluationReport.model_validate(report.model_dump())
+    stem = Path(report.run_id).name
+    json_path, md_path = output_dir / f'{stem}.json', output_dir / f'{stem}.md'
+    json_path.write_text(report.model_dump_json(indent=2) + '\n', encoding='utf-8')
+    lines = [f'# Gate G2 — {report.verdict}', '', f'Przebieg: `{report.run_id}`',
+        f'Strony: {report.total_pages} / {len(report.holdout_pages)}', '',
+        '| Kryterium | Wynik |', '| --- | --- |']
+    lines.extend(f'| {key} | {criterion_status(report.criteria_checklist.get(key))} |' for key in CRITERIA)
+    lines += ['', '## Brakujące pomiary', ''] + [f'- {reason}' for reason in report.not_evaluated_reasons]
+    lines += ['', '## Dane pomiarowe', '', '```json', json.dumps(report.evidence, ensure_ascii=False, indent=2), '```', '',
+        'Zezwolono na przejście do Gate G3.' if report.verdict == 'PASS' else 'Brak zgody na Gate G3: napraw wykryte błędy lub uzupełnij pomiary.']
+    md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return json_path, md_path
-

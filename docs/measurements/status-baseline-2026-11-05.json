@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-05",
+  "method": "25 sequential warm-cache function calls per synthetic profile; not HTTP latency, not concurrent load",
+  "node": "v26.13.0",
+  "cpu": "AMD Ryzen 9 9900X 12-Core Processor",
+  "rows": [
+    {
+      "profile": "small",
+      "markdownMB": 0.1,
+      "assetsMB": 0,
+      "iterations": 25,
+      "p50_ms": 1.1587930000000028,
+      "p95_ms": 2.1173490000000044,
+      "max_ms": 9.557804000000004,
+      "cpu_ms": 49.628,
+      "timer_delay_during_one_read_ms": 0.9286320000000075
+    },
+    {
+      "profile": "book",
+      "markdownMB": 1,
+      "assetsMB": 16,
+      "iterations": 25,
+      "p50_ms": 11.90021999999999,
+      "p95_ms": 18.410337000000027,
+      "max_ms": 27.330531000000008,
+      "cpu_ms": 385.664,
+      "timer_delay_during_one_read_ms": 13.390679000000034
+    },
+    {
+      "profile": "large",
+      "markdownMB": 8,
+      "assetsMB": 64,
+      "iterations": 25,
+      "p50_ms": 48.91671999999994,
+      "p95_ms": 61.17944,
+      "max_ms": 73.96283699999992,
+      "cpu_ms": 1623.003,
+      "timer_delay_during_one_read_ms": 50.26179500000012
+    }
+  ]
+}

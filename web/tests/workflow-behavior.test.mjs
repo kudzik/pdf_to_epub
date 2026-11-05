@@ -14,7 +14,7 @@ function render(overrides = {}) {
   vm.createContext(context);
   vm.runInContext(source.slice(start, end), context);
   context.updateWorkflowStepper({ pdfInfo: { exists: true }, mdInfo: { exists: true, lines: 10 },
-    cleanInfo: { cleaned: true }, report: { anomalies: [] }, epubInfo: { exists: false }, ...overrides });
+    cleanInfo: { cleaned: true }, report: { anomalies: [] }, epubInfo: { exists: false }, workflow: { coverageVerified: true }, ...overrides });
   return context;
 }
 test('workflow follows four stages with repair inside audit', () => {
@@ -27,4 +27,10 @@ test('workflow follows four stages with repair inside audit', () => {
 test('current EPUB completes workflow; stale EPUB requires rebuild', () => {
   assert.match(render({ epubInfo: { exists: true, current: true } }).nextActionStepTag.textContent, /Sukces/);
   assert.match(render({ epubInfo: { exists: true, current: false } }).nextActionStepTag.textContent, /4 z 4/);
+});
+
+test('missing chapters prevent success and absent MD invalidates audit', () => {
+  assert.match(render({ report: { anomalies: [], missing_chapters: ['Soups'] }, epubInfo: { exists: true, current: true } }).nextActionStepTag.textContent, /Kontrola kompletności/);
+  const absent = render({ mdInfo: { exists: false }, report: { anomalies: [] } });
+  assert.doesNotMatch(absent.stepStatus4.innerHTML, /Audyt zakończony/);
 });

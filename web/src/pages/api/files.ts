@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import fs from 'fs';
+import { readBookState } from '../../utils/book-state';
 import path from 'path';
 import { getProjectRootDir } from '../../utils/paths';
 
@@ -34,11 +35,12 @@ export const GET: APIRoute = async () => {
     const hasMd = fs.existsSync(path.join(mdDir, `${stem}.md`));
     const hasEpub = fs.existsSync(path.join(epubDir, `${stem}.epub`));
 
+    const state = readBookState(rootDir, stem);
     let status = 'Wymaga ekstrakcji PDF';
-    if (hasEpub) {
+    if (state.workflow.ready) {
       status = 'Gotowy EPUB 3';
     } else if (hasMd) {
-      status = 'Wyekstrahowano Markdown (gotowy do audytu/budowy)';
+      status = 'Znaleziono istniejący Markdown';
     }
 
     return {
@@ -46,6 +48,7 @@ export const GET: APIRoute = async () => {
       hasPdf,
       hasMd,
       hasEpub,
+      ready: state.workflow.ready,
       status,
     };
   });

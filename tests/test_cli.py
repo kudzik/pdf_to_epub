@@ -84,8 +84,8 @@ def test_extract_regression_does_not_pass_none_page_range(monkeypatch, tmp_path:
     captured_kwargs = {}
 
     class MockDoc:
-        def save_as_markdown(self, *args, **kwargs):
-            pass
+        def save_as_markdown(self, target, **kwargs):
+            Path(target).write_text("# Test document\n", encoding="utf-8")
 
     class MockResult:
         document = MockDoc()

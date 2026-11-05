@@ -62,15 +62,14 @@ def test_get_mode_converter_rapidocr():
     assert summary["rapid_lang"] == "pl"
 
 
-def test_candidate_run_conversion_native(tmp_path: Path):
-    pdf_path = Path("input/ksiazka.pdf")
-    if not pdf_path.exists():
-        pytest.skip("Input PDF not available.")
+@pytest.mark.document_integration
+def test_candidate_run_conversion_native(tmp_path: Path, text_pdf):
+    pdf_path = text_pdf
 
     cand_base = tmp_path / "candidates"
     manifest = run_candidate_conversion(
         pdf_path=pdf_path,
-        pages=[25],
+        pages=[1],
         mode=OcrEngineMode.NATIVE,
         languages=["pl", "en"],
         output_base_dir=cand_base,
@@ -80,12 +79,12 @@ def test_candidate_run_conversion_native(tmp_path: Path):
     assert manifest.config.run_id == "test_run_native_p25"
     assert manifest.config.mode == OcrEngineMode.NATIVE
     assert manifest.total_pages == 1
-    assert manifest.pages_converted == [25]
+    assert manifest.pages_converted == [1]
     assert manifest.total_blocks > 0
     assert manifest.is_production_truth is False
     assert manifest.candidate_markdown_sha256 is not None
     assert manifest.duration_seconds is not None and manifest.duration_seconds >= 0.0
-    assert 25 in manifest.page_durations and manifest.page_durations[25] >= 0.0
+    assert 1 in manifest.page_durations and manifest.page_durations[1] >= 0.0
 
     cand_dir = cand_base / "test_run_native_p25"
     manifest_file = cand_dir / "manifest.json"
@@ -96,7 +95,7 @@ def test_candidate_run_conversion_native(tmp_path: Path):
     assert loaded_manifest.candidate_markdown_sha256 == manifest.candidate_markdown_sha256
 
     # Verify extracted page sidecar exists
-    extracted_page_file = cand_dir / "pages" / "page_025_extracted.json"
+    extracted_page_file = cand_dir / "pages" / "page_001_extracted.json"
     assert extracted_page_file.exists()
 
     # Verify candidate markdown file exists
@@ -104,15 +103,14 @@ def test_candidate_run_conversion_native(tmp_path: Path):
     assert cand_md.exists()
 
 
-def test_candidate_run_conversion_non_contiguous(tmp_path: Path):
-    pdf_path = Path("input/ksiazka.pdf")
-    if not pdf_path.exists():
-        pytest.skip("Input PDF not available.")
+@pytest.mark.document_integration
+def test_candidate_run_conversion_non_contiguous(tmp_path: Path, text_pdf):
+    pdf_path = text_pdf
 
     cand_base = tmp_path / "candidates"
     manifest = run_candidate_conversion(
         pdf_path=pdf_path,
-        pages=[25, 40],
+        pages=[1, 3],
         mode=OcrEngineMode.NATIVE,
         languages=["pl", "en"],
         output_base_dir=cand_base,
@@ -120,14 +118,14 @@ def test_candidate_run_conversion_non_contiguous(tmp_path: Path):
     )
 
     assert manifest.total_pages == 2
-    assert manifest.pages_converted == [25, 40]
-    assert 25 in manifest.page_durations
-    assert 40 in manifest.page_durations
+    assert manifest.pages_converted == [1, 3]
+    assert 1 in manifest.page_durations
+    assert 3 in manifest.page_durations
     assert manifest.duration_seconds is not None and manifest.duration_seconds > 0.0
 
     cand_dir = cand_base / "test_run_non_contiguous"
-    assert (cand_dir / "pages" / "page_025_extracted.json").exists()
-    assert (cand_dir / "pages" / "page_040_extracted.json").exists()
+    assert (cand_dir / "pages" / "page_001_extracted.json").exists()
+    assert (cand_dir / "pages" / "page_003_extracted.json").exists()
     assert (cand_dir / f"{pdf_path.stem}.md").exists()
 
 

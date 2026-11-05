@@ -57,3 +57,33 @@ def test_purge_temp_only_removes_progress_files(tmp_path: Path):
 
     assert not prog.exists(), "Plik postępu powinien zostać usunięty w trybie temp-only!"
 
+
+
+def test_single_book_purge_preserves_other_books_and_shared_assets(tmp_path):
+    out = tmp_path / 'output'
+    md_dir = out / 'markdown'
+    assets = md_dir / 'assets'
+    assets.mkdir(parents=True)
+    (md_dir / 'one.md').write_text('![shared](assets/shared.png)\n\n![own](assets/one.png)')
+    (md_dir / 'two.md').write_text('![shared](assets/shared.png)\n\n![own](assets/two.png)')
+    for name in ['shared.png', 'one.png', 'two.png']:
+        (assets / name).write_bytes(b'image')
+    history = out / 'history'
+    history.mkdir()
+    (history / 'two_history.json').write_text('{}')
+    purge_cmd(book='one', output_dir=out)
+    assert not (md_dir / 'one.md').exists()
+    assert not (assets / 'one.png').exists()
+    assert (assets / 'shared.png').exists()
+    assert (assets / 'two.png').exists()
+    assert (md_dir / 'two.md').exists()
+    assert (history / 'two_history.json').exists()
+
+
+def test_temp_cleanup_preserves_clean_milestone(tmp_path):
+    out = tmp_path / 'output'
+    out.mkdir()
+    clean = out / 'clean_status_book.json'
+    clean.write_text('{"cleaned":true}')
+    purge_cmd(temp_only=True, output_dir=out)
+    assert clean.exists()

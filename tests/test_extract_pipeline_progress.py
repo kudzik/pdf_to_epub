@@ -6,11 +6,10 @@ import pytest
 from src.pipeline import extract_pdf
 
 
-def test_extract_pdf_tracks_progress(tmp_path: Path):
+@pytest.mark.document_integration
+def test_extract_pdf_tracks_progress(tmp_path: Path, text_pdf):
     """Verify that extract_pdf writes progress to extract_progress_<book>.json in output_dir."""
-    input_pdf = Path("input/ksiazka.pdf")
-    if not input_pdf.exists():
-        pytest.skip("input/ksiazka.pdf not present in workspace")
+    input_pdf = text_pdf
 
     output_dir = tmp_path / "output"
     output_dir.mkdir(parents=True, exist_ok=True)

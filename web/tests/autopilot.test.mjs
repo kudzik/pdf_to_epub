@@ -17,8 +17,8 @@ function setup(responses) {
     return elements.get(id);
   };
   const actions = [], calls = [];
-  const context = {
-    isAutopilotRunning: false, activeRepairController: null, stopRequested: false,
+  const context = { localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+    statusLoading: false, isSystemBusy: false, globalStatusData: {}, stageAvailability() {}, isAutopilotRunning: false, activeRepairController: null, stopRequested: false,
     globalReport: { anomalies: responses.map((_, index) => ({paragraph_index:index, raw_paragraph:`Broken paragraph ${index}.`, reason:'OCR'})) },
     globalOllama: { available:true }, bookSelector: {value:'test', disabled:false},
     document: {getElementById:element}, repairStates: new Map(), AbortController,
@@ -46,14 +46,14 @@ test('autopilot retains rejected proposal, clears busy state and never builds wh
   assert.match(element('metrics-footer-0').textContent, /Source uncertain/);
 });
 
-test('autopilot continues after rejection and builds only confirmed saved changes', async () => {
+test('autopilot continues after rejection and audits saved changes and leaves compilation to the user', async () => {
   const {context,element,actions,calls} = setup([
     {success:false, applied:false, repaired:'Rejected.', error:'Source uncertain'},
     {success:true, applied:true, repaired:'Fixed paragraph 1.', method:'source-ocr', sources:[{pages:[26]}], metrics:{qualityScore:85,similarity:85,noiseRemoved:1,invariantsPreserved:true}},
   ]);
   await context.startOllamaAutopilot();
   assert.deepEqual(calls.map(c => c.index), [0,1]);
-  assert.deepEqual(actions, ['build','audit']);
+  assert.deepEqual(actions, ['audit']);
   assert.equal(element('repaired-preview-1').textContent, 'Fixed paragraph 1.');
   assert.match(element('quality-badge-1').textContent, /ponowny OCR/);
   assert.match(element('metrics-footer-1').textContent, /26/);

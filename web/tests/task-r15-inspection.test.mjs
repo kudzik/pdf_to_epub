@@ -14,7 +14,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..', '..');
 
-test('scan-image API: validates parameters, serves full page PNG and supports cropping', async () => {
+test('scan-image API: validates parameters, serves full page PNG and supports cropping', async (t) => {
+  const cwd=process.cwd();
+  const isolated=fs.mkdtempSync(path.join(os.tmpdir(),'epub-scan-test-'));
+  fs.mkdirSync(path.join(isolated,'input'));
+  fs.mkdirSync(path.join(isolated,'output','markdown'),{recursive:true});
+  fs.mkdirSync(path.join(isolated,'benchmarks','fixtures','images'),{recursive:true});
+  fs.writeFileSync(path.join(isolated,'input','ksiazka.pdf'),'Fixture PDF placeholder');
+  fs.copyFileSync(path.join(rootDir,'benchmarks','fixtures','images','page_025.png'),path.join(isolated,'benchmarks','fixtures','images','page_025.png'));
+  process.chdir(isolated);
+  t.after(()=>{ process.chdir(cwd); fs.rmSync(isolated,{recursive:true,force:true}); });
   // 1. Missing page returns 400
   const reqMissing = await scanImageGet({ url: new URL('http://localhost/api/scan-image?book=ksiazka') });
   assert.equal(reqMissing.status, 400);
@@ -149,7 +158,7 @@ test('autopilot: supports abort without saving in-flight changes and clean resum
   ];
 
   let abortTriggered = false;
-  const context = {
+  const context = { localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} }, statusLoading: false, isSystemBusy: false, globalStatusData: {}, stageAvailability() {},
     isAutopilotRunning: false,
     activeRepairController: null,
     stopRequested: false,

@@ -43,8 +43,8 @@ test('Stepper Reset on Purge: verifies complete reset of stages and metrics', ()
   const actionContent = fs.readFileSync(actionTsPath, 'utf8');
 
   // 1. Action API passes --with-epub when purging so no stale EPUB prevents stepper reset
-  assert.ok(actionContent.includes("const epubFlag = (keepEpub === true) ? '--keep-epub' : '--with-epub';"), 'Action API must purge EPUB by default to ensure stage reset');
-  assert.ok(actionContent.includes("purge --all --with-epub"), 'purge-all must include --with-epub');
+  assert.ok(actionContent.includes("keepEpub === true ? '--keep-epub' : '--with-epub'"), 'Action API must purge EPUB by default to ensure stage reset');
+  assert.ok(actionContent.includes("'purge', '--all', '--with-epub'"), 'purge-all must include --with-epub');
 
   // 2. Purge handler resets client states and reloads books list
   assert.ok(indexContent.includes('repairStates.clear()'), 'Must clear repairStates on purge');

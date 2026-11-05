@@ -2,6 +2,7 @@
 
 Kompleksowy, przemysłowy pipeline do rekonstrukcji skanów i dokumentów PDF (w tym trudnych publikacji dwukolumnowych, tabel, przepisów kulinarnych i grafik) do czystego, semantycznego formatu **Markdown** (jako jedno źródło prawdy / baza wiedzy pod RAG) oraz kompilacji do weryfikowanego standardu **EPUB 3** oraz wektorowej bazy wiedzy dla modeli LLM.
 
+Szczegółowa dokumentacja pipeline'u i workflow narzędziowego: [docs/WORKFLOW_KONWERSJI_PDF_DO_EPUB.md](docs/WORKFLOW_KONWERSJI_PDF_DO_EPUB.md).  
 Szczegółowy plan rekonstrukcji i historia bramek jakościowych: [docs/PLAN_REKONSTRUKCJI.md](docs/PLAN_REKONSTRUKCJI.md).  
 Końcowy raport certyfikacji projektu (Gate G0–G5): [docs/FINAL_PROJECT_REPORT.md](docs/FINAL_PROJECT_REPORT.md).
 

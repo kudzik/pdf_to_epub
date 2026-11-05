@@ -1,4 +1,5 @@
 import json
+import uuid
 import os
 import re
 import shutil
@@ -22,6 +23,8 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.progress import PageCompletedProgress
 from docling_core.types.doc.base import ImageRefMode
 
+from src.write_control import book_write_lock
+from src.artifact_state import atomic_json, sha256, build_dependencies
 from src.cleaner import clean_markdown_file
 from src.auditor import audit_markdown_file
 from src.repair import get_anomaly_details, patch_paragraph, patch_batch_from_file
@@ -203,9 +206,17 @@ def extract_pdf(
     md_dir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(parents=True, exist_ok=True)
 
+    progress_root = output_dir
+    # Partial runs are isolated from the canonical Markdown and its assets.
+    if pages:
+        output_dir = output_dir / "samples" / f"{input_pdf.stem}_{pages}_{uuid.uuid4().hex[:8]}"
+        md_dir = output_dir / "markdown"
+        assets_dir = md_dir / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+
     converter = get_converter(do_ocr=do_ocr, langs=lang_list, engine=ocr_engine)
 
-    progress_file = output_dir / f"extract_progress_{input_pdf.stem}.json"
+    progress_file = progress_root / f"extract_progress_{input_pdf.stem}.json"
     try:
         progress_file.write_text(json.dumps({
             "status": "starting",
@@ -227,6 +238,8 @@ def extract_pdf(
             elif len(parts) == 2:
                 page_range = (parts[0], parts[1])
             else:
+                raise ValueError
+            if page_range[0] < 1 or page_range[1] < page_range[0]:
                 raise ValueError
             convert_kwargs["page_range"] = page_range
             console.print(f"[yellow]Ograniczenie przetwarzania do stron: {page_range}[/yellow]")
@@ -252,6 +265,8 @@ def extract_pdf(
 
     convert_kwargs["progress_callback"] = on_progress
 
+    initial_md = md_dir / f"{input_pdf.stem}.md"
+    expected_existing_sha = sha256(initial_md) if initial_md.exists() else None
     console.print(f"[cyan]Przetwarzanie dokumentu {input_pdf.name}...[/cyan]")
     result = converter.convert(input_pdf, **convert_kwargs)
     doc = result.document
@@ -259,11 +274,22 @@ def extract_pdf(
     md_file = md_dir / f"{input_pdf.stem}.md"
 
     console.print("[cyan]Eksport do Markdown z referencjami do grafik...[/cyan]")
-    doc.save_as_markdown(
-        md_file,
-        image_mode=ImageRefMode.REFERENCED,
-        artifacts_dir=Path("assets"),
-    )
+    temporary_md = md_file.with_name(f".{md_file.stem}.{uuid.uuid4().hex}.md")
+    try:
+        doc.save_as_markdown(
+            temporary_md,
+            image_mode=ImageRefMode.REFERENCED,
+            artifacts_dir=Path("assets"),
+        )
+        with book_write_lock(md_file, owner="cli:extract"):
+            current_sha = sha256(md_file) if md_file.exists() else None
+            if current_sha != expected_existing_sha:
+                raise RuntimeError("Markdown zmienił się podczas ekstrakcji; zachowano poprawki")
+            if md_file.exists():
+                shutil.copy2(md_file, md_file.with_name(f"{md_file.name}.{uuid.uuid4().hex}.pre_extract.bak"))
+            os.replace(temporary_md, md_file)
+    finally:
+        temporary_md.unlink(missing_ok=True)
 
     try:
         progress_file.write_text(json.dumps({
@@ -275,6 +301,20 @@ def extract_pdf(
     except Exception:
         pass
 
+    atomic_json(output_dir / f"extraction_{input_pdf.stem}.json", {
+        "generation": uuid.uuid4().hex,
+        "pdf_sha256": sha256(input_pdf),
+        "pdf_size": input_pdf.stat().st_size,
+        "pdf_mtime_ms": input_pdf.stat().st_mtime * 1000,
+        "markdown_sha256": sha256(md_file),
+        "scope": "sample" if pages else "full",
+        "pages": pages or "all",
+        "engine": ocr_engine if do_ocr else "native",
+        "status": "completed",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    if not pages:
+        (output_dir / f"clean_status_{input_pdf.stem}.json").unlink(missing_ok=True)
     console.print(f"[bold green]✓ Zapisano Markdown:[/bold green] {md_file}")
     console.print(f"[bold green]✓ Grafiki wyodrębniono do:[/bold green] {assets_dir}")
     return md_file
@@ -341,11 +381,19 @@ def compile_epub(
     epub_file = epub_dir / f"{input_md.stem}.epub"
     console.print(f"[cyan]Kompilacja EPUB przy użyciu Pandoc: {input_md.name} -> {epub_file.name}...[/cyan]")
 
+    book_metadata = Path("metadata") / f"{input_md.stem}.yaml"
+    if metadata_file == Path("metadata.yaml"):
+        if book_metadata.is_file():
+            metadata_file = book_metadata
+        elif input_md.stem != "ksiazka":
+            metadata_file = None
+    dependencies = build_dependencies(input_md, metadata_file, css_file, cover_image)
+    temporary_epub = epub_file.with_name(f".{epub_file.stem}.{uuid.uuid4().hex}.epub")
     pandoc_cmd = [
         "pandoc",
         str(input_md),
         "-o",
-        str(epub_file),
+        str(temporary_epub),
         f"--resource-path={md_dir}",
         "--toc",
         "--toc-depth=3",
@@ -365,6 +413,21 @@ def compile_epub(
 
     try:
         subprocess.run(pandoc_cmd, check=True)
+        from src.epub_validator import validate_epub
+        validation = validate_epub(temporary_epub)
+        if not validation.is_valid:
+            raise RuntimeError("Wygenerowany EPUB nie przeszedł walidacji")
+        if dependencies != build_dependencies(input_md, metadata_file, css_file, cover_image):
+            raise RuntimeError("Źródła zmieniły się podczas kompilacji; zachowano poprzedni EPUB")
+        os.replace(temporary_epub, epub_file)
+        atomic_json(output_dir / f"build_{input_md.stem}.json", {
+            "dependencies": dependencies,
+            "metadata_candidate": str(book_metadata.resolve()),
+            "metadata_candidate_hash": sha256(book_metadata) if book_metadata.is_file() else None,
+            "epub_sha256": sha256(epub_file),
+            "validated": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
         console.print(f"[bold green]✓ Pomyślnie wygenerowano EPUB:[/bold green] {epub_file}")
 
         # Integracja WSL / Windows
@@ -382,6 +445,8 @@ def compile_epub(
         console.print(f"[bold red]Błąd Pandoc podczas kompilacji EPUB:[/bold red] {e}")
         raise typer.Exit(code=1)
 
+    finally:
+        temporary_epub.unlink(missing_ok=True)
 
 # --- Komendy interfejsu CLI (Typer) ---
 
@@ -488,6 +553,8 @@ def audit(
     input_md = ensure_markdown_exists(input_md=input_md, book=book, output_dir=output_dir)
 
     console.print(f"[cyan]Uruchamianie audytu jakościowego dla: {input_md.name}...[/cyan]")
+    if report_file == Path("output/audit_report.json") and input_md.stem != "ksiazka":
+        report_file = output_dir / f"audit_{input_md.stem}.json"
     report = audit_markdown_file(input_md, report_file)
 
     console.print(f"\n[bold green]✓ Audyt zakończony sukcesem![/bold green]")
@@ -502,8 +569,11 @@ def audit(
         console.print(f"  • Brakujące rozdziały ze spisu treści: [bold red]{len(report.missing_chapters)}[/bold red]")
         for ch in report.missing_chapters:
             console.print(f"    - [red]{ch}[/red]")
-    else:
+    elif report.completeness_checked:
         console.print("  • Wszystkie rozdziały ze spisu treści obecne w dokumencie: [bold green]TAK[/bold green]")
+
+    if not report.completeness_checked:
+        console.print("[yellow]Kompletność rozdziałów: nie oceniono (brak rozpoznanego spisu treści).[/yellow]")
 
     console.print(f"\n[cyan]Pełny szczegółowy raport zapisano do:[/cyan] [bold]{report_file}[/bold]")
 
@@ -694,6 +764,9 @@ def all(
         clean_markdown_file(md_file)
         console.print(f"[bold green]✓ Oczyszczono Markdown:[/bold green] {md_file}")
 
+    if pages:
+        output_dir = md_file.parent.parent
+
     compile_epub(
         input_md=md_file,
         output_dir=output_dir,
@@ -812,7 +885,7 @@ def purge_cmd(
                     deleted_files += 1
 
         # Usuń pliki postępu ekstrakcji i statusu czyszczenia
-        for p_file in list(output_dir.glob("extract_progress_*.json")) + list(output_dir.glob("clean_status_*.json")):
+        for p_file in list(output_dir.glob("extract_progress_*.json")):
             if p_file.exists():
                 p_file.unlink()
                 deleted_files += 1
@@ -835,11 +908,23 @@ def purge_cmd(
 
         files_to_remove = [
             output_dir / f"audit_{stem}.json",
-            output_dir / "audit_report.json",
             output_dir / f"extract_progress_{stem}.json",
             output_dir / f"clean_status_{stem}.json",
         ]
 
+        if stem == "ksiazka":
+            files_to_remove.append(output_dir / "audit_report.json")
+        if not keep_md:
+            files_to_remove.extend([output_dir / f"extraction_{stem}.json", output_dir / f"clean_status_{stem}.json"])
+        if with_epub:
+            files_to_remove.append(output_dir / f"build_{stem}.json")
+        referenced_assets = set()
+        own_md = output_dir / "markdown" / f"{stem}.md"
+        if own_md.exists():
+            referenced_assets.update(re.findall(r"!\[.*?\]\((assets/[^)]+)\)", own_md.read_text(encoding="utf-8")))
+        for other_md in (output_dir / "markdown").glob("*.md"):
+            if other_md != own_md:
+                referenced_assets.difference_update(re.findall(r"!\[.*?\]\((assets/[^)]+)\)", other_md.read_text(encoding="utf-8")))
         if not keep_md:
             files_to_remove.append(output_dir / "markdown" / f"{stem}.md")
 
@@ -861,38 +946,19 @@ def purge_cmd(
                         b_file.unlink()
                         deleted_files += 1
 
-        # Usunięcie wyekstrahowanych grafik w assets (jeśli nie zachowujemy MD)
         if not keep_md:
-            assets_dir = output_dir / "markdown" / "assets"
-            if assets_dir.exists():
-                for img in assets_dir.iterdir():
-                    if img.name != ".gitkeep" and img.is_file():
-                        img.unlink()
-                        deleted_files += 1
-
-        # Usunięcie ewentualnego zagnieżdżonego legacy katalogu output/markdown/output
-        nested_output = output_dir / "markdown" / "output"
-        if nested_output.exists():
-            shutil.rmtree(nested_output)
+            md_root = (output_dir / "markdown").resolve()
+            for asset in referenced_assets:
+                candidate = (md_root / asset).resolve()
+                if candidate.is_relative_to(md_root / "assets") and candidate.is_file():
+                    candidate.unlink()
+                    deleted_files += 1
+        # Shared caches, snapshots, candidate runs and other books' history are
+        # intentionally handled only by explicit global cleanup.
+        history_file = output_dir / "history" / f"{stem}_history.json"
+        if history_file.exists():
+            history_file.unlink()
             deleted_files += 1
-
-        # Usunięcie śmieci w cache, candidates, scratch
-        deleted_files += _clean_directory_contents(output_dir / "candidates")
-        deleted_files += _clean_directory_contents(output_dir / "cache" / "images")
-        deleted_files += _clean_directory_contents(output_dir / "cache")
-        deleted_files += _clean_directory_contents(output_dir / "source_cache")
-        deleted_files += _clean_directory_contents(output_dir / "scratch")
-
-        # Usunięcie baz wiedzy RAG i historii audytu dla książki
-        deleted_files += _clean_directory_contents(output_dir / "rag")
-        deleted_files += _clean_directory_contents(output_dir / "history")
-
-        # Usunięcie raportów benchmarków i snapshotów
-        if not keep_benchmarks:
-            deleted_files += _clean_directory_contents(output_dir / "benchmarks")
-
-        if not keep_snapshots:
-            deleted_files += _clean_directory_contents(output_dir / "snapshots")
 
         scope = "wszystkie pliki robocze oraz EPUB" if with_epub else "pliki robocze (z zachowaniem EPUB)"
         console.print(f"[bold green]✓ Wyczyszczono {scope} dla książki: {stem} (usunięto {deleted_files} elementów)[/bold green]")
@@ -962,7 +1028,7 @@ def purge_cmd(
             rep.unlink()
             deleted_files += 1
 
-        for prog in list(output_dir.glob("extract_progress_*.json")) + list(output_dir.glob("clean_status_*.json")):
+        for prog in list(output_dir.glob("extract_progress_*.json")) + list(output_dir.glob("clean_status_*.json")) + list(output_dir.glob("extraction_*.json")) + list(output_dir.glob("build_*.json")):
             prog.unlink()
             deleted_files += 1
 
@@ -2041,16 +2107,16 @@ def gate_g2_evaluate_cmd(
     table.add_column("Przeplatanie?", justify="center")
 
     for ps in report.page_summaries:
-        skew_str = f"{ps.skew_angle_deg:+.1f}°" if ps.skew_angle_deg is not None else "0.0°"
-        gut_str = "[green]TAK[/green]" if ps.has_gutter else "NIE"
-        inter_str = "[bold red]TAK[/bold red]" if ps.interleaving_detected else "[bold green]NIE[/bold green]"
+        skew_str = f"{ps.skew_angle_deg:+.1f}°" if ps.skew_angle_deg is not None else "NIE ZMIERZONO"
+        gut_str = "NIE ZMIERZONO" if ps.column_count is None else "[green]TAK[/green]" if ps.has_gutter else "NIE"
+        inter_str = "NIE ZMIERZONO" if ps.interleaving_detected is None else "[bold red]TAK[/bold red]" if ps.interleaving_detected else "[bold green]NIE[/bold green]"
         table.add_row(
             str(ps.page_no),
             str(ps.column_count),
             gut_str,
             skew_str,
             str(ps.total_blocks),
-            f"{ps.duration_seconds:.2f}s",
+            f"{ps.duration_seconds:.2f}s" if ps.duration_seconds is not None else "NIE ZMIERZONO",
             inter_str,
         )
 
@@ -2061,16 +2127,18 @@ def gate_g2_evaluate_cmd(
     crit_table.add_column("Status", justify="center")
 
     for k, v in report.criteria_checklist.items():
-        status_str = "[bold green]PASS[/bold green]" if v else "[bold red]FAIL[/bold red]"
+        status_str = "[yellow]NOT_EVALUATED[/yellow]" if v is None else "[bold green]PASS[/bold green]" if v else "[bold red]FAIL[/bold red]"
         crit_table.add_row(k.replace("_", " ").capitalize(), status_str)
 
     console.print(crit_table)
-    console.print(f"\n[bold]Latencja na stronę:[/bold] p50 = [bold green]{report.p50_duration_s:.2f}s[/bold green], p95 = [bold green]{report.p95_duration_s:.2f}s[/bold green], max = {report.max_duration_s:.2f}s")
-    console.print(f"[bold]Ochrona produkcji (output/markdown/ksiazka.md):[/bold] [bold green]{'NIENARUSZONE' if report.production_preserved else 'NARUSZONE!'}[/bold green]")
+    console.print(f"Latencja (s): p50={report.p50_duration_s}, p95={report.p95_duration_s}, max={report.max_duration_s}; None = nie zmierzono")
+    console.print(f"[bold]Ochrona produkcji (wszystkie pliki output/markdown/):[/bold] [bold green]{'NIENARUSZONE' if report.production_preserved else 'NARUSZONE!'}[/bold green]")
     verdict_color = "green" if report.verdict == "PASS" else "red"
     console.print(f"\n[bold {verdict_color}]WERDYKT BRAMKI GATE G2: {report.verdict}[/bold {verdict_color}]")
     console.print(f"\n[bold green]✓ Zapisano raport JSON:[/bold green] {json_path}")
     console.print(f"[bold green]✓ Zapisano raport Markdown:[/bold green] {md_path}")
+    if report.verdict != "PASS":
+        raise typer.Exit(code=2)
 
 
 @app.command(name="pilot-evaluate")
