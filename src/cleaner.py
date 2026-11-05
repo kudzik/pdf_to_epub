@@ -106,6 +106,7 @@ def restore_polish_and_ocr_artifacts(text: str) -> str:
     text = re.sub(r"\b[fF]lamb£", "flambé", text)
     text = re.sub(r"\b[pP][aâAÂ]t£", "pâté", text)
     text = re.sub(r"\bp&t£", "pâté", text)
+    text = re.sub(r"\b(?:pStd|p3te|p3t6)\b", "pâté", text)
     text = re.sub(r"\bpfit£", "pâté", text)
     text = re.sub(r"\bgruy£re\b", "gruyère", text)
 
@@ -181,6 +182,9 @@ def restore_polish_and_ocr_artifacts(text: str) -> str:
     text = re.sub(r"\bsos6w\b", "sosów", text, flags=re.IGNORECASE)
     text = re.sub(r"\bmakowc6w\b", "makowców", text, flags=re.IGNORECASE)
     text = re.sub(r"\boz6r\b", "ozór", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bKrak6w\b", "Kraków", text)
+    text = re.sub(r"\bmi6d\b", "miód", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bw\^gierk", "węgierk", text, flags=re.IGNORECASE)
 
     # --- 4. Angielskie substytucje OCR i zagubione znaki ---
     text = re.sub(r"\bha\^been\b", "has been", text)
@@ -304,6 +308,26 @@ def normalize_culinary_terms(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
+
+    # 7. Uszkodzone ułamki z podwojonym mianownikiem i błędy OCR ułamków
+    text = re.sub(r"\b11/22\b", "1 1/2", text)
+    text = re.sub(r"\b1/22\b", "1/2", text)
+    text = re.sub(r"\b11/24\b", "1 1/4", text)
+    text = re.sub(r"\b1/24\b", "1/4", text)
+    text = re.sub(r"\b1/23\b", "1/3", text)
+    text = re.sub(r"\b1/28\b", "1/8", text)
+    text = re.sub(r"\b11/2s\b", "1 1/2", text)
+    text = re.sub(r"\b1/2s\b", "1/2", text)
+    text = re.sub(r"\b1/2/4\b", "1/4", text)
+    text = re.sub(r"\b1/2/s\b", "1/8", text)
+    text = re.sub(r"%\s*c\.", "1/2 c.", text)
+    text = re.sub(r"\bWTTH\b", "WITH", text)
+    text = re.sub(r"\b1/2-l\b", "1/2-1", text)
+    text = re.sub(r"\b1/4-l\b", "1/4-1", text)
+    text = re.sub(r"\b3/4-l\b", "3/4-1", text)
+    text = re.sub(r"\bIbs\.\b", "lbs.", text)
+    text = re.sub(r"\bIbs\b", "lbs.", text)
+    text = re.sub(r"\bIb\.\b", "lb.", text)
 
     return text
 

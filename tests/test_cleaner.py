@@ -39,6 +39,10 @@ def test_normalize_culinary_terms():
     raw3 = "Take 1 2 tsp of pepper and 1 4 cup flour"
     assert normalize_culinary_terms(raw3) == "Take 1/2 tsp of pepper and 1/4 cup flour"
 
+    # Uszkodzone ułamki z podwojonym mianownikiem
+    raw4 = "Add 1/22 cup sugar and 11/22 lbs. flour and % c. butter WTTH 1/24 tsp salt"
+    assert normalize_culinary_terms(raw4) == "Add 1/2 cup sugar and 1 1/2 lbs. flour and 1/2 c. butter WITH 1/4 tsp salt"
+
 
 def test_remove_scan_noise():
     """Weryfikuje usuwanie śmieci skanera."""

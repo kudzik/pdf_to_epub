@@ -39,8 +39,9 @@ class AuditReport:
 VOWELS = set("aeiouyAEIOUYąćęóĄĆĘÓ")
 CULINARY_ABBRS = {
     "tsp", "tbsp", "tbs", "oz", "lb", "lbs", "pkg", "min", "mins", "hr", "hrs",
-    "pt", "qt", "st", "nd", "rd", "th", "deg", "sec"
+    "pt", "pts", "qt", "qts", "st", "nd", "rd", "th", "deg", "sec", "msg", "mrs", "pttk"
 }
+VALID_FRACTION_SUFFIXES = {"inch", "inches", "pt", "pts", "qt", "qts", "lb", "lbs", "oz", "cup", "cups"}
 
 
 def detect_corrupted_tokens(text: str) -> list[str]:
@@ -50,7 +51,11 @@ def detect_corrupted_tokens(text: str) -> list[str]:
     tokens = re.findall(r"\b[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+(?:\^|°|<|>|~|`)[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ\^°<>~`]*\b", clean_text)
 
     # Tokeny z dziwnymi symbolami w ułamkach (np. "1/2-%", "'/2-I", "1/2-I")
-    fractions_garbage = re.findall(r"(?:'/\d+-\w+|\d+/\d+-\%|\d+/\d+-[a-zA-Z]+|\%\s*c\.)", clean_text)
+    fractions_garbage = []
+    for m in re.finditer(r"(?:'/\d+-\w+|\d+/\d+-\%|(\d+/\d+-([a-zA-Z]+))|\%\s*c\.)", clean_text):
+        if m.group(2) and m.group(2).lower() in VALID_FRACTION_SUFFIXES:
+            continue
+        fractions_garbage.append(m.group(0))
     tokens.extend(fractions_garbage)
 
     # Zbitki literowe z losowymi cyframi w środku słów (np. "cl1e", "wl1o", "th1e", "b0lled")
@@ -191,7 +196,8 @@ def audit_markdown_content(markdown_content: str) -> AuditReport:
     missing_chapters = []
     for chap in expected_chapters:
         # Sprawdzamy czy pierwsze 3 słowa rozdziału istnieją w pliku jako nagłówek
-        clean_chap = re.sub(r"[^\w\s]", "", chap).strip()
+        clean_chap = re.sub(r"[-–—'/]", " ", chap)
+        clean_chap = re.sub(r"[^\w\s]", "", clean_chap).strip()
         words = clean_chap.split()[:3]
         if words:
             pattern = re.compile(rf"#+.*?" + r".*?".join(re.escape(w) for w in words), re.IGNORECASE)
