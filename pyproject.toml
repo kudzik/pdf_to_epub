@@ -10,6 +10,8 @@ requires-python = ">=3.13"
 dependencies = [
     "docling[easyocr]>=2.146.0",
     "loguru>=0.7.3",
+    "nvidia-curand>=10.4.5.25",
+    "onnxruntime-gpu>=1.31.1",
     "rapidocr-onnxruntime>=1.4.4",
     "rich>=15.0.0",
     "sentry-sdk>=2.20.0",

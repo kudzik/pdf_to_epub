@@ -426,11 +426,19 @@ def process_page_geometry(
     ocr_engine = None
     if enable_column_splitting and is_two_col:
         try:
+            import torch
             from rapidocr_onnxruntime import RapidOCR
 
-            ocr_engine = RapidOCR()
+            if torch.cuda.is_available():
+                ocr_engine = RapidOCR(det_use_cuda=True, rec_use_cuda=True, cls_use_cuda=True)
+            else:
+                ocr_engine = RapidOCR()
         except Exception:
-            ocr_engine = None
+            try:
+                from rapidocr_onnxruntime import RapidOCR
+                ocr_engine = RapidOCR()
+            except Exception:
+                ocr_engine = None
 
     for b in extracted_page.blocks:
         if enable_column_splitting and is_two_col and b.block_type == "paragraph":
